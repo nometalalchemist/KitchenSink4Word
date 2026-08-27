@@ -150,5 +150,5 @@ the MIT-licensed reference implementations studied.
 ## License
 
 **PolyForm Noncommercial 1.0.0** — free for personal, academic, research, and
-any other noncommercial use. Using it to make money? That's fine too — just
-ask first: open an issue to arrange a commercial license.
+any other noncommercial use. Commercial use requires a separate license **before** use — open an issue
+to arrange one.

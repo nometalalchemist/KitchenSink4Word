@@ -8,8 +8,8 @@ body:
       value: |
         KitchenSink4Word is free for personal, academic, and other
         noncommercial use under PolyForm Noncommercial 1.0.0. Commercial use
-        needs a separate license — thanks for asking first. Tell us a little
-        about the use and we'll sort it out.
+        requires a separate license BEFORE use. Tell us a little about the
+        intended use and we'll sort out terms.
   - type: textarea
     id: use
     attributes:
