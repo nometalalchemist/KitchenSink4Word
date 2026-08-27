@@ -1,0 +1,22 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.nometalalchemist/kitchensink4word",
+  "title": "KitchenSink4Word",
+  "description": "Everything and the kitchen sink for Microsoft Word - the most complete .docx MCP server: 119 tools for tables (merge-aware column surgery, bulk edits), citations/bibliography, footnotes/endnotes, TOC, tracked changes, compare, protection, watermarks. Corruption-proof by construction.",
+  "version": "1.2.1",
+  "websiteUrl": "https://nometalalchemist.github.io/KitchenSink4Word/",
+  "repository": {
+    "url": "https://github.com/nometalalchemist/KitchenSink4Word",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "kitchensink4word",
+      "version": "1.2.1",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

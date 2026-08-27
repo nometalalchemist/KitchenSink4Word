@@ -1,3 +1,5 @@
+<!-- mcp-name: io.github.nometalalchemist/kitchensink4word -->
+
 # 🚰 KitchenSink4Word
 
 **Everything and the kitchen sink for Microsoft Word.** The most complete

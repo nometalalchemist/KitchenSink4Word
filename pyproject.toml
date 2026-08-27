@@ -1,6 +1,6 @@
 [project]
 name = "kitchensink4word"
-version = "1.2.0"
+version = "1.2.1"
 description = "Everything and the kitchen sink for Microsoft Word - the most complete .docx MCP server: native citations/bibliography, index, tables with merge-aware column ops, footnotes/endnotes, TOC, tracked-change writing, document compare/merge, protection, watermarks, template transfer, safe round-trip OOXML editing"
 readme = "README.md"
 license = { file = "LICENSE" }
