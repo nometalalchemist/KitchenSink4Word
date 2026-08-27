@@ -24,15 +24,15 @@ _REF_HEADINGS = re.compile(
 )
 
 _YEAR = r"(?:1[89]\d\d|20\d\d)[a-z]?"
-# Narrative: Alvut (2026) / Alvut and Mote (2026) / Alvut et al. (2026)
+# Narrative: Smith (2026) / Smith and Jones (2026) / Smith et al. (2026)
 _NARRATIVE = re.compile(
     rf"\b([A-Z][A-Za-z'\-]+)"
     rf"(?:\s+(?:and|&)\s+[A-Z][A-Za-z'\-]+)*"
     rf"(?:\s+et al\.?)?"
     rf"\s*\(({_YEAR})(?:,\s*(?:p{{1,2}}\.\s*[\d\-–, ]+))?\)"
 )
-# Parenthetical content chunk: Alvut, 2026 / Alvut & Mote, 2026, p. 4 /
-# Alvut et al., 2026
+# Parenthetical content chunk: Smith, 2026 / Smith & Jones, 2026, p. 4 /
+# Smith et al., 2026
 _PAREN_CHUNK = re.compile(
     rf"([A-Z][A-Za-z'\-]+)"
     rf"(?:,?\s+(?:and|&)\s+[A-Z][A-Za-z'\-]+)*"

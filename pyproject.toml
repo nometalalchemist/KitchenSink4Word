@@ -1,11 +1,15 @@
 [project]
 name = "kitchensink4word"
-version = "1.2.1"
-description = "Everything and the kitchen sink for Microsoft Word - the most complete .docx MCP server: native citations/bibliography, index, tables with merge-aware column ops, footnotes/endnotes, TOC, tracked-change writing, document compare/merge, protection, watermarks, template transfer, safe round-trip OOXML editing, engineered not to corrupt"
+version = "1.3.0"
+description = "Everything plus the kitchen sink for Microsoft Word - the most complete .docx MCP server: live editing of open documents (one Ctrl+Z per call, cursor-safe), native citations/bibliography, index, tables with merge-aware column ops, footnotes/endnotes, TOC, tracked-change writing, document compare/merge, protection, watermarks, template transfer, safe round-trip OOXML editing, engineered not to corrupt"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "Nykolus Alvut" }]
-keywords = ["mcp", "word", "docx", "ooxml", "claude", "model-context-protocol"]
+keywords = [
+    "mcp", "word", "docx", "ooxml", "claude", "model-context-protocol",
+    "live-editing", "citations", "bibliography", "footnotes",
+    "table-of-contents", "tracked-changes", "document-compare", "tables",
+]
 requires-python = ">=3.12"
 dependencies = [
     "fastmcp",
@@ -35,3 +39,6 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 timeout = 120
+markers = [
+    "live: needs an interactive Word instance (auto-skipped where Word is unavailable)",
+]

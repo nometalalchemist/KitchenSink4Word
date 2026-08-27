@@ -7,7 +7,7 @@
 [![License: PolyForm NC](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE)
 
 **Everything plus the kitchen sink for Microsoft Word.** The most complete
-Word (.docx) MCP server available — 119 tools, engineered not to corrupt, stress-tested against long, heavily formatted real-world documents.
+Word (.docx) MCP server available — 123 tools, engineered not to corrupt, stress-tested against long, heavily formatted real-world documents. Now with live editing: documents open in Word are edited in place, visibly, with each tool call landing as a single Ctrl+Z step.
 
 > **The origin story:** an AI agent once needed *fifteen minutes* to edit
 > twenty table cells in a Word document, because no existing Word MCP could
@@ -21,6 +21,7 @@ Every public Word MCP server was surveyed before building this (August 2026):
 
 | Capability | KitchenSink4Word | GongRzhe Office-Word (2.1k★, archived) | word-mcp-live (195★) | SecurityRonin docx-mcp (43★) |
 |---|---|---|---|---|
+| Live editing while the doc is open in Word | ✅ cursor-safe, one Ctrl+Z per call | ❌ | ✅ | ❌ |
 | Table column insert/delete | ✅ merge-aware | ❌ | ❌ | ❌ |
 | Bulk cell edits (one call) | ✅ | ❌ | ❌ | ❌ |
 | Cell merge/unmerge | ✅ | merge only | ❌ | ❌ |
@@ -35,13 +36,44 @@ Every public Word MCP server was surveyed before building this (August 2026):
 | Section moving / template transfer | ✅ | ❌ | ❌ | ❌ |
 | Atomic saves + auto-backup | ✅ | ❌ | ❌ | ❌ |
 
-**119 tools** across: text and formatting, tables (including merge-aware column
+**123 tools** across: text and formatting, tables (including merge-aware column
 insert/delete and one-call bulk cell edits), footnotes/endnotes (full CRUD +
 footnote↔endnote conversion), TOC and caption lists, headers/footers/sections,
 images, bulleted/numbered lists, threaded comments, tracked changes (read,
 accept/reject by author, AND write edits as tracked changes), plus
 Word-COM-backed document compare, field refresh, PDF export, and open-clean
 validation on Windows.
+
+## What's new in v1.3 (2026-08-28)
+
+**Live editing.** A document open in Word no longer has to be closed first —
+the high-value tools route to a live COM layer automatically when the file is
+locked (or explicitly with `live="force"`; `live="off"` restores the old
+refusal):
+
+- Edits appear in the Word window immediately; nothing touches the disk until
+  the USER saves (or an explicit save tool is called). Unsaved work is never
+  auto-saved or auto-closed.
+- **One tool call = one Ctrl+Z step.** Every mutating call is wrapped in a
+  custom undo record, so a bulk replace of 40 matches reverts with a single
+  undo.
+- **The cursor is sacred.** All addressing is Range-based; the user's
+  selection, scroll position, and view are never touched. (One deliberate
+  exception: `live_scroll_to` brings a location into view on request —
+  without selecting it.)
+- Routed tools: `search_and_replace`, `insert_paragraphs`,
+  `delete_paragraphs`, `set_cells`, `format_text`, `get_text`, `find_text`,
+  `get_outline`, `get_document_info`. Live-only tools:
+  `live_insert_at_cursor`, `live_scroll_to`, `live_set_track_changes`,
+  `word_live_repair` (recovery if a crashed client left Word in a bad state).
+- Honest state reporting on every live result: document dirty, AutoSave
+  state, read-only, enforced tracking under protection, and per-item skip
+  counts when matches sit inside field results (Word regenerates those, so
+  editing them is refused rather than faked).
+- Protection-restricted documents get typed refusals up front; documents in
+  Protected View are named as such.
+- Reference-manager field codes (Zotero and friends) survive live and
+  file-based edits around them — verified by dedicated tests.
 
 ## What's new in v1.2 (2026-08-28)
 
@@ -100,17 +132,28 @@ validation on Windows.
 
 ## Install
 
+Two minutes, start to editing:
+
+```
+pip install kitchensink4word
+claude mcp add word -s user -- kitchensink4word
+```
+
+For Claude Desktop / Cursor / any MCP client, point the server command at the
+installed `kitchensink4word` (or `word-mcp`) executable:
+
+```json
+{"mcpServers": {"word": {"command": "kitchensink4word"}}}
+```
+
+From source instead:
+
 ```
 git clone https://github.com/nometalalchemist/KitchenSink4Word
 cd KitchenSink4Word
 python -m venv .venv
 .venv\Scripts\pip install -e .
-```
-
-Register with Claude Code:
-
-```
-claude mcp add word -s user -- <absolute-path-to>\word-mcp\.venv\Scripts\word-mcp.exe
+claude mcp add word -s user -- <absolute-path>\.venv\Scripts\word-mcp.exe
 ```
 
 ## Safety model
@@ -148,8 +191,13 @@ the MIT-licensed reference implementations studied.
 
 ## Known limits
 
-- No live editing of documents open in Word (clean refusal; COM tools work on
-  saved files).
+- Live regex replacements skip matches positioned after complex fields in a
+  story (COM character offsets drift there); the skip count is reported and a
+  literal find still works. Live `set_cells` refuses vertically merged tables
+  (the file-based tool is merge-aware — close the doc for those).
+- Live tracked-change attribution is best-effort: Word signed into an Office
+  account attributes revisions to that account; results report the effective
+  author honestly.
 - TOC/caption-list page numbers require a field update: automatic on next Word
   open (`update_on_open`), or immediate via `com_refresh_fields`.
 

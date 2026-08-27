@@ -183,8 +183,10 @@ def get_paragraphs(
             entry["heading_level"] = lvl
         out.append(entry)
     # Block-level SDT content (TOC, caption lists, gallery bibliographies)
-    # is not body-addressable (index None) but must be READABLE.
-    if include_sdt:
+    # is not body-addressable (index None) but must be READABLE. Only listed
+    # on a whole-document read — a slice request is about body indices, and
+    # the live layer behaves the same way.
+    if include_sdt and start == 0 and end is None:
         for sdt in pkg.body().iter(qn("w:sdt")):
             content = sdt.find(qn("w:sdtContent"))
             if content is None:
@@ -475,7 +477,15 @@ def find_text(
     pkg: DocxPackage, query: str, *, regex: bool = False, context_chars: int = 60
 ) -> list[dict]:
     from . import _regex
+    from ..core.errors import WordMcpError
 
+    if not query:
+        raise WordMcpError("query must be non-empty")
+    if regex and _regex.finditer(query, ""):
+        raise WordMcpError(
+            f"regex {query!r} can match the empty string and would match at "
+            "every position; anchor the pattern"
+        )
     matches = []
     pattern = _regex.compile_user_pattern(query) if regex else None
     for kind, idx, el in body_items(pkg):

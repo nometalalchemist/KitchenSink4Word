@@ -56,19 +56,50 @@ def _edit(file_path: str, fn, *, backup: bool = True) -> dict:
     return result
 
 
+def _route_live(live: str, file_call, live_call) -> dict:
+    """live='auto': file-based first, live layer when the doc is open in Word.
+    'force': straight to the live layer. 'off': v1 behavior (locked = refuse)."""
+    from .core.errors import DocumentLocked
+
+    if live not in ("auto", "force", "off"):
+        raise ValueError(f"live must be auto|force|off, got {live!r}")
+    if live == "force":
+        return live_call()
+    try:
+        return file_call()
+    except DocumentLocked:
+        if live == "off":
+            raise
+        return live_call()
+
+
 # ------------------------------------------------------------------- document
 
 
 @mcp.tool
-def get_document_info(file_path: str) -> dict:
-    """Overview: paragraph/table/footnote/comment/revision counts, sections, parts."""
-    return _rd.get_document_info(DocxPackage(file_path))
+def get_document_info(file_path: str, live: str = "auto") -> dict:
+    """Overview: paragraph/table/footnote/comment/revision counts, sections, parts.
+    Documents open in Word are read live."""
+    from .com import live_ops as _lo
+
+    return _route_live(
+        live,
+        lambda: _rd.get_document_info(DocxPackage(file_path)),
+        lambda: _lo.get_document_info(file_path),
+    )
 
 
 @mcp.tool
-def get_outline(file_path: str) -> list:
-    """Headings with paragraph indices and levels."""
-    return _rd.get_outline(DocxPackage(file_path))
+def get_outline(file_path: str, live: str = "auto") -> list | dict:
+    """Headings with paragraph indices and levels. Documents open in Word
+    are read live."""
+    from .com import live_ops as _lo
+
+    return _route_live(
+        live,
+        lambda: _rd.get_outline(DocxPackage(file_path)),
+        lambda: _lo.get_outline(file_path),
+    )
 
 
 @mcp.tool
@@ -77,19 +108,41 @@ def get_text(
     start: int = 0,
     end: int | None = None,
     contains: str | None = None,
-) -> list:
+    live: str = "auto",
+) -> list | dict:
     """Body paragraphs with indices, styles, heading levels. Slice with
-    start/end; filter with contains."""
-    return _rd.get_paragraphs(DocxPackage(file_path), start, end, contains=contains)
+    start/end; filter with contains. If the document is open in Word the
+    CURRENT in-memory state is read live (live='off' restores v1 refusal)."""
+    from .com import live_ops as _lo
+
+    return _route_live(
+        live,
+        lambda: _rd.get_paragraphs(
+            DocxPackage(file_path), start, end, contains=contains
+        ),
+        lambda: _lo.get_text(file_path, start, end, contains),
+    )
 
 
 @mcp.tool
 def find_text(
-    file_path: str, query: str, regex: bool = False, context_chars: int = 60
-) -> list:
-    """Find text in paragraphs and table cells; returns locations + context."""
-    return _rd.find_text(
-        DocxPackage(file_path), query, regex=regex, context_chars=context_chars
+    file_path: str,
+    query: str,
+    regex: bool = False,
+    context_chars: int = 60,
+    live: str = "auto",
+) -> list | dict:
+    """Find text in paragraphs and table cells; returns locations + context.
+    Documents open in Word are searched live (current in-memory state)."""
+    from .com import live_ops as _lo
+
+    return _route_live(
+        live,
+        lambda: _rd.find_text(
+            DocxPackage(file_path), query, regex=regex,
+            context_chars=context_chars,
+        ),
+        lambda: _lo.find_text(file_path, query, regex, context_chars),
     )
 
 
@@ -172,12 +225,32 @@ def search_and_replace(
     track: bool = False,
     author: str = "Claude",
     backup: bool = True,
+    live: str = "auto",
 ) -> dict:
     """Batch find/replace, safe across Word's fragmented runs. Each item:
     {find, replace, regex?}. scope: body | footnotes | headers | all.
     max_replacements: abort (changing nothing) if the total match count would
     exceed it — set this when using broad regex patterns. track: record each
-    replacement as a tracked change attributed to `author`."""
+    replacement as a tracked change attributed to `author`. Documents open in
+    Word are edited LIVE (visible immediately, one Ctrl+Z step, nothing saved
+    to disk until the user saves); live='off' restores the v1 refusal."""
+    from .com import live_ops as _lo
+
+    return _route_live(
+        live,
+        lambda: _search_and_replace_file(
+            file_path, replacements, scope, max_replacements, track, author,
+            backup,
+        ),
+        lambda: _lo.search_and_replace(
+            file_path, replacements, scope, max_replacements, track, author
+        ),
+    )
+
+
+def _search_and_replace_file(
+    file_path, replacements, scope, max_replacements, track, author, backup
+) -> dict:
     return _edit(
         file_path,
         lambda pkg: _tx.search_and_replace(
@@ -203,14 +276,32 @@ def insert_paragraphs(
     track: bool = False,
     author: str = "Claude",
     backup: bool = True,
+    live: str = "auto",
 ) -> dict:
     """Insert paragraphs ({text, style?, formatting?}) at one position:
     after_index | before_index | after_anchor (unique text) | at_end.
-    track: record as tracked insertions by `author`."""
-    return _edit(
-        file_path,
-        lambda pkg: _tx.insert_paragraphs(
-            pkg,
+    track: record as tracked insertions by `author`. Documents open in Word
+    are edited live."""
+    from .com import live_ops as _lo
+
+    return _route_live(
+        live,
+        lambda: _edit(
+            file_path,
+            lambda pkg: _tx.insert_paragraphs(
+                pkg,
+                paragraphs,
+                after_index=after_index,
+                before_index=before_index,
+                after_anchor=after_anchor,
+                at_end=at_end,
+                track=track,
+                author=author,
+            ),
+            backup=backup,
+        ),
+        lambda: _lo.insert_paragraphs(
+            file_path,
             paragraphs,
             after_index=after_index,
             before_index=before_index,
@@ -219,7 +310,6 @@ def insert_paragraphs(
             track=track,
             author=author,
         ),
-        backup=backup,
     )
 
 
@@ -231,16 +321,25 @@ def delete_paragraphs(
     track: bool = False,
     author: str = "Claude",
     backup: bool = True,
+    live: str = "auto",
 ) -> dict:
     """Delete body paragraphs [start..end] inclusive. Refuses ranges that cut
     through a field or carry a section break. track: mark as tracked deletions
-    by `author` instead of removing."""
-    return _edit(
-        file_path,
-        lambda pkg: _tx.delete_paragraphs(
-            pkg, start, end, track=track, author=author
+    by `author` instead of removing. Documents open in Word are edited live."""
+    from .com import live_ops as _lo
+
+    return _route_live(
+        live,
+        lambda: _edit(
+            file_path,
+            lambda pkg: _tx.delete_paragraphs(
+                pkg, start, end, track=track, author=author
+            ),
+            backup=backup,
         ),
-        backup=backup,
+        lambda: _lo.delete_paragraphs(
+            file_path, start, end, track=track, author=author
+        ),
     )
 
 
@@ -299,20 +398,34 @@ def format_text(
     find: str | None = None,
     occurrence: int = 1,
     backup: bool = True,
+    live: str = "auto",
 ) -> dict:
     """Character formatting on a text range. formatting keys: bold, italic,
     underline, strike, font, size_pt, color, highlight, superscript, subscript.
-    Target: paragraph_index + find (substring), find alone, or whole paragraph."""
-    return _edit(
-        file_path,
-        lambda pkg: _tx.format_text(
-            pkg,
+    Target: paragraph_index + find (substring), find alone, or whole paragraph.
+    Documents open in Word are edited live."""
+    from .com import live_ops as _lo
+
+    return _route_live(
+        live,
+        lambda: _edit(
+            file_path,
+            lambda pkg: _tx.format_text(
+                pkg,
+                paragraph_index=paragraph_index,
+                find=find,
+                occurrence=occurrence,
+                formatting=formatting,
+            ),
+            backup=backup,
+        ),
+        lambda: _lo.format_text(
+            file_path,
+            formatting,
             paragraph_index=paragraph_index,
             find=find,
             occurrence=occurrence,
-            formatting=formatting,
         ),
-        backup=backup,
     )
 
 
@@ -519,16 +632,25 @@ def set_cells(
     track: bool = False,
     author: str = "Claude",
     backup: bool = True,
+    live: str = "auto",
 ) -> dict:
     """Bulk cell writes in ONE call: [{row, cell, text}, ...]. Use for any
     multi-cell edit instead of per-cell calls. track: record as tracked
-    changes by `author`."""
-    return _edit(
-        file_path,
-        lambda pkg: _tb.set_cells(
-            pkg, table_index, edits, track=track, author=author
+    changes by `author`. Documents open in Word are edited live."""
+    from .com import live_ops as _lo
+
+    return _route_live(
+        live,
+        lambda: _edit(
+            file_path,
+            lambda pkg: _tb.set_cells(
+                pkg, table_index, edits, track=track, author=author
+            ),
+            backup=backup,
         ),
-        backup=backup,
+        lambda: _lo.set_cells(
+            file_path, table_index, edits, track=track, author=author
+        ),
     )
 
 
@@ -1536,7 +1658,7 @@ def set_page_number_format(
     start_at: int | None = None,
     backup: bool = True,
 ) -> dict:
-    """Page-number FORMAT per section: lowerRoman for dissertation front
+    """Page-number FORMAT per section: lowerRoman for front
     matter, decimal restarting at 1 for the body, upperRoman, letters, etc."""
     return _edit(
         file_path,
@@ -1776,10 +1898,65 @@ def reject_revisions(
 
 @mcp.tool
 def com_word_status() -> dict:
-    """Is Word running, and which documents does it have open?"""
-    from .com import bridge
+    """Is Word running and responsive, and which documents does it have open
+    (with per-document dirty/autosave state)? interactive_state:
+    ready | busy (dialog open) | blocked (long operation) | not_running."""
+    from .com import bridge, live
 
-    return bridge.word_status()
+    out = bridge.word_status()
+    status = live.interactive_status()
+    out["interactive_state"] = status["interactive_state"]
+    if status["open_documents"]:
+        out["open_documents"] = status["open_documents"]
+    if status.get("protected_view_documents"):
+        out["protected_view_documents"] = status["protected_view_documents"]
+    return out
+
+
+@mcp.tool
+def live_insert_at_cursor(
+    file_path: str, text: str, newline: bool = False
+) -> dict:
+    """Insert text at the USER'S CURSOR in the open document (main text
+    only). The cursor position is read once; the selection itself is never
+    touched. newline: end the insertion with a paragraph break."""
+    from .com import live_ops as _lo
+
+    return _lo.insert_at_cursor(file_path, text, newline=newline)
+
+
+@mcp.tool
+def live_scroll_to(
+    file_path: str,
+    find: str | None = None,
+    paragraph_index: int | None = None,
+) -> dict:
+    """Scroll the user's Word window to show a location ("here is what I
+    changed") WITHOUT selecting anything or moving their cursor. Target by
+    find text or body paragraph index."""
+    from .com import live_ops as _lo
+
+    return _lo.scroll_to(file_path, find=find, paragraph_index=paragraph_index)
+
+
+@mcp.tool
+def live_set_track_changes(file_path: str, enabled: bool) -> dict:
+    """Turn track changes on/off on the OPEN document, persistently (this is
+    a deliberate state change, unlike the auto-restored track flags on edit
+    tools). Returns the previous state."""
+    from .com import live_ops as _lo
+
+    return _lo.set_track_changes(file_path, enabled)
+
+
+@mcp.tool
+def word_live_repair() -> dict:
+    """Recovery tool: if a crashed live edit left the user's Word frozen
+    (ScreenUpdating off), alerts suppressed, or an undo record open, a fresh
+    attach fixes all three. Safe to run anytime; reports what it fixed."""
+    from .com import live
+
+    return live.live_repair()
 
 
 @mcp.tool
@@ -1824,7 +2001,7 @@ def com_merge_documents(
     section_break_between: bool = True,
 ) -> dict:
     """Merge documents in order into ONE file with full fidelity (styles,
-    footnotes, numbering) — e.g. chapters into a full dissertation. Section
+    footnotes, numbering) — e.g. chapters into one manuscript. Section
     breaks between parts keep per-chapter headers/numbering possible."""
     from .com import bridge
 

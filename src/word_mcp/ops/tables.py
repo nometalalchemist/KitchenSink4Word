@@ -515,6 +515,14 @@ def set_cells(
             raise TargetNotFound(
                 f"cell {c} out of range (row {r} has {len(tcs)} cells)"
             )
+        tcpr = tcs[c].find(qn("w:tcPr"))
+        vmerge = tcpr.find(qn("w:vMerge")) if tcpr is not None else None
+        if vmerge is not None and vmerge.get(qn("w:val"), "continue") == "continue":
+            raise UnsupportedStructure(
+                f"cell ({r},{c}) is a vertically merged CONTINUATION — text "
+                "written there is invisible in Word; write to the restart "
+                "cell at the top of the merge instead"
+            )
         if track:
             _cell_set_text_tracked(pkg, tcs[c], str(edit["text"]), author)
         else:
