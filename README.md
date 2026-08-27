@@ -2,7 +2,7 @@
 
 # 🚰 KitchenSink4Word
 
-**Everything and the kitchen sink for Microsoft Word.** The most complete
+**Everything plus the kitchen sink for Microsoft Word.** The most complete
 Word (.docx) MCP server available — 119 tools, corruption-proof by
 construction, stress-tested against real dissertation manuscripts.
 
