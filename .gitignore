@@ -18,3 +18,4 @@ tests/corpus/*.docx
 PLAN.md
 dist/
 build/
+BUILD_LOG.md
