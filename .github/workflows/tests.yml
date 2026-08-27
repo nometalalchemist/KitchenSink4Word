@@ -21,4 +21,4 @@ jobs:
       - name: Install
         run: pip install -e ".[dev]"
       - name: Run test suite (synthetic corpus auto-generated)
-        run: pytest tests/unit -q
+        run: python -m pytest tests/unit -q
