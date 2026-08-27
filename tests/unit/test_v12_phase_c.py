@@ -202,13 +202,13 @@ def test_apply_template_real_reference(ch13, tmp_path, doc):
 def test_set_document_properties(doc):
     pkg = DocxPackage(doc)
     sx.set_document_properties(
-        pkg, title="The Delta Model", author="Nykolus Alvut",
+        pkg, title="The Delta Model", author="Test Author",
         keywords="alliances, legitimacy, authority",
     )
     pkg.save(do_backup=False)
     d = Document(str(doc))
     assert d.core_properties.title == "The Delta Model"
-    assert d.core_properties.author == "Nykolus Alvut"
+    assert d.core_properties.author == "Test Author"
     assert "legitimacy" in d.core_properties.keywords
 
 

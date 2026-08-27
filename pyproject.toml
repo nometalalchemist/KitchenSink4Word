@@ -1,7 +1,7 @@
 [project]
 name = "kitchensink4word"
-version = "1.3.0"
-description = "Everything plus the kitchen sink for Microsoft Word - the most complete .docx MCP server: live editing of open documents (one Ctrl+Z per call, cursor-safe), native citations/bibliography, index, tables with merge-aware column ops, footnotes/endnotes, TOC, tracked-change writing, document compare/merge, protection, watermarks, template transfer, safe round-trip OOXML editing, engineered not to corrupt"
+version = "1.4.0"
+description = "Everything plus the kitchen sink for Microsoft Word - the most complete .docx MCP server: live editing of open documents (one Ctrl+Z per call, cursor-safe), mail merge, batch operations, redaction, accessibility and template-compliance audits, cross-reference validation, native citations/bibliography, index, merge-aware tables, footnotes/endnotes, TOC, tracked-change writing, document compare/merge, protection, PDF import/export, engineered not to corrupt"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "Nykolus Alvut" }]
@@ -9,6 +9,8 @@ keywords = [
     "mcp", "word", "docx", "ooxml", "claude", "model-context-protocol",
     "live-editing", "citations", "bibliography", "footnotes",
     "table-of-contents", "tracked-changes", "document-compare", "tables",
+    "mail-merge", "redaction", "accessibility", "compliance", "forms",
+    "batch-processing", "pdf-import",
 ]
 requires-python = ">=3.12"
 dependencies = [

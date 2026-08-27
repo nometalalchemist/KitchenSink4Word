@@ -34,6 +34,19 @@ from .ops import (
     tables as _tb,
     text as _tx,
     toc as _tc,
+    accessibility as _ac,
+    batch as _bt,
+    chapterheaders as _ch,
+    cleanup as _cu,
+    compliance as _cp,
+    definedterms as _dt,
+    diagnostics as _dg,
+    forms as _fm,
+    frontmatter as _fma,
+    integrity as _ig,
+    mailmerge as _mm,
+    redaction as _rx,
+    reffields as _rf,
 )
 
 mcp = FastMCP(
@@ -2078,6 +2091,422 @@ def com_validate_opens_clean(file_path: str) -> dict:
     from .com import bridge
 
     return bridge.validate_opens_clean(file_path)
+
+
+
+# ==================================================== workflow suites
+
+
+@mcp.tool
+def validate_cross_references(file_path: str) -> dict:
+    """Check every REF/PAGEREF cross-reference against the bookmarks that
+    actually exist: broken refs (target bookmark missing — renders as an
+    error in Word), bookmarks nothing references (informational), and
+    plain-text references like "see Figure 3" that match no caption or
+    heading number (heuristic review candidates). Paragraph indices included
+    for every finding."""
+    return _ig.validate_cross_references(DocxPackage(file_path))
+
+
+@mcp.tool
+def validate_captions(file_path: str) -> dict:
+    """Check that every body-level table and image has an adjacent caption
+    paragraph with a SEQ number field, report the ones missing captions with
+    locations, and flag mixed numbering conventions (sequential "Figure 3"
+    vs chapter-relative "Figure 4.2") per label."""
+    return _ig.validate_captions(DocxPackage(file_path))
+
+
+@mcp.tool
+def prepare_for_submission(
+    file_path: str,
+    accept_revisions: bool = True,
+    remove_comments: bool = True,
+    scrub_metadata: bool = True,
+    keep_title: bool = True,
+    backup: bool = True,
+) -> dict:
+    """One-call submission prep: accept all tracked changes (every author),
+    delete all comments including the comments-family parts, and scrub
+    identifying metadata (author, last-modified-by, company; title kept
+    unless keep_title=False). Content is never removed — footnotes, fields,
+    and citations all stay. Refuses protected documents rather than
+    delivering a half-clean file. Returns exactly what was done, what was
+    deliberately left (rsids), and what remains in the document."""
+    return _edit(
+        file_path,
+        lambda pkg: _cu.prepare_for_submission(
+            pkg,
+            accept_revisions=accept_revisions,
+            remove_comments=remove_comments,
+            scrub_metadata=scrub_metadata,
+            keep_title=keep_title,
+        ),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def list_reference_fields(file_path: str) -> dict:
+    """Inventory every Zotero, EndNote, and Mendeley field in the body,
+    footnotes, and endnotes: manager, kind (citation or bibliography),
+    location, cached rendered text, and whether the field markers are still
+    intact. Broken pairs are reported loudly — they disconnect the citation
+    from the reference manager."""
+    return _rf.list_reference_fields(DocxPackage(file_path))
+
+
+@mcp.tool
+def check_reference_field_integrity(file_path: str) -> dict:
+    """Post-edit health check for reference-manager citations: counts by
+    manager and kind plus an ok flag that goes False on any broken or stray
+    field marker. Run after editing a document that contains Zotero, EndNote,
+    or Mendeley citations to confirm the edit broke nothing."""
+    return _rf.check_reference_field_integrity(DocxPackage(file_path))
+
+
+@mcp.tool
+def check_template_compliance(file_path: str, rules: dict) -> dict:
+    """Validate the document against a formatting ruleset (university
+    dissertation guide, journal style sheet). Every rule key is optional;
+    unknown keys are rejected with the allowed list. Example ruleset:
+
+    {"page": {"margins_pt": {"top": 72, "bottom": 72, "left": 90, "right": 72},
+              "tolerance_pt": 1, "size": "letter", "orientation": "portrait"},
+     "fonts": {"allowed": ["Times New Roman"], "body_size_pt": 12},
+     "line_spacing": {"body": 2.0},
+     "headings": {"max_skip": 0, "required_first_level": 1},
+     "page_numbering": [{"section": 0, "format": "lowerRoman"},
+                        {"section": 1, "format": "decimal", "restart_at": 1}],
+     "required_headings_in_order": ["Abstract", "Acknowledgments"]}
+
+    Returns {compliant, violations: [{rule, expected, found, location,
+    severity}], unverified, rules_checked}. Fonts/sizes/spacing are resolved
+    through explicit formatting, the style basedOn chain, and docDefaults;
+    theme-indirected fonts are listed under "unverified" (reported, never
+    guessed). Read-only — the file is not modified."""
+    return _cp.check_template_compliance(DocxPackage(file_path), rules)
+
+
+@mcp.tool
+def check_brand_compliance(file_path: str, rules: dict) -> dict:
+    """Brand-guide compliance: the same engine and ruleset schema as
+    check_template_compliance, plus a colors rule:
+
+    {"fonts": {"allowed": ["Georgia", "Arial"]},
+     "colors": {"allowed_hex": ["1F4E79", "C00000"]}}
+
+    colors checks explicit run color values (w:color) in body text against
+    the allowed palette; hex comparison ignores case and a leading '#'.
+    Theme-indirected colors go to "unverified". Read-only."""
+    return _cp.check_brand_compliance(DocxPackage(file_path), rules)
+
+
+@mcp.tool
+def audit_accessibility(file_path: str) -> dict:
+    """Accessibility audit: heading hierarchy (skipped levels, empty headings,
+    no Heading 1), images missing alt text, tables whose first row is not a
+    repeating header, low-contrast text (explicit color vs explicit run
+    background below WCAG 4.5:1 — skipped, not guessed, when either side is
+    absent or automatic), missing document title, and generic hyperlink text
+    ("click here", "here", "link"). Each finding carries a location and a fix
+    hint; the summary has per-category counts and a pass flag. Read-only."""
+    return _ac.audit_accessibility(DocxPackage(file_path))
+
+
+@mcp.tool
+def check_image_resolution(file_path: str, min_dpi: int = 300) -> dict:
+    """Effective print resolution of every image: native pixel size (PNG/JPEG/
+    GIF parsed from the part bytes) vs displayed size gives horizontal and
+    vertical DPI; images below min_dpi are flagged with the actual numbers.
+    EMF/WMF report "vector (not applicable)"; other formats report
+    "unchecked (<format>)". Publishers typically require 300 DPI for print
+    figures. Read-only."""
+    return _ac.check_image_resolution(DocxPackage(file_path), min_dpi=min_dpi)
+
+
+@mcp.tool
+def list_template_placeholders(file_path: str) -> dict:
+    """Find every {{name}} placeholder and legacy MERGEFIELD in a template
+    (body, tables, headers/footers, footnotes), with counts and locations.
+    The returned names are the keys fill_template and mail_merge expect."""
+    return _mm.list_template_placeholders(DocxPackage(file_path))
+
+
+@mcp.tool
+def fill_template(
+    file_path: str,
+    data: dict,
+    missing: str = "error",
+    backup: bool = True,
+) -> dict:
+    """Fill a template IN PLACE: replace every {{name}} with data[name]
+    (safe across fragmented runs, first run's formatting kept) and set
+    MERGEFIELDs to their values as plain text. missing: 'error' refuses and
+    changes nothing if the template needs a key data lacks; 'skip' leaves
+    those markers; 'empty' fills them with empty strings. To produce copies
+    instead of editing in place, use mail_merge."""
+    return _edit(
+        file_path,
+        lambda pkg: _mm.fill_template(pkg, data, missing=missing),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def mail_merge(
+    template_path: str,
+    data_rows: list[dict] | str,
+    output_dir: str,
+    filename_pattern: str = "{row_index}.docx",
+    missing: str = "error",
+) -> dict:
+    """Mail merge: one filled .docx per data row, saved into output_dir.
+    data_rows: a list of dicts, or a path to a .csv (header = placeholder
+    names) or .json (array of objects). filename_pattern supports
+    {row_index} (1-based) and any {column}. Refuses BEFORE writing anything
+    on existing-file collisions, duplicate output names, or (missing='error')
+    rows lacking values the template needs. The template is never modified."""
+    return _mm.mail_merge(
+        template_path,
+        data_rows,
+        output_dir,
+        filename_pattern=filename_pattern,
+        missing=missing,
+    )
+
+
+# --------------------------------------------------------- batch operations
+
+
+@mcp.tool
+def batch_apply(
+    file_paths: list[str],
+    operations: list[dict],
+    stop_on_error: bool = True,
+    backup: bool = True,
+) -> dict:
+    """Apply the same operations to MANY documents. Each operation:
+    {'tool': name, 'params': {...}} with the tool's normal parameters minus
+    file_path (e.g. {'tool': 'search_and_replace', 'params': {'replacements':
+    [{'find': 'a', 'replace': 'b'}]}}). Allowed tools: search_and_replace,
+    insert_paragraphs, delete_paragraphs, replace_paragraph_text,
+    format_text, set_paragraph_format, apply_style, set_header, set_footer,
+    add_page_numbers, set_page_number_format, set_document_properties,
+    set_cells, add_watermark, remove_watermark. Per file: ALL operations,
+    then one backup and one atomic save; if any operation fails that file is
+    left untouched, and stop_on_error=True also skips the remaining files
+    (already-saved files keep their changes and are reported)."""
+    return _bt.batch_apply(
+        file_paths, operations, stop_on_error=stop_on_error, backup=backup
+    )
+
+
+# ------------------------------------------------------------- form fields
+
+
+@mcp.tool
+def list_form_fields(file_path: str) -> dict:
+    """Every fillable form field in the document: legacy fields (FORMTEXT /
+    FORMCHECKBOX / FORMDROPDOWN with name, value, options) and modern
+    content controls (text, rich text, checkbox, dropdown/combo, date, with
+    tag/alias and placeholder state), across the body and tables."""
+    return _fm.list_form_fields(DocxPackage(file_path))
+
+
+@mcp.tool
+def fill_form_fields(
+    file_path: str,
+    values: dict,
+    missing: str = "error",
+    backup: bool = True,
+) -> dict:
+    """Set form-field values by name (legacy) or tag/alias (content
+    control): text fields take strings, checkboxes booleans, dropdowns only
+    values from their options (refused otherwise). Duplicate field names are
+    refused with locations. missing: 'error' refuses (changing nothing) if a
+    key matches no field; 'skip' ignores such keys and reports them."""
+    return _edit(
+        file_path,
+        lambda pkg: _fm.fill_form_fields(pkg, values, missing=missing),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def validate_form_completeness(
+    file_path: str, required: list[str] | None = None
+) -> dict:
+    """Report unfilled form fields: empty text, placeholder text still
+    showing, and (for names listed in `required`) unchecked checkboxes or
+    fields missing from the document entirely. Without `required`, every
+    field is checked."""
+    return _fm.validate_form_completeness(
+        DocxPackage(file_path), required=required
+    )
+
+
+
+
+@mcp.tool
+def assemble_front_matter(file_path: str, spec: dict, backup: bool = True) -> dict:
+    """Set up standard long-document front matter in one call: the requested
+    sequence is inserted at the START of the document (existing content
+    becomes the body), page breaks separate front-matter pages, and one
+    section break separates front matter from body so page numbering can
+    switch (front lowerRoman, body decimal restarting at 1, by default).
+
+    spec = {"sections": [{"kind": "title_page", "lines": [...]},
+                         {"kind": "blank_or_copyright", "lines": [...]},
+                         {"kind": "abstract", "title": "Abstract", "text": "..."},
+                         {"kind": "toc"}, {"kind": "list_of_figures"},
+                         {"kind": "list_of_tables"}],
+            "page_numbering": {"front": "lowerRoman", "body": "decimal",
+                               "body_restart_at": 1}}
+
+    Title-page lines are centered; the abstract gets a Heading-styled title.
+    Refuses when front matter appears to exist already (document starts with
+    a TOC, or a section already uses lowerRoman numbering) unless spec has
+    "force": true. Reports exactly what was inserted and which section
+    indices carry which numbering."""
+    return _edit(
+        file_path,
+        lambda pkg: _fma.assemble_front_matter(pkg, spec),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def setup_chapter_headers(
+    file_path: str,
+    level: int = 1,
+    include_number: bool = False,
+    alignment: str = "right",
+    first_page_blank: bool = True,
+    scope: str | list = "auto",
+    backup: bool = True,
+) -> dict:
+    """Put the current chapter title in the running header via a STYLEREF
+    field referencing the Heading style of `level` — the standard Word
+    mechanism, evaluated per page, so it updates automatically and needs no
+    per-chapter section breaks. include_number adds the heading number
+    (STYLEREF \\n) before the title. scope 'auto' targets every section
+    containing body headings of that level; pass a list of section indices
+    to override. first_page_blank sets titlePg so section-opening pages show
+    no header. Watermarks in rewritten headers are preserved; other existing
+    header content is replaced and reported. Reports the sections touched
+    and the exact field codes written."""
+    return _edit(
+        file_path,
+        lambda pkg: _ch.setup_chapter_headers(
+            pkg,
+            level=level,
+            include_number=include_number,
+            alignment=alignment,
+            first_page_blank=first_page_blank,
+            scope=scope,
+        ),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def validate_chapter_headers(file_path: str) -> dict:
+    """Read back the chapter-header state: which sections carry STYLEREF
+    header fields (with the field codes), which heading levels each section
+    contains, and which sections with chapter-level headings lack a STYLEREF
+    header (the gaps setup_chapter_headers would fill)."""
+    return _ch.validate_chapter_headers(DocxPackage(file_path))
+
+
+@mcp.tool
+def diagnose_document(file_path: str) -> dict:
+    """One-call structural health report, read-only: content-type coverage,
+    dangling relationships and orphan parts, field begin/end balance per
+    story part, footnote/endnote integrity, references to undefined styles
+    and numbering, content-control and bookmark sanity, duplicate revision
+    ids, images whose targets are missing, broken cross-references, and a
+    per-part size profile. Never fails on a weird-but-openable document —
+    every check degrades to a reported problem. ok=false only for problems
+    that render broken or lose content in Word."""
+    return _dg.diagnose_document(DocxPackage(file_path))
+
+
+@mcp.tool
+def redact_text(
+    file_path: str,
+    targets: list[dict],
+    replacement: str = "[REDACTED]",
+    scope: str = "all",
+    backup: bool = True,
+) -> dict:
+    """Permanently REMOVE matched text from the document (true redaction,
+    not black highlighting — the characters are replaced in the XML). Each
+    target: {find, regex?}. Runmap-safe: secrets fragmented across Word's
+    split runs are found and removed as one match. Scrubs body incl. tables,
+    headers/footers, footnotes/endnotes (per scope: body | headers |
+    footnotes | all), and ALWAYS: comment text, document properties,
+    hyperlink display text/tooltips/URL targets, field instruction text,
+    cached field results, and tracked-change deleted text.
+
+    The result reports per-location-class counts, what was scrubbed, what
+    was NOT examined (embedded images, charts, OLE objects — text drawn in
+    an image is NOT redacted), and verified_clean from a full post-redaction
+    re-scan of every XML part. Zero-width regexes and empty finds are
+    refused before anything is touched; any error leaves the file unchanged.
+    Irreversible in the saved file — the auto-backup is the undo."""
+    return _edit(
+        file_path,
+        lambda pkg: _rx.redact_text(
+            pkg, targets, replacement=replacement, scope=scope
+        ),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def verify_redaction(file_path: str, targets: list[dict]) -> dict:
+    """Re-scan a document for the given patterns without changing anything:
+    do they still appear ANYWHERE in the XML (visible text across fragmented
+    runs, deleted tracked-change text, field instructions, attributes,
+    metadata, hyperlink targets)? Use it to audit a third-party file or a
+    file redacted elsewhere. clean=True covers every XML part; binary parts
+    (images, OLE objects) are listed under not_examined, never silently
+    trusted. Read-only."""
+    return _rx.verify_redaction(DocxPackage(file_path), targets)
+
+
+@mcp.tool
+def check_defined_terms(
+    file_path: str, definition_patterns: list | None = None
+) -> dict:
+    """Legal-document defined-terms audit. Finds definitions («"Term"
+    means», «"Term" shall mean», «(the "Term")», «(each, a "Term")» —
+    defaults overridable via definition_patterns, each regex capturing the
+    term as group 1) and reports, with paragraph indices: defined_never_used,
+    defined_multiple_times, first_use_before_definition, and
+    used_never_defined — a HEURISTIC list of capitalized recurring terms
+    with no definition, filtered so words capitalized only at sentence
+    starts are not flagged; treat those as review candidates. Body-level
+    paragraphs only (stated in the result notes). Read-only."""
+    return _dt.check_defined_terms(
+        DocxPackage(file_path), definition_patterns=definition_patterns
+    )
+
+
+@mcp.tool
+def com_import_pdf(pdf_path: str, output_path: str | None = None) -> dict:
+    """Convert a PDF to .docx via Word's built-in PDF reflow, in a dedicated
+    invisible Word instance. Output defaults next to the PDF with a .docx
+    extension; an existing output file is refused. The produced .docx is
+    validated by a full package round-trip. Reflow quality depends on the
+    PDF: text-based PDFs convert well, complex layouts may reflow
+    imperfectly, and scanned image PDFs yield little or no text (Word does
+    not OCR) — a near-zero word count triggers an explicit warning."""
+    from word_mcp.com import convert  # when pasted: from .com import convert
+
+    return convert.import_pdf(pdf_path, output_path)
+
 
 
 def main() -> None:

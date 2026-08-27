@@ -22,7 +22,7 @@ import os
 from lxml import etree
 
 from ..core.errors import WordMcpError
-from ..core.package import DocxPackage, qn
+from ..core.package import NSMAP, DocxPackage, qn
 
 _EDIT_MODES = ("readOnly", "comments", "trackedChanges", "forms")
 
@@ -114,7 +114,7 @@ def set_document_protection(
     if edit not in _EDIT_MODES:
         raise WordMcpError(f"edit must be one of {_EDIT_MODES}")
     if not pkg.has_part("word/settings.xml"):
-        raise WordMcpError("document has no settings.xml")
+        _create_settings_part(pkg)
     root = pkg.root("word/settings.xml")
     existing = root.find(qn("w:documentProtection"))
     if existing is not None:
@@ -143,11 +143,55 @@ def set_document_protection(
     }
 
 
+def _create_settings_part(pkg: DocxPackage) -> None:
+    """Minimal word/settings.xml + content-type override + rel — bare OOXML
+    from other producers can lack it entirely."""
+    root = etree.Element(qn("w:settings"), nsmap={"w": NSMAP["w"]})
+    pkg.set_raw_part(
+        "word/settings.xml",
+        etree.tostring(
+            root, xml_declaration=True, encoding="UTF-8", standalone=True
+        ),
+    )
+    ct_ns = "http://schemas.openxmlformats.org/package/2006/content-types"
+    ct_root = pkg.root("[Content_Types].xml")
+    if not any(
+        o.get("PartName") == "/word/settings.xml"
+        for o in ct_root.findall(f"{{{ct_ns}}}Override")
+    ):
+        override = etree.SubElement(ct_root, f"{{{ct_ns}}}Override")
+        override.set("PartName", "/word/settings.xml")
+        override.set(
+            "ContentType",
+            "application/vnd.openxmlformats-officedocument."
+            "wordprocessingml.settings+xml",
+        )
+        pkg.mark_dirty("[Content_Types].xml")
+    rel_ns = "http://schemas.openxmlformats.org/package/2006/relationships"
+    rel_type = (
+        "http://schemas.openxmlformats.org/officeDocument/2006/"
+        "relationships/settings"
+    )
+    rels_root = pkg.root("word/_rels/document.xml.rels")
+    if not any(r.get("Type") == rel_type for r in rels_root):
+        existing = {r.get("Id") for r in rels_root}
+        n = 1
+        while f"rId{n}" in existing:
+            n += 1
+        rel = etree.SubElement(rels_root, f"{{{rel_ns}}}Relationship")
+        rel.set("Id", f"rId{n}")
+        rel.set("Type", rel_type)
+        rel.set("Target", "settings.xml")
+        pkg.mark_dirty("word/_rels/document.xml.rels")
+
+
 def remove_document_protection(pkg: DocxPackage) -> dict:
     """Lift the editing restriction (works regardless of password — the hash
     only gates Word's UI, not the XML)."""
     if not pkg.has_part("word/settings.xml"):
-        raise WordMcpError("document has no settings.xml")
+        # nothing to remove — explicit no-op, consistent with the
+        # already-unprotected case
+        return {"removed": False, "note": "document has no settings.xml"}
     root = pkg.root("word/settings.xml")
     dp = root.find(qn("w:documentProtection"))
     if dp is None:

@@ -41,15 +41,15 @@ def test_tracked_replace_shows_as_revision(ch4):
         pkg,
         [{"find": "Delta Model", "replace": "Delta Framework"}],
         track=True,
-        author="Nykolus Alvut",
+        author="Test Author",
     )
     pkg.save(do_backup=False)
-    assert result["tracked_as"] == "Nykolus Alvut"
+    assert result["tracked_as"] == "Test Author"
     assert result["total"] > 0
 
     pkg2 = DocxPackage(ch4)
     summary = read.revision_summary(pkg2)
-    assert summary["by_author"].get("Nykolus Alvut", 0) >= result["total"]
+    assert summary["by_author"].get("Test Author", 0) >= result["total"]
     # Visible text shows the replacement (insertions display, deletions hide).
     text = visible(ch4)
     assert "Delta Framework" in text

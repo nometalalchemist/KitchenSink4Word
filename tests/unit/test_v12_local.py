@@ -66,12 +66,12 @@ def test_parity_on_synthetic_doc(tmp_path):
     dst = tmp_path / "cite.docx"
     d = Document()
     d.add_paragraph(
-        "Mediation research shows promise (Alvut, 2026). Bordin (1979) framed "
+        "Mediation research shows promise (Smith, 2026). Bordin (1979) framed "
         "the alliance concept, later extended (Bordin, 1994; Hurd, 1999). "
         "Uncited claims exist too."
     )
     d.add_heading("References", 1)
-    d.add_paragraph("Alvut, N. (2026). The Delta Model. Journal of X.")
+    d.add_paragraph("Smith, J. (2026). The Example Model. Journal of X.")
     d.add_paragraph("Bordin, E. S. (1979). The generalizability of the concept.")
     d.add_paragraph("Hurd, I. (1999). Legitimacy and authority.")
     d.add_paragraph("Orphan, O. (2001). Never cited anywhere.")
@@ -86,7 +86,7 @@ def test_parity_on_synthetic_doc(tmp_path):
     assert not r["parity_ok"]
     # The clean ones are neither missing nor uncited.
     assert not any("Hurd" in m for m in r["missing_references"])
-    assert not any("Alvut" in u for u in r["uncited_references"])
+    assert not any("Smith" in u for u in r["uncited_references"])
 
 
 def test_parity_real_chapter(ch4):

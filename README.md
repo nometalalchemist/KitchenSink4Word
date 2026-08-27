@@ -7,7 +7,7 @@
 [![License: PolyForm NC](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE)
 
 **Everything plus the kitchen sink for Microsoft Word.** The most complete
-Word (.docx) MCP server available — 123 tools, engineered not to corrupt, stress-tested against long, heavily formatted real-world documents. Now with live editing: documents open in Word are edited in place, visibly, with each tool call landing as a single Ctrl+Z step.
+Word (.docx) MCP server available — 147 tools, engineered not to corrupt, stress-tested against long, heavily formatted real-world documents. Now with live editing: documents open in Word are edited in place, visibly, with each tool call landing as a single Ctrl+Z step.
 
 > **The origin story:** an AI agent once needed *fifteen minutes* to edit
 > twenty table cells in a Word document, because no existing Word MCP could
@@ -36,13 +36,46 @@ Every public Word MCP server was surveyed before building this (August 2026):
 | Section moving / template transfer | ✅ | ❌ | ❌ | ❌ |
 | Atomic saves + auto-backup | ✅ | ❌ | ❌ | ❌ |
 
-**123 tools** across: text and formatting, tables (including merge-aware column
+**147 tools** across: workflow suites (mail merge, batch operations, redaction, compliance/accessibility audits, submission prep, front matter, diagnostics), text and formatting, tables (including merge-aware column
 insert/delete and one-call bulk cell edits), footnotes/endnotes (full CRUD +
 footnote↔endnote conversion), TOC and caption lists, headers/footers/sections,
 images, bulleted/numbered lists, threaded comments, tracked changes (read,
 accept/reject by author, AND write edits as tracked changes), plus
 Word-COM-backed document compare, field refresh, PDF export, and open-clean
 validation on Windows.
+
+## What's new in v1.4 (2026-08-28)
+
+**The workflow tier** — 24 new tools that turn document primitives into
+complete jobs:
+
+- **Document production**: `mail_merge` (template + CSV/JSON → one document
+  per row, atomic collision refusal), `fill_template` ({{placeholders}} and
+  MERGEFIELDs, safe across fragmented runs), `batch_apply` (the same edits
+  across dozens of files, all-or-nothing per file), form-field tooling
+  (legacy form fields AND content controls: list, fill, validate
+  completeness).
+- **Pre-flight checks**: `check_template_compliance` (validate margins,
+  fonts, spacing, heading structure, page-numbering and required sections
+  against a ruleset you write from any formatting guide),
+  `check_brand_compliance`, `audit_accessibility` (heading hierarchy, alt
+  text, table headers, contrast, link text), `check_image_resolution`
+  (effective DPI vs a print threshold), `validate_cross_references` (broken
+  REF/PAGEREF targets plus "see Figure 3" text references that match
+  nothing), `validate_captions`, `check_defined_terms` (legal drafts:
+  defined-but-unused, used-but-undefined, defined twice, used before
+  defined).
+- **Finishing moves**: `prepare_for_submission` (accept all revisions,
+  strip comments and identifying metadata in one call — content untouched,
+  idempotent), `redact_text` (TRUE removal from text, tables, headers,
+  footnotes, comments, properties, hyperlinks, field codes and tracked
+  deletions, with a verification re-scan and an explicit list of what was
+  NOT examined), `assemble_front_matter` (title page through TOC with
+  roman/arabic numbering switch in one call), `setup_chapter_headers`
+  (chapter-title headers via STYLEREF), `diagnose_document` (13 structural
+  health checks that never crash on a broken file), `com_import_pdf`
+  (PDF → editable .docx via Word's own converter), reference-manager field
+  inventory + integrity checking (Zotero, EndNote, Mendeley).
 
 ## What's new in v1.3 (2026-08-28)
 

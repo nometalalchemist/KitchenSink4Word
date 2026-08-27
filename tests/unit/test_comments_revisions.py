@@ -113,7 +113,7 @@ def test_add_comment_full_stack(ch4):
         pkg,
         anchor_text=anchor,
         text="This claim needs a citation.",
-        author="Nykolus Alvut",
+        author="Test Author",
     )
     pkg.save(do_backup=False)
 
@@ -127,7 +127,7 @@ def test_add_comment_full_stack(ch4):
         assert pkg2.has_part(part), part
     got = read.get_comments(pkg2)
     assert len(got) == 1
-    assert got[0]["author"] == "Nykolus Alvut"
+    assert got[0]["author"] == "Test Author"
     assert got[0]["text"] == "This claim needs a citation."
     assert got[0]["anchored_text"] == anchor
     assert got[0]["resolved"] is False
