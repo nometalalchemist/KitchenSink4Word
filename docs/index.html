@@ -129,6 +129,18 @@ th.us{background:var(--copper)!important;color:var(--paper)}
 .guarantee p{font-size:14px;color:var(--ink-soft);max-width:600px;margin:0 auto}
 .guarantee .seal{font-size:40px;display:block;margin-bottom:8px}
 
+/* service */
+.service-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:22px}
+.counter{border:2px solid var(--ink);background:var(--paper);padding:26px 24px;
+  box-shadow:var(--shadow);text-decoration:none;color:var(--ink);display:block;
+  transition:all .15s;position:relative}
+.counter:hover{transform:translate(-2px,-2px);box-shadow:2px 4px 0 var(--rule), 8px 14px 30px rgba(30,53,80,.16);background:var(--paper-deep)}
+.counter .icon{font-size:30px;display:block;margin-bottom:10px}
+.counter h3{font-size:18px;font-weight:800;margin-bottom:8px}
+.counter p{font-size:12.5px;color:var(--ink-soft);line-height:1.55}
+.counter .go{display:inline-block;margin-top:14px;font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--copper);font-weight:600}
+
 /* footer */
 footer{border-top:3px double var(--ink);padding:36px 0 48px;font-size:12px;color:var(--ink-soft)}
 footer .row{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
@@ -145,7 +157,7 @@ footer a{color:var(--copper)}
 
 <div class="wrap masthead rev d1">
   <span><b>EST. 2026</b> · FINE INSTRUMENTS FOR DOCUMENT PLUMBING</span>
-  <span>CATALOG № 119 · <a href="https://github.com/nometalalchemist/KitchenSink4Word">GITHUB</a> · <a href="https://pypi.org/project/kitchensink4word/">PYPI</a></span>
+  <span>CATALOG № 119 · <a href="#service">SERVICE</a> · <a href="https://github.com/nometalalchemist/KitchenSink4Word">GITHUB</a> · <a href="https://pypi.org/project/kitchensink4word/">PYPI</a></span>
 </div>
 
 <header class="hero wrap">
@@ -230,6 +242,33 @@ footer a{color:var(--copper)}
       </div>
     </div>
     <p class="foot-note" style="margin-top:18px">Windows. File-based tools need no Word installation; the seven COM tools (TOC refresh, PDF, proofing…) use a local Microsoft Word. Full setup in the <a href="https://github.com/nometalalchemist/KitchenSink4Word#install">README</a>.</p>
+  </div>
+</section>
+
+<section id="service">
+  <div class="wrap">
+    <div class="sec-head"><span class="no">DEPT. 05</span><h2>Service department</h2></div>
+    <div class="service-grid">
+      <a class="counter" href="https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=bug_report.yml">
+        <span class="icon">🔧</span>
+        <h3>Found a leak?</h3>
+        <p>Something glitched, refused, or misbehaved. File a report at the repair counter — the form asks exactly what a fix needs. Never attach a private document; rebuild the structure with placeholder text.</p>
+        <span class="go">File a bug report →</span>
+      </a>
+      <a class="counter" href="https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=feature_request.yml">
+        <span class="icon">🚿</span>
+        <h3>Missing an attachment?</h3>
+        <p>A Word capability the sink should also have. Describe the real task behind it and it goes on the workbench.</p>
+        <span class="go">Request a feature →</span>
+      </a>
+      <a class="counter" href="https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml">
+        <span class="icon">💼</span>
+        <h3>Commercial fitting?</h3>
+        <p>Free for personal and noncommercial use. Making money with it needs a separate arrangement — thanks for asking first.</p>
+        <span class="go">Arrange a license →</span>
+      </a>
+    </div>
+    <p class="foot-note" style="margin-top:16px">Reports are public GitHub issues (a free GitHub account is needed to file one). Every report lands in the maintainer's inbox.</p>
   </div>
 </section>
 
