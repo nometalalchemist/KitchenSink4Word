@@ -16,3 +16,5 @@ tests/corpus/*.docx
 
 # Local build-planning notes (project-specific workflow details)
 PLAN.md
+dist/
+build/
