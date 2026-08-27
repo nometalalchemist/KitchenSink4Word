@@ -1,0 +1,17 @@
+name: "🚿 Feature request"
+description: "Something the sink should also do"
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What should it do?
+      description: Describe the Word capability or workflow you're missing.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: What's the real-world task behind it?
+      description: The document you were editing and what you were trying to achieve.

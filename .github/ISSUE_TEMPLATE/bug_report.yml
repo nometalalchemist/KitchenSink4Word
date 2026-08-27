@@ -1,0 +1,59 @@
+name: "🐛 Bug report"
+description: "Something glitched, corrupted, or refused when it shouldn't have"
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! One important note before you start:
+        **never attach a private document.** If the bug needs a document to
+        reproduce, recreate it with placeholder text — the structure matters,
+        the words don't.
+  - type: input
+    id: tool
+    attributes:
+      label: Which tool?
+      placeholder: "e.g. delete_columns, insert_citation, com_refresh_fields"
+    validations:
+      required: true
+  - type: textarea
+    id: call
+    attributes:
+      label: The exact tool call
+      description: The arguments you passed (redact any private paths/text).
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: The response or error you got, verbatim if possible.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: docshape
+    attributes:
+      label: Document characteristics
+      description: >
+        What's in the document near the failure? (merged table cells,
+        footnotes, tracked changes, section breaks, which app created it...)
+  - type: input
+    id: version
+    attributes:
+      label: KitchenSink4Word version
+      placeholder: "pip show kitchensink4word"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "Windows 11, Python 3.12, Word 365 (COM tools only)"

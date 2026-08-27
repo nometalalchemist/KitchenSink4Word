@@ -1,0 +1,24 @@
+name: "💼 Commercial license inquiry"
+description: "You want to use KitchenSink4Word commercially — let's arrange it"
+title: "[commercial] "
+labels: ["commercial-license"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        KitchenSink4Word is free for personal, academic, and other
+        noncommercial use under PolyForm Noncommercial 1.0.0. Commercial use
+        needs a separate license — thanks for asking first. Tell us a little
+        about the use and we'll sort it out.
+  - type: textarea
+    id: use
+    attributes:
+      label: Intended commercial use
+      description: Rough description is fine (product, internal tooling, service...).
+    validations:
+      required: true
+  - type: input
+    id: contact
+    attributes:
+      label: How to reach you
+      placeholder: "email, or 'reply here'"
