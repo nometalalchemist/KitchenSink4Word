@@ -2,6 +2,10 @@
 
 # 🚰 KitchenSink4Word
 
+[![Tests](https://github.com/nometalalchemist/KitchenSink4Word/actions/workflows/tests.yml/badge.svg)](https://github.com/nometalalchemist/KitchenSink4Word/actions/workflows/tests.yml)
+[![PyPI](https://img.shields.io/pypi/v/kitchensink4word)](https://pypi.org/project/kitchensink4word/)
+[![License: PolyForm NC](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE)
+
 **Everything plus the kitchen sink for Microsoft Word.** The most complete
 Word (.docx) MCP server available — 119 tools, engineered not to corrupt, stress-tested against long, heavily formatted real-world documents.
 
@@ -123,11 +127,13 @@ claude mcp add word -s user -- <absolute-path-to>\word-mcp\.venv\Scripts\word-mc
 
 ## Testing
 
-335 tests. The full suite runs against a corpus of real-world documents
-(book-length chapters, a document with 171 footnotes, a manuscript with 126
-tracked changes and reviewer comments) that is **private and not shipped** —
-corpus-dependent tests skip cleanly with an explanation. See
-`tests/conftest.py` for how to supply your own corpus. `tests/word_validator.py`
+344 tests, running everywhere: the suite was developed against a private
+corpus of real-world documents (book-length chapters, a document with 171
+footnotes, a manuscript with 126 tracked changes and reviewer comments), and
+CI auto-generates **structurally equivalent synthetic stand-ins**
+(`tests/make_corpus.py`) so the full suite runs on any machine — including
+yours and every pull request. Local real documents, when present, take
+precedence. `tests/word_validator.py`
 opens outputs in invisible Word and fails on any repair prompt — the definitive
 corruption check.
 

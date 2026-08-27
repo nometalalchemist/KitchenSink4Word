@@ -27,6 +27,19 @@ EXPECTED = {
 }
 
 
+def pytest_configure(config):
+    """Missing corpus files are GENERATED as structural stand-ins (see
+    tests/make_corpus.py), so the full suite runs anywhere — CI included.
+    Real local documents, when present, always take precedence."""
+    present = {p.name for p in CORPUS.glob("*.docx")}
+    if set(EXPECTED) - present:
+        import make_corpus  # noqa: F401  (lives beside this file)
+
+        made = make_corpus.generate_missing(verbose=True)
+        if made:
+            print(f"conftest: generated {len(made)} synthetic corpus file(s)")
+
+
 def pytest_collection_modifyitems(config, items):
     present = {p.name for p in CORPUS.glob("*.docx")}
     missing = set(EXPECTED) - present
@@ -34,9 +47,8 @@ def pytest_collection_modifyitems(config, items):
         return
     skip = pytest.mark.skip(
         reason=(
-            f"test corpus incomplete (missing: {sorted(missing)}). "
-            "The corpus is private real-world documents — see tests/conftest.py "
-            "for what to supply to run these tests yourself."
+            f"test corpus incomplete (missing: {sorted(missing)}) and "
+            "generation failed — run python tests/make_corpus.py for details."
         )
     )
     uses_corpus: dict[str, bool] = {}

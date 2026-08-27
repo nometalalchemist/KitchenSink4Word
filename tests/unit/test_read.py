@@ -30,7 +30,11 @@ def test_paragraph_texts_match_python_docx(both):
     python-docx omits runs inside w:ins (tracked insertions), which ARE visible
     text, so revision-bearing paragraphs are checked separately below."""
     pkg, oracle = both
-    ours = [_norm(e["text"]) for e in read.get_paragraphs(pkg)]
+    ours = [
+        _norm(e["text"])
+        for e in read.get_paragraphs(pkg)
+        if e["index"] is not None  # python-docx cannot see SDT-block content
+    ]
     theirs = [p.text for p in oracle.paragraphs]
     assert len(ours) == len(theirs)
     rev_tags = {qn("w:ins"), qn("w:del"), qn("w:moveFrom"), qn("w:moveTo")}
