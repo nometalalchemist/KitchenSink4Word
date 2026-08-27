@@ -1,5 +1,5 @@
 """The test suite runs against a corpus of REAL documents in tests/corpus/
-(the author's own dissertation drafts and manuscripts — private, not shipped).
+(the author's own long-form manuscripts — private, not shipped).
 
 Without the corpus, corpus-dependent tests are skipped with an explanation.
 To run the full suite, drop your own .docx files into tests/corpus/ using the

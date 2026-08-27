@@ -3,7 +3,7 @@
 # 🚰 KitchenSink4Word
 
 **Everything plus the kitchen sink for Microsoft Word.** The most complete
-Word (.docx) MCP server available — 119 tools, engineered not to corrupt, stress-tested against real academic manuscripts.
+Word (.docx) MCP server available — 119 tools, engineered not to corrupt, stress-tested against long, heavily formatted real-world documents.
 
 > **The origin story:** an AI agent once needed *fifteen minutes* to edit
 > twenty table cells in a Word document, because no existing Word MCP could
@@ -47,7 +47,7 @@ validation on Windows.
   fields in the selected style.
 - **Index** (XE entries with nesting and see-references + INDEX field) and
   **caption lists** (List of Tables/Figures).
-- **Dissertation layout kit**: roman-numeral page formats, line numbering,
+- **Long-document layout kit**: roman-numeral page formats, line numbering,
   watermarks (compatible with Word's Remove Watermark), multi-column
   sections, Page X of Y.
 - **Document protection** with Word-compatible SHA-512 password hashing
@@ -124,7 +124,7 @@ claude mcp add word -s user -- <absolute-path-to>\word-mcp\.venv\Scripts\word-mc
 ## Testing
 
 335 tests. The full suite runs against a corpus of real-world documents
-(long-form academic chapters, a thesis with 171 footnotes, a manuscript with 126
+(book-length chapters, a document with 171 footnotes, a manuscript with 126
 tracked changes and reviewer comments) that is **private and not shipped** —
 corpus-dependent tests skip cleanly with an explanation. See
 `tests/conftest.py` for how to supply your own corpus. `tests/word_validator.py`
