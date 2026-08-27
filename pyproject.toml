@@ -1,0 +1,37 @@
+[project]
+name = "kitchensink4word"
+version = "1.2.0"
+description = "Everything and the kitchen sink for Microsoft Word - the most complete .docx MCP server: native citations/bibliography, index, tables with merge-aware column ops, footnotes/endnotes, TOC, tracked-change writing, document compare/merge, protection, watermarks, template transfer, safe round-trip OOXML editing"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Nykolus Alvut" }]
+keywords = ["mcp", "word", "docx", "ooxml", "claude", "model-context-protocol"]
+requires-python = ">=3.12"
+dependencies = [
+    "fastmcp",
+    "python-docx",
+    "lxml",
+    "regex",
+    "pywin32; sys_platform == 'win32'",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-timeout",
+]
+
+[project.scripts]
+word-mcp = "word_mcp.server:main"
+kitchensink4word = "word_mcp.server:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+timeout = 120

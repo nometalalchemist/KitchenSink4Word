@@ -1,0 +1,876 @@
+"""Text and formatting edit operations.
+
+All mutating functions call pkg.mark_dirty() on the parts they touch and return
+a summary dict. Nothing here writes to disk; the caller decides when to save.
+"""
+
+from __future__ import annotations
+
+import copy
+import re
+
+from lxml import etree
+
+from ..core.errors import AmbiguousTarget, TargetNotFound, WordMcpError
+from ..core.package import DocxPackage, qn
+from . import _regex, _runmap
+from .read import body_items, paragraph_text
+
+# ------------------------------------------------------------ search & replace
+
+_TEXT_PARTS = {
+    "body": ["word/document.xml"],
+    "footnotes": ["word/footnotes.xml", "word/endnotes.xml"],
+}
+
+
+def _replace_parts(pkg: DocxPackage, scope: str) -> list[str]:
+    parts: list[str] = []
+    if scope in ("body", "all"):
+        parts.append("word/document.xml")
+    if scope in ("footnotes", "all"):
+        parts += [
+            p
+            for p in ("word/footnotes.xml", "word/endnotes.xml")
+            if pkg.has_part(p)
+        ]
+    if scope in ("headers", "all"):
+        parts += [
+            p
+            for p in pkg.part_names()
+            if re.fullmatch(r"word/(header|footer)\d+\.xml", p)
+        ]
+    if not parts:
+        raise WordMcpError(f"unknown scope: {scope!r}")
+    return parts
+
+
+def search_and_replace(
+    pkg: DocxPackage,
+    replacements: list[dict],
+    *,
+    scope: str = "body",
+    max_replacements: int | None = None,
+    track: bool = False,
+    author: str = "Claude",
+) -> dict:
+    """Batch replace. Each item: {find, replace, regex?: bool}.
+
+    Matching is per paragraph (a match cannot span paragraphs). Replacement
+    inherits the formatting of the first character it replaces. Later pairs see
+    the results of earlier pairs.
+
+    max_replacements is a blast-radius guard: if the total match count would
+    exceed it, NOTHING is replaced and the error reports the count. Use it
+    with broad regexes (.*-class patterns can rewrite the whole document).
+    """
+    counts = {item["find"]: 0 for item in replacements}
+
+    if max_replacements is not None:
+        projected = 0
+        for part in _replace_parts(pkg, scope):
+            for p in pkg.root(part).iter(qn("w:p")):
+                text, _ = _runmap.build_map(p)
+                for item in replacements:
+                    if item.get("regex"):
+                        projected += sum(
+                            1
+                            for m in _regex.finditer(item["find"], text)
+                            if m.start() != m.end()
+                        )
+                    elif item["find"]:
+                        projected += text.count(item["find"])
+        if projected > max_replacements:
+            raise WordMcpError(
+                f"would make {projected} replacements, over the "
+                f"max_replacements guard of {max_replacements}; nothing was "
+                "changed — narrow the pattern or raise the limit"
+            )
+    for part in _replace_parts(pkg, scope):
+        dirty = False
+        for p in pkg.root(part).iter(qn("w:p")):
+            for item in replacements:
+                find, repl = item["find"], item["replace"]
+                use_regex = bool(item.get("regex"))
+                # One snapshot per (paragraph, pair): find every non-overlapping
+                # match, then apply right-to-left so earlier offsets stay valid
+                # and replacement text is never re-matched (a replacement that
+                # contains its own find string must not loop).
+                text, segments = _runmap.build_map(p)
+                if use_regex:
+                    matches = [
+                        (m.start(), m.end(), m.expand(repl))
+                        for m in _regex.finditer(find, text)
+                        if m.start() != m.end()
+                    ]
+                else:
+                    if not find:
+                        continue
+                    matches = []
+                    pos = 0
+                    while True:
+                        pos = text.find(find, pos)
+                        if pos < 0:
+                            break
+                        matches.append((pos, pos + len(find), repl))
+                        pos += len(find)
+                for start, end, actual in reversed(matches):
+                    if track:
+                        from . import _tracked
+
+                        _tracked.tracked_replace_range(
+                            p,
+                            start,
+                            end,
+                            actual,
+                            author=author,
+                            rev_id=_tracked.next_rev_id(pkg.root(part)),
+                            date=_tracked.now_iso(),
+                        )
+                    else:
+                        _runmap.replace_range(p, segments, start, end, actual)
+                    counts[find] += 1
+                    dirty = True
+        if dirty:
+            pkg.mark_dirty(part)
+    result = {"replaced": counts, "total": sum(counts.values())}
+    if track:
+        result["tracked_as"] = author
+    return result
+
+
+# ------------------------------------------------------------ paragraph CRUD
+
+
+def _body_paragraph(pkg: DocxPackage, index: int) -> etree._Element:
+    for kind, idx, el in body_items(pkg):
+        if kind == "paragraph" and idx == index:
+            return el
+    raise TargetNotFound(f"no body paragraph with index {index}")
+
+
+def _resolve_anchor(pkg: DocxPackage, anchor_text: str) -> etree._Element:
+    matches = [
+        el
+        for kind, _, el in body_items(pkg)
+        if kind == "paragraph" and anchor_text in paragraph_text(el)
+    ]
+    if not matches:
+        raise TargetNotFound(f"anchor text not found: {anchor_text!r}")
+    if len(matches) > 1:
+        raise AmbiguousTarget(
+            f"anchor text appears in {len(matches)} paragraphs; "
+            "use a longer, unique anchor or a paragraph index"
+        )
+    return matches[0]
+
+
+def _make_paragraph(
+    text: str, *, style: str | None = None, formatting: dict | None = None
+) -> etree._Element:
+    p = etree.Element(qn("w:p"))
+    if style or formatting:
+        ppr = etree.SubElement(p, qn("w:pPr"))
+        if style:
+            etree.SubElement(ppr, qn("w:pStyle")).set(qn("w:val"), style)
+    run = etree.SubElement(p, qn("w:r"))
+    if formatting:
+        run.append(_make_rpr(formatting))
+    for i, line in enumerate(text.split("\n")):
+        if i:
+            etree.SubElement(run, qn("w:br"))
+        if line:
+            t = etree.SubElement(run, qn("w:t"))
+            t.text = line
+            _runmap._preserve_space(t)
+    return p
+
+
+def insert_paragraphs(
+    pkg: DocxPackage,
+    paragraphs: list[dict],
+    *,
+    after_index: int | None = None,
+    before_index: int | None = None,
+    after_anchor: str | None = None,
+    at_end: bool = False,
+    track: bool = False,
+    author: str = "Claude",
+) -> dict:
+    """Insert paragraphs. Each item: {text, style?, formatting?}. With track,
+    content and paragraph marks are recorded as insertions by `author`."""
+    specified = sum(
+        x is not None for x in (after_index, before_index, after_anchor)
+    ) + bool(at_end)
+    if specified != 1:
+        raise WordMcpError(
+            "specify exactly one of after_index, before_index, after_anchor, at_end"
+        )
+    new_els = [
+        _make_paragraph(
+            item["text"],
+            style=item.get("style"),
+            formatting=item.get("formatting"),
+        )
+        for item in paragraphs
+    ]
+    body = pkg.body()
+    if at_end:
+        # Before the trailing sectPr if present.
+        sectpr = body.find(qn("w:sectPr"))
+        for el in new_els:
+            if sectpr is not None:
+                sectpr.addprevious(el)
+            else:
+                body.append(el)
+    elif after_anchor is not None:
+        ref = _resolve_anchor(pkg, after_anchor)
+        for el in reversed(new_els):
+            ref.addnext(el)
+    elif after_index is not None:
+        ref = _body_paragraph(pkg, after_index)
+        for el in reversed(new_els):
+            ref.addnext(el)
+    else:
+        ref = _body_paragraph(pkg, before_index)
+        for el in new_els:
+            ref.addprevious(el)
+    if track:
+        from . import _tracked
+
+        root = pkg.root()
+        date = _tracked.now_iso()
+        for el in new_els:
+            rid = _tracked.next_rev_id(root)
+            _tracked.wrap_paragraph_content_inserted(
+                el, author=author, rev_id=rid, date=date
+            )
+            _tracked.mark_paragraph_mark(
+                el, "ins", author=author, rev_id=rid + 1, date=date
+            )
+    pkg.mark_dirty()
+    result = {"inserted": len(new_els)}
+    if track:
+        result["tracked_as"] = author
+    return result
+
+
+def delete_paragraphs(
+    pkg: DocxPackage,
+    start: int,
+    end: int | None = None,
+    *,
+    track: bool = False,
+    author: str = "Claude",
+) -> dict:
+    """Delete body paragraphs [start, end] inclusive (end defaults to start).
+    With track, nothing is removed — content and paragraph marks are recorded
+    as deletions by `author`, pending accept/reject."""
+    end = start if end is None else end
+    if end < start:
+        raise WordMcpError("end must be >= start")
+    targets = [
+        el
+        for kind, idx, el in body_items(pkg)
+        if kind == "paragraph" and start <= idx <= end
+    ]
+    if len(targets) != end - start + 1:
+        raise TargetNotFound(
+            f"paragraph range {start}-{end} exceeds document "
+            f"({len(targets)} of {end - start + 1} found)"
+        )
+    if track:
+        from . import _tracked
+
+        root = pkg.root()
+        date = _tracked.now_iso()
+        for el in targets:
+            if el.find(f"{qn('w:pPr')}/{qn('w:sectPr')}") is not None:
+                raise WordMcpError(
+                    "a paragraph in the range carries a section break; "
+                    "tracked deletion of section paragraphs is not supported"
+                )
+            rid = _tracked.next_rev_id(root)
+            n = _tracked.wrap_paragraph_content_deleted(
+                el, author=author, rev_id=rid, date=date
+            )
+            _tracked.mark_paragraph_mark(
+                el, "del", author=author, rev_id=rid + n, date=date
+            )
+        pkg.mark_dirty()
+        return {"deleted_tracked": len(targets), "tracked_as": author}
+
+    body = pkg.body()
+    remaining = sum(1 for k, _, _ in body_items(pkg) if k == "paragraph")
+    if remaining - len(targets) < 1:
+        raise WordMcpError("refusing to delete every paragraph in the document")
+    # Field-balance guard: deleting a range that cuts through a complex field
+    # (unbalanced w:fldChar begin/end) corrupts the document.
+    depth = 0
+    for el in targets:
+        for fc in el.iter(qn("w:fldChar")):
+            t = fc.get(qn("w:fldCharType"))
+            if t == "begin":
+                depth += 1
+            elif t == "end":
+                depth -= 1
+    if depth != 0:
+        raise WordMcpError(
+            "the paragraph range cuts through a field (TOC, PAGEREF, SEQ...); "
+            "deleting it would corrupt the document — widen the range to cover "
+            "the whole field or use delete_toc for TOCs"
+        )
+    for el in targets:
+        # A paragraph carrying the section's sectPr must not vanish silently.
+        if el.find(f"{qn('w:pPr')}/{qn('w:sectPr')}") is not None:
+            raise WordMcpError(
+                f"paragraph {start + targets.index(el)} carries a section break; "
+                "delete_paragraphs refuses it — remove the section first"
+            )
+        body.remove(el)
+    pkg.mark_dirty()
+    from .notes import purge_orphans
+
+    purged = purge_orphans(pkg)["purged"]
+    result = {"deleted": len(targets)}
+    if purged:
+        result["note_definitions_purged"] = purged
+    return result
+
+
+def replace_paragraph_text(pkg: DocxPackage, index: int, new_text: str) -> dict:
+    """Swap a paragraph's entire text, keeping its style and first run's format."""
+    p = _body_paragraph(pkg, index)
+    first_rpr = None
+    first_run = p.find(qn("w:r"))
+    if first_run is not None:
+        rpr = first_run.find(qn("w:rPr"))
+        if rpr is not None:
+            first_rpr = copy.deepcopy(rpr)
+    for r in p.findall(qn("w:r")):
+        p.remove(r)
+    for wrapper in p.findall(qn("w:hyperlink")) + p.findall(qn("w:ins")):
+        p.remove(wrapper)
+    run = etree.SubElement(p, qn("w:r"))
+    if first_rpr is not None:
+        run.append(first_rpr)
+    t = etree.SubElement(run, qn("w:t"))
+    t.text = new_text
+    _runmap._preserve_space(t)
+    pkg.mark_dirty()
+    from .notes import purge_orphans
+
+    purged = purge_orphans(pkg)["purged"]
+    result = {"replaced_paragraph": index}
+    if purged:
+        result["note_definitions_purged"] = purged
+    return result
+
+
+def add_heading(
+    pkg: DocxPackage,
+    text: str,
+    level: int = 1,
+    *,
+    after_index: int | None = None,
+    after_anchor: str | None = None,
+    at_end: bool = False,
+) -> dict:
+    if not 1 <= level <= 9:
+        raise WordMcpError("heading level must be 1-9")
+    style_id = ensure_heading_style(pkg, level)
+    return insert_paragraphs(
+        pkg,
+        [{"text": text, "style": style_id}],
+        after_index=after_index,
+        after_anchor=after_anchor,
+        at_end=at_end,
+    )
+
+
+def add_page_break(pkg: DocxPackage, *, after_index: int) -> dict:
+    p = _body_paragraph(pkg, after_index)
+    new_p = etree.Element(qn("w:p"))
+    run = etree.SubElement(new_p, qn("w:r"))
+    etree.SubElement(run, qn("w:br")).set(qn("w:type"), "page")
+    p.addnext(new_p)
+    pkg.mark_dirty()
+    return {"page_break_after": after_index}
+
+
+# ---------------------------------------------------------------- formatting
+
+_TOGGLES = {"bold": "w:b", "italic": "w:i", "underline": "w:u", "strike": "w:strike"}
+
+_CHAR_FMT_KEYS = set(_TOGGLES) | {
+    "font", "size_pt", "color", "highlight", "superscript", "subscript",
+    "small_caps", "all_caps", "hidden", "double_strike", "char_spacing_pt",
+    "kerning_pt", "position_pt", "language", "east_asian_language",
+}
+
+_PARA_FMT_KEYS = {
+    "alignment", "space_before_pt", "space_after_pt", "line_spacing",
+    "indent_left_pt", "indent_right_pt", "first_line_indent_pt",
+    "keep_with_next", "keep_lines_together", "page_break_before",
+    "widow_control", "shading", "borders", "tab_stops",
+}
+
+# CT_PPr child sequence (python-docx _tag_seq, abridged to what we write).
+_PPR_ORDER = [
+    "pStyle", "keepNext", "keepLines", "pageBreakBefore", "framePr",
+    "widowControl", "numPr", "suppressLineNumbers", "pBdr", "shd", "tabs",
+    "suppressAutoHyphens", "kinsoku", "wordWrap", "overflowPunct",
+    "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd",
+    "snapToGrid", "spacing", "ind", "contextualSpacing", "mirrorIndents",
+    "suppressOverlap", "jc", "textDirection", "textAlignment",
+    "textboxTightWrap", "outlineLvl", "divId", "cnfStyle", "rPr", "sectPr",
+    "pPrChange",
+]
+
+
+def _ppr_get_or_add(ppr, local: str):
+    existing = ppr.find(qn(f"w:{local}"))
+    if existing is not None:
+        return existing
+    el = etree.Element(qn(f"w:{local}"))
+    my_rank = _PPR_ORDER.index(local)
+    for child in ppr:
+        name = etree.QName(child).localname
+        if name in _PPR_ORDER and _PPR_ORDER.index(name) > my_rank:
+            child.addprevious(el)
+            return el
+    ppr.append(el)
+    return el
+
+
+def _check_keys(fmt: dict, allowed: set, what: str) -> None:
+    unknown = set(fmt) - allowed
+    if unknown:
+        raise WordMcpError(
+            f"unknown {what} key(s) {sorted(unknown)}; "
+            f"allowed: {sorted(allowed)}"
+        )
+
+
+def _make_rpr(fmt: dict) -> etree._Element:
+    rpr = etree.Element(qn("w:rPr"))
+    _apply_fmt(rpr, fmt)
+    return rpr
+
+
+def _apply_fmt(rpr: etree._Element, fmt: dict) -> None:
+    """Apply formatting keys to an rPr, respecting the schema's element order
+    loosely (Word tolerates rPr child order in practice, but we keep toggles
+    first, then fonts/size/color, matching common output)."""
+    _check_keys(fmt, _CHAR_FMT_KEYS, "character-formatting")
+    for key, tag in _TOGGLES.items():
+        if key in fmt:
+            el = rpr.find(qn(tag))
+            if fmt[key]:
+                if el is None:
+                    el = etree.SubElement(rpr, qn(tag))
+                if key == "underline":
+                    el.set(qn("w:val"), "single")
+                else:
+                    el.attrib.pop(qn("w:val"), None)
+            elif el is not None:
+                rpr.remove(el)
+    if "font" in fmt:
+        rfonts = rpr.find(qn("w:rFonts"))
+        if rfonts is None:
+            rfonts = etree.SubElement(rpr, qn("w:rFonts"))
+        for attr in ("w:ascii", "w:hAnsi", "w:cs"):
+            rfonts.set(qn(attr), fmt["font"])
+    if "size_pt" in fmt:
+        for tag in ("w:sz", "w:szCs"):
+            el = rpr.find(qn(tag))
+            if el is None:
+                el = etree.SubElement(rpr, qn(tag))
+            el.set(qn("w:val"), str(int(fmt["size_pt"] * 2)))
+    if "color" in fmt:
+        el = rpr.find(qn("w:color"))
+        if el is None:
+            el = etree.SubElement(rpr, qn("w:color"))
+        el.set(qn("w:val"), fmt["color"].lstrip("#"))
+    if "highlight" in fmt:
+        el = rpr.find(qn("w:highlight"))
+        if el is None:
+            el = etree.SubElement(rpr, qn("w:highlight"))
+        el.set(qn("w:val"), fmt["highlight"])
+    for key, tag in (
+        ("small_caps", "w:smallCaps"),
+        ("all_caps", "w:caps"),
+        ("hidden", "w:vanish"),
+        ("double_strike", "w:dstrike"),
+    ):
+        if key in fmt:
+            el = rpr.find(qn(tag))
+            if fmt[key] and el is None:
+                etree.SubElement(rpr, qn(tag))
+            elif not fmt[key] and el is not None:
+                rpr.remove(el)
+    if "char_spacing_pt" in fmt:
+        el = rpr.find(qn("w:spacing"))
+        if el is None:
+            el = etree.SubElement(rpr, qn("w:spacing"))
+        el.set(qn("w:val"), str(int(fmt["char_spacing_pt"] * 20)))
+    if "kerning_pt" in fmt:
+        el = rpr.find(qn("w:kern"))
+        if el is None:
+            el = etree.SubElement(rpr, qn("w:kern"))
+        el.set(qn("w:val"), str(int(fmt["kerning_pt"] * 2)))
+    if "position_pt" in fmt:
+        el = rpr.find(qn("w:position"))
+        if el is None:
+            el = etree.SubElement(rpr, qn("w:position"))
+        el.set(qn("w:val"), str(int(fmt["position_pt"] * 2)))
+    if "language" in fmt or "east_asian_language" in fmt:
+        el = rpr.find(qn("w:lang"))
+        if el is None:
+            el = etree.SubElement(rpr, qn("w:lang"))
+        if fmt.get("language"):
+            el.set(qn("w:val"), fmt["language"])
+        if fmt.get("east_asian_language"):
+            el.set(qn("w:eastAsia"), fmt["east_asian_language"])
+    if "superscript" in fmt or "subscript" in fmt:
+        if fmt.get("superscript") and fmt.get("subscript"):
+            raise WordMcpError(
+                "superscript and subscript are mutually exclusive; pass one"
+            )
+        el = rpr.find(qn("w:vertAlign"))
+        if el is None:
+            el = etree.SubElement(rpr, qn("w:vertAlign"))
+        el.set(
+            qn("w:val"),
+            "superscript" if fmt.get("superscript") else "subscript",
+        )
+
+
+def format_text(
+    pkg: DocxPackage,
+    *,
+    paragraph_index: int | None = None,
+    find: str | None = None,
+    occurrence: int = 1,
+    formatting: dict,
+) -> dict:
+    """Character-range formatting. Target either (paragraph_index + find) to
+    format a substring, paragraph_index alone to format the whole paragraph,
+    or find alone (searches the whole body; `occurrence` picks which match)."""
+    if find is None and paragraph_index is None:
+        raise WordMcpError("need paragraph_index, find, or both")
+
+    if paragraph_index is not None:
+        candidates: list[tuple[etree._Element, int | None]] = [
+            (_body_paragraph(pkg, paragraph_index), paragraph_index)
+        ]
+    else:
+        # Document order, INCLUDING paragraphs inside table cells (and any
+        # other nested containers in document.xml).
+        body_idx = {
+            id(el): idx for kind, idx, el in body_items(pkg) if kind == "paragraph"
+        }
+        candidates = [
+            (p, body_idx.get(id(p))) for p in pkg.root().iter(qn("w:p"))
+        ]
+
+    seen = 0
+    for p, idx in candidates:
+        text, _ = _runmap.build_map(p)
+        if find is None:
+            spans = [(0, len(text))] if text else []
+        else:
+            spans = [
+                (m.start(), m.end())
+                for m in re.finditer(re.escape(find), text)
+            ]
+        for span in spans:
+            seen += 1
+            if seen == occurrence:
+                runs = _runmap.split_for_range(p, span[0], span[1])
+                for run in runs:
+                    rpr = run.find(qn("w:rPr"))
+                    if rpr is None:
+                        rpr = etree.Element(qn("w:rPr"))
+                        run.insert(0, rpr)
+                    _apply_fmt(rpr, formatting)
+                pkg.mark_dirty()
+                loc: dict = {"start": span[0], "end": span[1]}
+                if idx is not None:
+                    loc["paragraph"] = idx
+                else:
+                    loc["location"] = "table cell"
+                return {"formatted": loc}
+    raise TargetNotFound(
+        f"occurrence {occurrence} of {find!r} not found"
+        + (
+            f" in paragraph {paragraph_index}"
+            if paragraph_index is not None
+            else " anywhere in the document (body and table cells searched)"
+        )
+    )
+
+
+_ALIGN = {"left": "left", "center": "center", "right": "right", "justify": "both"}
+
+
+def set_paragraph_format(
+    pkg: DocxPackage, indices: list[int], formatting: dict
+) -> dict:
+    """Paragraph-level formatting for a batch of paragraphs. Keys: alignment,
+    space_before_pt, space_after_pt, line_spacing, indent_left_pt,
+    indent_right_pt, first_line_indent_pt, keep_with_next."""
+    _check_keys(formatting, _PARA_FMT_KEYS, "paragraph-formatting")
+    for index in indices:
+        p = _body_paragraph(pkg, index)
+        ppr = p.find(qn("w:pPr"))
+        if ppr is None:
+            ppr = etree.Element(qn("w:pPr"))
+            p.insert(0, ppr)
+        if "alignment" in formatting:
+            val = _ALIGN.get(formatting["alignment"])
+            if val is None:
+                raise WordMcpError(f"alignment must be one of {list(_ALIGN)}")
+            _ppr_get_or_add(ppr, "jc").set(qn("w:val"), val)
+        for key, tag in (
+            ("keep_lines_together", "keepLines"),
+            ("page_break_before", "pageBreakBefore"),
+        ):
+            if key in formatting:
+                el = ppr.find(qn(f"w:{tag}"))
+                if formatting[key] and el is None:
+                    _ppr_get_or_add(ppr, tag)
+                elif not formatting[key] and el is not None:
+                    ppr.remove(el)
+        if "widow_control" in formatting:
+            el = _ppr_get_or_add(ppr, "widowControl")
+            el.set(qn("w:val"), "1" if formatting["widow_control"] else "0")
+        if "shading" in formatting:
+            shd = _ppr_get_or_add(ppr, "shd")
+            shd.set(qn("w:val"), "clear")
+            shd.set(qn("w:color"), "auto")
+            shd.set(qn("w:fill"), formatting["shading"].lstrip("#"))
+        if "borders" in formatting:
+            spec = formatting["borders"]
+            sides = (
+                ["top", "bottom", "left", "right"]
+                if spec in (True, "all")
+                else list(spec)
+            )
+            bad = set(sides) - {"top", "bottom", "left", "right", "between", "bar"}
+            if bad:
+                raise WordMcpError(f"unknown border side(s): {sorted(bad)}")
+            pbdr = _ppr_get_or_add(ppr, "pBdr")
+            for child in list(pbdr):
+                pbdr.remove(child)
+            for side in ("top", "left", "bottom", "right", "between", "bar"):
+                if side in sides:
+                    b = etree.SubElement(pbdr, qn(f"w:{side}"))
+                    b.set(qn("w:val"), "single")
+                    b.set(qn("w:sz"), "4")
+                    b.set(qn("w:space"), "4")
+                    b.set(qn("w:color"), "auto")
+        if "tab_stops" in formatting:
+            tabs = _ppr_get_or_add(ppr, "tabs")
+            for child in list(tabs):
+                tabs.remove(child)
+            leaders = {"none", "dot", "hyphen", "underscore", "middleDot"}
+            aligns = {"left", "center", "right", "decimal", "bar"}
+            for stop in formatting["tab_stops"]:
+                align = stop.get("alignment", "left")
+                leader = stop.get("leader", "none")
+                if align not in aligns:
+                    raise WordMcpError(f"tab alignment must be one of {sorted(aligns)}")
+                if leader not in leaders:
+                    raise WordMcpError(f"tab leader must be one of {sorted(leaders)}")
+                t = etree.SubElement(tabs, qn("w:tab"))
+                t.set(qn("w:val"), align)
+                if leader != "none":
+                    t.set(qn("w:leader"), leader)
+                t.set(qn("w:pos"), str(int(stop["position_pt"] * 20)))
+        if any(
+            k in formatting
+            for k in ("space_before_pt", "space_after_pt", "line_spacing")
+        ):
+            spacing = _ppr_get_or_add(ppr, "spacing")
+            if "space_before_pt" in formatting:
+                spacing.set(
+                    qn("w:before"), str(int(formatting["space_before_pt"] * 20))
+                )
+            if "space_after_pt" in formatting:
+                spacing.set(
+                    qn("w:after"), str(int(formatting["space_after_pt"] * 20))
+                )
+            if "line_spacing" in formatting:
+                spacing.set(
+                    qn("w:line"), str(int(formatting["line_spacing"] * 240))
+                )
+                spacing.set(qn("w:lineRule"), "auto")
+        if any(
+            k in formatting
+            for k in ("indent_left_pt", "indent_right_pt", "first_line_indent_pt")
+        ):
+            ind = _ppr_get_or_add(ppr, "ind")
+            if "indent_left_pt" in formatting:
+                ind.set(qn("w:left"), str(int(formatting["indent_left_pt"] * 20)))
+            if "indent_right_pt" in formatting:
+                ind.set(qn("w:right"), str(int(formatting["indent_right_pt"] * 20)))
+            if "first_line_indent_pt" in formatting:
+                val = formatting["first_line_indent_pt"]
+                if val >= 0:
+                    ind.set(qn("w:firstLine"), str(int(val * 20)))
+                else:
+                    ind.set(qn("w:hanging"), str(int(-val * 20)))
+        if "keep_with_next" in formatting:
+            kn = ppr.find(qn("w:keepNext"))
+            if formatting["keep_with_next"] and kn is None:
+                etree.SubElement(ppr, qn("w:keepNext"))
+            elif not formatting["keep_with_next"] and kn is not None:
+                ppr.remove(kn)
+    pkg.mark_dirty()
+    return {"formatted_paragraphs": indices}
+
+
+_HEADING_SIZES_PT = {1: 16, 2: 14, 3: 13, 4: 12, 5: 12, 6: 12, 7: 12, 8: 12, 9: 12}
+
+
+def ensure_heading_style(pkg: DocxPackage, level: int) -> str:
+    """Return the styleId for heading `level`, creating the definition if the
+    document lacks it. Word renders a pStyle reference to an undefined style as
+    Normal text, so inserting headings without this is a silent failure."""
+    from .read import list_styles
+
+    styles = list_styles(pkg)
+    for s in styles:
+        if s["id"] == f"Heading{level}" or s["name"] == f"heading {level}":
+            return s["id"]
+    root = pkg.root("word/styles.xml")
+    style = etree.SubElement(root, qn("w:style"))
+    style.set(qn("w:type"), "paragraph")
+    style.set(qn("w:styleId"), f"Heading{level}")
+    etree.SubElement(style, qn("w:name")).set(qn("w:val"), f"heading {level}")
+    etree.SubElement(style, qn("w:basedOn")).set(qn("w:val"), "Normal")
+    etree.SubElement(style, qn("w:next")).set(qn("w:val"), "Normal")
+    ppr = etree.SubElement(style, qn("w:pPr"))
+    etree.SubElement(ppr, qn("w:keepNext"))
+    spacing = etree.SubElement(ppr, qn("w:spacing"))
+    spacing.set(qn("w:before"), "240")
+    spacing.set(qn("w:after"), "60")
+    etree.SubElement(ppr, qn("w:outlineLvl")).set(qn("w:val"), str(level - 1))
+    rpr = etree.SubElement(style, qn("w:rPr"))
+    etree.SubElement(rpr, qn("w:b"))
+    sz = str(_HEADING_SIZES_PT[level] * 2)
+    etree.SubElement(rpr, qn("w:sz")).set(qn("w:val"), sz)
+    etree.SubElement(rpr, qn("w:szCs")).set(qn("w:val"), sz)
+    pkg.mark_dirty("word/styles.xml")
+    return f"Heading{level}"
+
+
+_CASE_TRANSFORMS = ("upper", "lower", "title", "sentence")
+
+
+def change_case(
+    pkg: DocxPackage,
+    transform: str,
+    *,
+    indices: list[int] | None = None,
+    find: str | None = None,
+) -> dict:
+    """Change text case: upper | lower | title | sentence. Target: paragraph
+    indices, or every occurrence of `find` (case-insensitive), or both."""
+    if transform not in _CASE_TRANSFORMS:
+        raise WordMcpError(f"transform must be one of {_CASE_TRANSFORMS}")
+    if indices is None and find is None:
+        raise WordMcpError("give indices and/or find")
+
+    def apply_str(s: str, state: dict) -> str:
+        if transform == "upper":
+            return s.upper()
+        if transform == "lower":
+            return s.lower()
+        if transform == "title":
+            # \w is unicode-aware: handles straße, émigré, Greek; scripts
+            # without case (Korean, CJK) pass through unchanged.
+            return re.sub(
+                r"\w+(?:'\w+)?",
+                lambda m: m.group(0)[0].upper() + m.group(0)[1:].lower(),
+                s,
+            )
+        out = []
+        for ch in s:
+            if state["cap_next"] and ch.isalpha():
+                out.append(ch.upper())
+                state["cap_next"] = False
+            else:
+                out.append(ch.lower() if ch.isalpha() else ch)
+            if ch in ".!?":
+                state["cap_next"] = True
+        return "".join(out)
+
+    changed = 0
+    targets = []
+    if indices is not None:
+        for i in indices:
+            targets.append(_body_paragraph(pkg, i))
+    for p in targets or [
+        el for kind, _, el in body_items(pkg) if kind == "paragraph"
+    ]:
+        if targets:
+            in_scope = True
+        else:
+            text, _ = _runmap.build_map(p)
+            in_scope = find is not None and find.lower() in text.lower()
+        if not in_scope:
+            continue
+        state = {"cap_next": True}
+        for r in p.iter(qn("w:r")):
+            if _runmap._in_deleted(r):
+                continue
+            for t in r.findall(qn("w:t")):
+                if find is not None and indices is None:
+                    t.text = re.sub(
+                        re.escape(find),
+                        lambda m: apply_str(m.group(0), {"cap_next": True}),
+                        t.text or "",
+                        flags=re.I,
+                    )
+                else:
+                    t.text = apply_str(t.text or "", state)
+        changed += 1
+    if changed:
+        pkg.mark_dirty()
+    return {"transform": transform, "paragraphs_changed": changed}
+
+
+def apply_style(pkg: DocxPackage, indices: list[int], style: str) -> dict:
+    """Apply a paragraph style by id or name to a batch of paragraphs.
+    Heading1-9 are auto-created if the document does not define them."""
+    from .read import list_styles
+
+    styles = list_styles(pkg)
+    by_id = {s["id"] for s in styles}
+    by_name = {s["name"]: s["id"] for s in styles if s["name"]}
+    style_id = style if style in by_id else by_name.get(style)
+    if style_id is None:
+        m = re.fullmatch(r"[Hh]eading\s?([1-9])", style)
+        if m:
+            style_id = ensure_heading_style(pkg, int(m.group(1)))
+    if style_id is None:
+        raise TargetNotFound(
+            f"style {style!r} not defined in this document; "
+            f"available paragraph styles: "
+            f"{sorted(s['id'] for s in styles if s['type'] == 'paragraph')[:30]}"
+        )
+    for index in indices:
+        p = _body_paragraph(pkg, index)
+        ppr = p.find(qn("w:pPr"))
+        if ppr is None:
+            ppr = etree.Element(qn("w:pPr"))
+            p.insert(0, ppr)
+        pstyle = ppr.find(qn("w:pStyle"))
+        if pstyle is None:
+            pstyle = etree.Element(qn("w:pStyle"))
+            ppr.insert(0, pstyle)
+        pstyle.set(qn("w:val"), style_id)
+    pkg.mark_dirty()
+    return {"styled_paragraphs": indices, "style_id": style_id}

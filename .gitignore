@@ -1,0 +1,18 @@
+# Environment / caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# Backups created by the server
+*.bak-*.docx
+
+# PRIVATE — never publish:
+# The test corpus is real unpublished academic work (dissertation drafts,
+# committee-revised manuscripts, reviewer comments). Tests skip cleanly when
+# it is absent; drop your own .docx files here to run the full suite.
+tests/corpus/*.docx
+
+# Local build-planning notes (project-specific workflow details)
+PLAN.md
