@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KitchenSink4Word — Everything and the kitchen sink for Microsoft Word</title>
+<meta name="description" content="The most complete Word (.docx) MCP server: 119 tools — citations, merge-aware table surgery, footnotes, TOC, tracked changes, compare, protection. Corruption-proof by construction.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚰</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,50&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f5efe0; --paper-deep:#ede4cd; --ink:#1e3550; --ink-soft:#3f5878;
+  --copper:#b0622a; --copper-bright:#cf7434; --stamp:#a3352b; --rule:#c9bda0;
+  --shadow: 0 2px 0 var(--rule), 0 10px 30px rgba(30,53,80,.10);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:'IBM Plex Mono',ui-monospace,monospace;
+  background:var(--paper); color:var(--ink); line-height:1.6;
+  background-image:
+    radial-gradient(ellipse at 20% -10%, rgba(176,98,42,.07), transparent 55%),
+    repeating-linear-gradient(0deg, transparent 0 27px, rgba(30,53,80,.035) 27px 28px);
+}
+h1,h2,h3,.serif{font-family:'Fraunces',Georgia,serif}
+a{color:var(--copper)}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+/* ---------- masthead ---------- */
+.masthead{border-bottom:3px double var(--ink);padding:14px 0;font-size:12px;
+  letter-spacing:.18em;text-transform:uppercase;display:flex;justify-content:space-between;
+  gap:12px;flex-wrap:wrap}
+.masthead b{letter-spacing:.02em}
+
+/* ---------- hero ---------- */
+.hero{padding:72px 0 56px;text-align:center;position:relative;overflow:hidden}
+.catalog-no{display:inline-block;border:1.5px solid var(--ink);padding:4px 14px;
+  font-size:11px;letter-spacing:.3em;text-transform:uppercase;margin-bottom:28px;
+  background:var(--paper-deep)}
+.hero h1{font-size:clamp(44px,8.5vw,104px);font-weight:900;line-height:.95;
+  letter-spacing:-.015em;font-variation-settings:'SOFT' 50;
+  text-shadow:3px 3px 0 var(--paper-deep), 5px 5px 0 var(--rule)}
+.hero h1 .four{color:var(--copper)}
+.tagline{font-family:'Fraunces',serif;font-style:italic;font-size:clamp(18px,2.6vw,26px);
+  color:var(--ink-soft);margin:22px auto 0;max-width:640px}
+.faucet{font-size:clamp(56px,8vw,88px);line-height:1;display:block;margin-bottom:6px;
+  filter:sepia(.25) saturate(.8)}
+.drip{width:7px;height:10px;background:var(--ink-soft);border-radius:50% 50% 60% 60%;
+  margin:2px auto 0;opacity:0;animation:drip 3.4s ease-in infinite}
+@keyframes drip{0%,55%{opacity:0;transform:translateY(-6px) scaleY(.6)}
+  62%{opacity:.85;transform:translateY(0) scaleY(1)}
+  96%{opacity:.85;transform:translateY(84px) scaleY(1.25)}
+  100%{opacity:0;transform:translateY(90px)}}
+.specs-strip{display:flex;justify-content:center;gap:0;margin:44px auto 0;
+  border:2px solid var(--ink);max-width:720px;background:var(--paper-deep);
+  box-shadow:var(--shadow);flex-wrap:wrap}
+.spec{padding:16px 28px;border-right:1px solid var(--rule);flex:1;min-width:150px}
+.spec:last-child{border-right:none}
+.spec .n{font-family:'Fraunces',serif;font-weight:900;font-size:34px;display:block}
+.spec .l{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-soft)}
+.stamp{position:absolute;top:34px;right:max(12px,6vw);transform:rotate(9deg);
+  border:3px solid var(--stamp);color:var(--stamp);padding:8px 14px;font-weight:600;
+  font-size:12px;letter-spacing:.14em;text-transform:uppercase;border-radius:4px;
+  opacity:.85;mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='white'/%3E%3Ccircle cx='1' cy='1' r='.35' fill='black'/%3E%3C/svg%3E")}
+@media(max-width:640px){.stamp{display:none}}
+
+/* reveal on load */
+.rev{opacity:0;transform:translateY(14px);animation:rev .7s cubic-bezier(.2,.7,.2,1) forwards}
+@keyframes rev{to{opacity:1;transform:none}}
+.d1{animation-delay:.05s}.d2{animation-delay:.15s}.d3{animation-delay:.28s}
+.d4{animation-delay:.42s}.d5{animation-delay:.56s}
+
+/* ---------- sections ---------- */
+section{padding:64px 0;border-top:1px solid var(--rule)}
+.sec-head{display:flex;align-items:baseline;gap:16px;margin-bottom:34px}
+.sec-head h2{font-size:clamp(26px,4vw,40px);font-weight:800}
+.sec-head .no{font-size:12px;letter-spacing:.25em;color:var(--copper);white-space:nowrap}
+.sec-head:after{content:"";flex:1;border-bottom:2px dotted var(--rule);transform:translateY(-6px)}
+
+/* origin */
+.tale{border:2px solid var(--ink);background:var(--paper-deep);padding:34px 38px;
+  box-shadow:var(--shadow);position:relative;max-width:820px;margin:0 auto}
+.tale:before{content:"A CAUTIONARY TALE";position:absolute;top:-11px;left:28px;
+  background:var(--ink);color:var(--paper);font-size:10px;letter-spacing:.3em;
+  padding:4px 12px}
+.tale p{font-family:'Fraunces',serif;font-size:clamp(17px,2.2vw,21px);line-height:1.65}
+.tale p+p{margin-top:14px}
+.tale em{color:var(--stamp);font-style:normal;font-weight:700}
+
+/* inventory */
+.depts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2px;
+  background:var(--rule);border:2px solid var(--ink)}
+.dept{background:var(--paper);padding:20px 20px 16px;transition:background .25s}
+.dept:hover{background:var(--paper-deep)}
+.dept h3{font-size:17px;font-weight:800;display:flex;justify-content:space-between;align-items:baseline}
+.dept h3 .num{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--copper);letter-spacing:.15em}
+.dept p{font-size:12.5px;color:var(--ink-soft);margin-top:8px;line-height:1.55}
+.dept .count{display:inline-block;margin-top:10px;font-size:10px;border:1px solid var(--copper);
+  color:var(--copper);padding:2px 8px;letter-spacing:.15em}
+
+/* compare */
+.tablewrap{overflow-x:auto;border:2px solid var(--ink);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:13px;background:var(--paper)}
+th,td{padding:10px 14px;border-bottom:1px solid var(--rule);text-align:center;white-space:nowrap}
+th{background:var(--ink);color:var(--paper);font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+td:first-child,th:first-child{text-align:left;font-weight:600}
+tr:nth-child(even) td{background:var(--paper-deep)}
+.yes{color:#20713d;font-weight:700}.no{color:var(--stamp);opacity:.75}
+.us{background:rgba(176,98,42,.12)!important;font-weight:700}
+.foot-note{font-size:11px;color:var(--ink-soft);margin-top:10px}
+
+/* install */
+.term{background:var(--ink);color:#e8edf5;border:2px solid var(--ink);box-shadow:var(--shadow);
+  padding:26px 28px;font-size:14.5px;overflow-x:auto}
+.term .c{color:#8fa8c8}
+.term .p{color:var(--copper-bright)}
+.term div{white-space:pre}
+.install-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+@media(max-width:760px){.install-grid{grid-template-columns:1fr}}
+.install-grid h3{font-size:15px;letter-spacing:.06em;margin-bottom:12px}
+
+/* guarantee */
+.guarantee{max-width:820px;margin:0 auto;text-align:center;border:3px double var(--ink);
+  padding:38px 34px;background:var(--paper-deep);box-shadow:var(--shadow)}
+.guarantee h3{font-size:clamp(22px,3vw,30px);font-weight:900;margin-bottom:14px}
+.guarantee p{font-size:14px;color:var(--ink-soft);max-width:600px;margin:0 auto}
+.guarantee .seal{font-size:40px;display:block;margin-bottom:8px}
+
+/* footer */
+footer{border-top:3px double var(--ink);padding:36px 0 48px;font-size:12px;color:var(--ink-soft)}
+footer .row{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+footer a{color:var(--copper)}
+.btn{display:inline-block;border:2px solid var(--ink);background:var(--paper);color:var(--ink);
+  text-decoration:none;padding:12px 26px;font-weight:600;font-size:14px;letter-spacing:.05em;
+  box-shadow:3px 3px 0 var(--ink);transition:all .15s;margin:6px 8px 0 0}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ink)}
+.btn.primary{background:var(--copper);border-color:var(--copper);color:var(--paper);
+  box-shadow:3px 3px 0 var(--ink)}
+</style>
+</head>
+<body>
+
+<div class="wrap masthead rev d1">
+  <span><b>EST. 2026</b> · FINE INSTRUMENTS FOR DOCUMENT PLUMBING</span>
+  <span>CATALOG № 119 · <a href="https://github.com/nometalalchemist/KitchenSink4Word">GITHUB</a> · <a href="https://pypi.org/project/kitchensink4word/">PYPI</a></span>
+</div>
+
+<header class="hero wrap">
+  <div class="stamp rev d4">DOES<br>EVERYTHING</div>
+  <div class="rev d1"><span class="faucet">🚰</span><div class="drip"></div></div>
+  <div class="catalog-no rev d2">Model Context Protocol · Server for Microsoft Word</div>
+  <h1 class="rev d2">Kitchen&shy;Sink<span class="four">4</span>Word</h1>
+  <p class="tagline rev d3">Everything and the kitchen sink for Microsoft&nbsp;Word — the most complete .docx&nbsp;MCP&nbsp;server ever plumbed.</p>
+  <div class="specs-strip rev d4">
+    <div class="spec"><span class="n">119</span><span class="l">Tools</span></div>
+    <div class="spec"><span class="n">344</span><span class="l">Tests</span></div>
+    <div class="spec"><span class="n">~1,150</span><span class="l">Stress calls</span></div>
+    <div class="spec"><span class="n">0</span><span class="l">Corruptions</span></div>
+  </div>
+  <div class="rev d5" style="margin-top:36px">
+    <a class="btn primary" href="#install">Install the Sink</a>
+    <a class="btn" href="https://github.com/nometalalchemist/KitchenSink4Word">Read the Source</a>
+  </div>
+</header>
+
+<section id="tale">
+  <div class="wrap">
+    <div class="sec-head"><span class="no">DEPT. 01</span><h2>Why this exists</h2></div>
+    <div class="tale">
+      <p>An AI agent once needed <em>fifteen minutes</em> to edit <em>twenty table cells</em> in a Word document. Not because the agent was slow — because every Word MCP server on the market was missing something. One couldn't delete a table column. Another had no footnotes. A third couldn't touch a table of contents. Installing all three still couldn't do the job.</p>
+      <p>So instead, this got built: one server with <em>everything</em>. The twenty-cell edit now takes one call and finishes in twenty milliseconds. Your agents will simply never know the struggle.</p>
+    </div>
+  </div>
+</section>
+
+<section id="inventory">
+  <div class="wrap">
+    <div class="sec-head"><span class="no">DEPT. 02</span><h2>The inventory</h2></div>
+    <div class="depts">
+      <div class="dept"><h3>Tables <span class="num">№ 001–024</span></h3><p>Merge-aware column insert/delete, one-call bulk cell edits, merge/unmerge, gridBefore rows, nested tables, sort, split, named styles, header repeat.</p><span class="count">24 TOOLS</span></div>
+      <div class="dept"><h3>References <span class="num">№ 025–041</span></h3><p>Native citations &amp; bibliography (12 styles, verified Word rendering), footnotes &amp; endnotes with conversion, index generation, TOC &amp; caption lists, cross-references.</p><span class="count">17 TOOLS</span></div>
+      <div class="dept"><h3>Revisions <span class="num">№ 042–052</span></h3><p>Write edits AS tracked changes, accept/reject by author, Word-native document compare, two-reviewer combine, threaded comments with resolve.</p><span class="count">11 TOOLS</span></div>
+      <div class="dept"><h3>Text &amp; Style <span class="num">№ 053–075</span></h3><p>Fragmented-run-safe find/replace with ReDoS guards, character &amp; paragraph formatting long-tail, custom styles, template transfer, change-case, lists.</p><span class="count">23 TOOLS</span></div>
+      <div class="dept"><h3>Layout <span class="num">№ 076–094</span></h3><p>Headers/footers, roman-numeral page formats, line numbering, watermarks, multi-column sections, margins, images with alt text, Page X of Y.</p><span class="count">19 TOOLS</span></div>
+      <div class="dept"><h3>Structure <span class="num">№ 095–104</span></h3><p>Move entire sections (heading + content + tables), chapter merge, document properties, protection with Word-compatible SHA-512 password hashing.</p><span class="count">10 TOOLS</span></div>
+      <div class="dept"><h3>Analysis <span class="num">№ 105–112</span></h3><p>Per-section word counts, APA citation-parity checking, Word's own proofing errors &amp; readability statistics, structural validation.</p><span class="count">8 TOOLS</span></div>
+      <div class="dept"><h3>Word Itself <span class="num">№ 113–119</span></h3><p>COM-backed field refresh (real TOC page numbers), PDF export, encrypted save, open-clean validation, live-Word status and lock management.</p><span class="count">7 TOOLS</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="compare">
+  <div class="wrap">
+    <div class="sec-head"><span class="no">DEPT. 03</span><h2>Against the field</h2></div>
+    <div class="tablewrap">
+      <table>
+        <tr><th>Capability</th><th class="us">🚰 KitchenSink4Word</th><th>GongRzhe (2.1k★, archived)</th><th>word-mcp-live (195★)</th><th>SecurityRonin (43★)</th></tr>
+        <tr><td>Table column insert/delete</td><td class="us yes">✔ merge-aware</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td></tr>
+        <tr><td>Bulk cell edits, one call</td><td class="us yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td></tr>
+        <tr><td>Footnotes AND endnotes</td><td class="us yes">✔ + conversion</td><td class="no">add only</td><td class="no">✘</td><td class="yes">✔</td></tr>
+        <tr><td>TOC insert + refresh</td><td class="us yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td></tr>
+        <tr><td>Native citations / bibliography</td><td class="us yes">✔ 12 styles</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td></tr>
+        <tr><td>Index generation</td><td class="us yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td></tr>
+        <tr><td>Tracked-change writing</td><td class="us yes">✔</td><td class="no">✘</td><td class="yes">✔</td><td class="yes">✔</td></tr>
+        <tr><td>Document compare + combine</td><td class="us yes">✔ Word-native</td><td class="no">✘</td><td class="no">✘</td><td class="no">buggy</td></tr>
+        <tr><td>Watermarks / protection / line №s</td><td class="us yes">✔</td><td class="no">partial</td><td class="no">✘</td><td class="no">✘</td></tr>
+        <tr><td>Section moving / template transfer</td><td class="us yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td></tr>
+        <tr><td>Atomic saves + auto-backup</td><td class="us yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td></tr>
+      </table>
+    </div>
+    <p class="foot-note">Survey of every public Word MCP server, August 2026. Corrections welcome — open an issue.</p>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <div class="sec-head"><span class="no">DEPT. 04</span><h2>Installation</h2></div>
+    <div class="install-grid">
+      <div>
+        <h3>① GET THE FIXTURE</h3>
+        <div class="term"><div><span class="p">$</span> pip install kitchensink4word</div></div>
+      </div>
+      <div>
+        <h3>② CONNECT THE PLUMBING (Claude Code)</h3>
+        <div class="term"><div><span class="p">$</span> claude mcp add word -s user -- ^
+    <span class="c">&lt;python-scripts-dir&gt;</span>\word-mcp.exe</div></div>
+      </div>
+    </div>
+    <p class="foot-note" style="margin-top:18px">Windows. File-based tools need no Word installation; the seven COM tools (TOC refresh, PDF, proofing…) use a local Microsoft Word. Full setup in the <a href="https://github.com/nometalalchemist/KitchenSink4Word#install">README</a>.</p>
+  </div>
+</section>
+
+<section id="guarantee">
+  <div class="wrap">
+    <div class="guarantee">
+      <span class="seal">🛡️</span>
+      <h3>The No-Corruption Guarantee</h3>
+      <p>Atomic validated saves. Automatic timestamped backups before every change. Byte-identical passthrough of anything not being edited — equations, textboxes, and content controls survive untouched. Battle-tested on real dissertation manuscripts: 171-footnote theses, 126-revision committee drafts, and two insane-mode stress campaigns without a single Word repair prompt.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap row">
+    <span>© 2026 · <b>PolyForm Noncommercial 1.0.0</b> — free for personal, academic &amp; research use.<br>Using it commercially? That's fine too — <a href="https://github.com/nometalalchemist/KitchenSink4Word/issues">just ask first</a>.</span>
+    <span style="text-align:right"><a href="https://github.com/nometalalchemist/KitchenSink4Word">github.com/nometalalchemist/KitchenSink4Word</a><br>Built with Claude Code, in one very long day. 🚰</span>
+  </div>
+</footer>
+
+</body>
+</html>
