@@ -1,7 +1,7 @@
 [project]
 name = "kitchensink4word"
 version = "1.2.1"
-description = "Everything and the kitchen sink for Microsoft Word - the most complete .docx MCP server: native citations/bibliography, index, tables with merge-aware column ops, footnotes/endnotes, TOC, tracked-change writing, document compare/merge, protection, watermarks, template transfer, safe round-trip OOXML editing"
+description = "Everything and the kitchen sink for Microsoft Word - the most complete .docx MCP server: native citations/bibliography, index, tables with merge-aware column ops, footnotes/endnotes, TOC, tracked-change writing, document compare/merge, protection, watermarks, template transfer, safe round-trip OOXML editing, engineered not to corrupt"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "Nykolus Alvut" }]

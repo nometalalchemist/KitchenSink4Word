@@ -3,8 +3,7 @@
 # 🚰 KitchenSink4Word
 
 **Everything plus the kitchen sink for Microsoft Word.** The most complete
-Word (.docx) MCP server available — 119 tools, corruption-proof by
-construction, stress-tested against real dissertation manuscripts.
+Word (.docx) MCP server available — 119 tools, engineered not to corrupt, stress-tested against real dissertation manuscripts.
 
 > **The origin story:** an AI agent once needed *fifteen minutes* to edit
 > twenty table cells in a Word document, because no existing Word MCP could
