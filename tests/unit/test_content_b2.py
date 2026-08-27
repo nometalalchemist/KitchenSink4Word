@@ -306,8 +306,15 @@ def test_custom_definition_pattern(contract_doc):
 
 def test_registration_snippet_imports():
     """The paste-ready snippet registers cleanly on the shared mcp instance
-    (paste-readiness smoke test; server.py itself is untouched)."""
+    (paste-readiness smoke test; server.py itself is untouched). The
+    integration/ dir is a local-only staging area (gitignored), so this
+    test is a no-op where it is absent — CI, fresh clones."""
     import importlib.util
+
+    if not (
+        Path(__file__).resolve().parents[2] / "integration"
+    ).exists():
+        pytest.skip("integration/ staging dir not present (gitignored)")
 
     path = (
         Path(__file__).resolve().parents[2]
