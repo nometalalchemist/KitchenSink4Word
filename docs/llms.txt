@@ -1,6 +1,6 @@
 # KitchenSink4Word
 
-> Everything plus the kitchen sink for Microsoft Word: the most complete Word (.docx) MCP server available. 170 tools covering live editing of documents open in Word, native citations and bibliography, merge-aware table surgery, footnotes and endnotes, TOC, tracked-changes authoring, Word-native document compare, protection, redaction, mail merge, and accessibility audits. Engineered not to corrupt: atomic validated saves, automatic backups before every mutation, and published adversarial test evidence.
+> Everything plus the kitchen sink for Microsoft Word: the most complete Word (.docx) MCP server available. 189 tools covering live editing of documents open in Word, native citations and bibliography, merge-aware table surgery, footnotes and endnotes, TOC, tracked-changes authoring, Word-native document compare, protection, redaction, mail merge, and accessibility audits. Engineered not to corrupt: atomic validated saves, automatic backups before every mutation, and published adversarial test evidence.
 
 This file describes the shipped release: v1.5.1 on PyPI (as of 2026-08-28).
 Platform: Windows. File-based tools (the large majority) work without Microsoft Word installed; the com_* and live_* tools use a local Microsoft Word via COM.
@@ -25,7 +25,7 @@ Published because almost no MCP server tells you what it costs to load:
 
 ROADMAP (not shipped): v2 plans tiered loading, starting from a lite core of about 20 tools (roughly 4,000 tokens) with capability packs enabled on demand.
 
-## Capabilities: 170 tools by category
+## Capabilities: 189 tools by category
 
 Reading and analysis:
 `get_document_info`, `get_outline`, `get_text`, `find_text`, `find_formatted`, `get_styles`, `word_count`, `word_count_with_exclusions`, `validate_document`, `structured_diff`, `preview_replace`, `diagnose_document`, `get_textbox_text`
