@@ -883,6 +883,8 @@ def test_registration_snippet_importable():
     import sys
 
     root = Path(__file__).resolve().parents[2]
+    if not (root / "integration" / "charts_registrations.py").exists():
+        pytest.skip("integration/ staging dir not present (gitignored)")
     sys.path.insert(0, str(root))
     try:
         mod = importlib.import_module("integration.charts_registrations")

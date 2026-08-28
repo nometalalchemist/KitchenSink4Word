@@ -22,10 +22,13 @@ from word_mcp.ops import accessibility as ax
 _REG = Path(__file__).resolve().parents[2] / "integration" / (
     "accessibility_fix_registrations.py"
 )
-_spec = importlib.util.spec_from_file_location("accessibility_fix_reg", _REG)
-_regmod = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_regmod)
-fix_accessibility = _regmod.fix_accessibility
+if _REG.exists():
+    _spec = importlib.util.spec_from_file_location("accessibility_fix_reg", _REG)
+    _regmod = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_regmod)
+    fix_accessibility = _regmod.fix_accessibility
+else:
+    fix_accessibility = srv.fix_accessibility.fn if hasattr(srv.fix_accessibility, 'fn') else srv.fix_accessibility
 
 
 def make_png(path, w=80, h=40, rgb=(200, 30, 30)):

@@ -505,9 +505,11 @@ def test_copy_table_blocked_content_refuses_untouched(tmp_path):
 def test_copy_table_registration_snippet_loads():
     """Paste-readiness: the integration snippet imports and registers."""
     root = Path(__file__).parents[2]
+    snippet = root / "integration" / "copytable_registrations.py"
+    if not snippet.exists():
+        pytest.skip("integration/ staging dir not present (gitignored)")
     spec = importlib.util.spec_from_file_location(
-        "copytable_registrations_smoke",
-        root / "integration" / "copytable_registrations.py",
+        "copytable_registrations_smoke", snippet,
     )
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
