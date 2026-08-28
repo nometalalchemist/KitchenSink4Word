@@ -6,6 +6,7 @@
 <title>KitchenSink4Word: Everything plus the kitchen sink for Microsoft Word</title>
 <meta name="description" content="Everything plus the kitchen sink: the most complete Word (.docx) MCP server. 170 tools: live editing of open documents, citations, merge-aware table surgery, footnotes, TOC, tracked changes, compare, protection. Engineered not to corrupt.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚰</text></svg>">
+<link rel="llms" href="llms.txt" type="text/plain">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,50&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -123,6 +124,8 @@ th{background:var(--ink);color:var(--paper);font-weight:600;font-size:11px;lette
 td:first-child,th:first-child{text-align:left;font-weight:600;white-space:normal;min-width:170px}
 tr:nth-child(even) td{background:var(--paper-deep)}
 .yes{color:#20713d;font-weight:700}.no{color:var(--stamp);opacity:.75}
+.nd{color:var(--ink-soft);opacity:.55;font-size:11px;font-weight:500}
+.dept .ex{font-size:11.5px;color:var(--copper);margin-top:8px;line-height:1.5}
 .us{background:rgba(176,98,42,.12)!important;font-weight:700}
 th.us{background:var(--copper)!important;color:var(--paper)}
 .foot-note{font-size:11px;color:var(--ink-soft);margin-top:10px}
@@ -173,7 +176,7 @@ footer a{color:var(--copper)}
 <div class="wrap masthead rev d1">
   <span data-i18n="m.left"><b>EST. 2026</b> · FINE INSTRUMENTS FOR DOCUMENT PLUMBING</span>
   <nav class="lang-toggle" id="langToggle" aria-label="Language"></nav>
-  <span><span data-i18n="m.catalog">CATALOG № 170</span> · <a href="#service" data-i18n="m.service">SERVICE</a> · <a href="https://github.com/nometalalchemist/KitchenSink4Word">GITHUB</a> · <a href="https://pypi.org/project/kitchensink4word/">PYPI</a></span>
+  <span><span data-i18n="m.catalog">CATALOG № 170</span> · <a href="#service" data-i18n="m.service">SERVICE</a> · <a href="https://github.com/nometalalchemist/KitchenSink4Word">GITHUB</a> · <a href="https://pypi.org/project/kitchensink4word/">PYPI</a> · <a href="llms.txt">LLMS.TXT</a></span>
 </div>
 
 <header class="hero wrap">
@@ -185,8 +188,8 @@ footer a{color:var(--copper)}
   <p class="idiom-note rev d3" data-i18n="hero.idiom"></p>
   <div class="specs-strip rev d4">
     <div class="spec"><span class="n">170</span><span class="l" data-i18n="spec.tools">Tools</span></div>
-    <div class="spec"><span class="n">626</span><span class="l" data-i18n="spec.tests">Tests</span></div>
-    <div class="spec"><span class="n">~2,850</span><span class="l" data-i18n="spec.stress">Stress calls</span></div>
+    <div class="spec"><span class="n">627</span><span class="l" data-i18n="spec.tests">Tests</span></div>
+    <div class="spec"><span class="n">~3,200</span><span class="l" data-i18n="spec.stress">Stress calls</span></div>
     <div class="spec"><span class="n">0</span><span class="l" data-i18n="spec.corr">Corruptions</span></div>
   </div>
   <div class="rev d5" style="margin-top:36px">
@@ -221,17 +224,17 @@ footer a{color:var(--copper)}
   <div class="wrap">
     <div class="sec-head"><span class="no" data-i18n="no2">DEPT. 02</span><h2 data-i18n="h2.inv">The inventory</h2></div>
     <div class="depts">
-      <div class="dept"><h3><span data-i18n="dept1.t">Tables</span> <span class="num">№ 001–024</span></h3><p data-i18n="dept1.p">Merge-aware column insert/delete, one-call bulk cell edits, merge/unmerge, gridBefore rows, nested tables, sort, split, named styles, header repeat.</p><span class="count" data-i18n="dept1.c">24 TOOLS</span></div>
-      <div class="dept"><h3><span data-i18n="dept2.t">References</span> <span class="num">№ 025–041</span></h3><p data-i18n="dept2.p">Native citations &amp; bibliography (12 styles, verified Word rendering), footnotes &amp; endnotes with conversion, index generation, TOC &amp; caption lists, cross-references.</p><span class="count" data-i18n="dept2.c">17 TOOLS</span></div>
-      <div class="dept"><h3><span data-i18n="dept3.t">Revisions</span> <span class="num">№ 042–052</span></h3><p data-i18n="dept3.p">Write edits AS tracked changes, accept/reject by author, Word-native document compare, two-reviewer combine, threaded comments with resolve.</p><span class="count" data-i18n="dept3.c">11 TOOLS</span></div>
-      <div class="dept"><h3><span data-i18n="dept4.t">Text &amp; Style</span> <span class="num">№ 053–075</span></h3><p data-i18n="dept4.p">Fragmented-run-safe find/replace with ReDoS guards, character &amp; paragraph formatting long-tail, custom styles, template transfer, change-case, lists.</p><span class="count" data-i18n="dept4.c">23 TOOLS</span></div>
-      <div class="dept"><h3><span data-i18n="dept5.t">Layout</span> <span class="num">№ 076–094</span></h3><p data-i18n="dept5.p">Headers/footers, roman-numeral page formats, line numbering, watermarks, multi-column sections, margins, images with alt text, Page X of Y.</p><span class="count" data-i18n="dept5.c">19 TOOLS</span></div>
-      <div class="dept"><h3><span data-i18n="dept6.t">Structure</span> <span class="num">№ 095–104</span></h3><p data-i18n="dept6.p">Move entire sections (heading + content + tables), chapter merge, document properties, protection with Word-compatible SHA-512 password hashing.</p><span class="count" data-i18n="dept6.c">10 TOOLS</span></div>
-      <div class="dept"><h3><span data-i18n="dept7.t">Analysis</span> <span class="num">№ 105–112</span></h3><p data-i18n="dept7.p">Per-section word counts, APA citation-parity checking, Word's own proofing errors &amp; readability statistics, structural validation.</p><span class="count" data-i18n="dept7.c">8 TOOLS</span></div>
-      <div class="dept"><h3><span data-i18n="dept8.t">Word Itself</span> <span class="num">№ 113–119</span></h3><p data-i18n="dept8.p">COM-backed field refresh (real TOC page numbers), PDF export, encrypted save, open-clean validation, live-Word status and lock management.</p><span class="count" data-i18n="dept8.c">7 TOOLS</span></div>
-      <div class="dept"><h3><span data-i18n="dept9.t">Live Editing</span> <span class="num">№ 120–123</span></h3><p data-i18n="dept9.p">Edit documents while they are OPEN in Word: changes appear in the window, each tool call is one Ctrl+Z step, the cursor is never touched. Cursor-point insert, scroll-to-show, track-changes toggle, crash repair.</p><span class="count" data-i18n="dept9.c">NEW · 4 TOOLS + 9 ROUTED</span></div>
-      <div class="dept"><h3><span data-i18n="dept10.t">Workflow Suites</span> <span class="num">№ 124–147</span></h3><p data-i18n="dept10.p">Mail merge from CSV/JSON, batch operations across document sets, true redaction with verification, accessibility &amp; template-compliance audits, cross-reference and caption validation, submission prep, front-matter assembly, chapter headers, structural diagnostics, PDF import.</p><span class="count" data-i18n="dept10.c">NEW · 24 TOOLS</span></div>
-      <div class="dept"><h3><span data-i18n="dept11.t">Academic Suite</span> <span class="num">№ 148–170</span></h3><p data-i18n="dept11.p">LaTeX equations as native Word math, Zotero library citations, publication style conversion across eight styles, review-cycle analytics, journal word counts, peer-review anonymization, table data round-trips, document splitting.</p><span class="count" data-i18n="dept11.c">NEW · 23 TOOLS</span></div>
+      <div class="dept"><h3><span data-i18n="dept1.t">Tables</span> <span class="num">№ 001–024</span></h3><p data-i18n="dept1.p">Merge-aware column insert/delete, one-call bulk cell edits, merge/unmerge, gridBefore rows, nested tables, sort, split, named styles, header repeat.</p><p class="ex" data-i18n="dept1.e">e.g. add a column to a table full of merged cells · rewrite twenty cells in one call · sort a table by any column</p><span class="count" data-i18n="dept1.c">24 TOOLS</span></div>
+      <div class="dept"><h3><span data-i18n="dept2.t">References</span> <span class="num">№ 025–041</span></h3><p data-i18n="dept2.p">Native citations &amp; bibliography (12 styles, verified Word rendering), footnotes &amp; endnotes with conversion, index generation, TOC &amp; caption lists, cross-references.</p><p class="ex" data-i18n="dept2.e">e.g. insert a citation and build the bibliography · convert every footnote to an endnote · refresh the table of contents</p><span class="count" data-i18n="dept2.c">17 TOOLS</span></div>
+      <div class="dept"><h3><span data-i18n="dept3.t">Revisions</span> <span class="num">№ 042–052</span></h3><p data-i18n="dept3.p">Write edits AS tracked changes, accept/reject by author, Word-native document compare, two-reviewer combine, threaded comments with resolve.</p><p class="ex" data-i18n="dept3.e">e.g. write an edit as a tracked change under a chosen author · accept only one reviewer's changes · list every comment with its context</p><span class="count" data-i18n="dept3.c">11 TOOLS</span></div>
+      <div class="dept"><h3><span data-i18n="dept4.t">Text &amp; Style</span> <span class="num">№ 053–075</span></h3><p data-i18n="dept4.p">Fragmented-run-safe find/replace with ReDoS guards, character &amp; paragraph formatting long-tail, custom styles, template transfer, change-case, lists.</p><p class="ex" data-i18n="dept4.e">e.g. replace a phrase Word split across formatting runs · restyle every heading level in one pass · copy styles in from another document</p><span class="count" data-i18n="dept4.c">23 TOOLS</span></div>
+      <div class="dept"><h3><span data-i18n="dept5.t">Layout</span> <span class="num">№ 076–094</span></h3><p data-i18n="dept5.p">Headers/footers, roman-numeral page formats, line numbering, watermarks, multi-column sections, margins, images with alt text, Page X of Y.</p><p class="ex" data-i18n="dept5.e">e.g. switch front matter to roman numerals · add a DRAFT watermark · put Page X of Y in the footer</p><span class="count" data-i18n="dept5.c">19 TOOLS</span></div>
+      <div class="dept"><h3><span data-i18n="dept6.t">Structure</span> <span class="num">№ 095–104</span></h3><p data-i18n="dept6.p">Move entire sections (heading + content + tables), chapter merge, document properties, protection with Word-compatible SHA-512 password hashing.</p><p class="ex" data-i18n="dept6.e">e.g. move a whole section with its tables · merge chapters into one file · password-protect the result</p><span class="count" data-i18n="dept6.c">10 TOOLS</span></div>
+      <div class="dept"><h3><span data-i18n="dept7.t">Analysis</span> <span class="num">№ 105–112</span></h3><p data-i18n="dept7.p">Per-section word counts, APA citation-parity checking, Word's own proofing errors &amp; readability statistics, structural validation.</p><p class="ex" data-i18n="dept7.e">e.g. count words per section · check citations against the reference list both ways · pull Word's own readability statistics</p><span class="count" data-i18n="dept7.c">8 TOOLS</span></div>
+      <div class="dept"><h3><span data-i18n="dept8.t">Word Itself</span> <span class="num">№ 113–119</span></h3><p data-i18n="dept8.p">COM-backed field refresh (real TOC page numbers), PDF export, encrypted save, open-clean validation, live-Word status and lock management.</p><p class="ex" data-i18n="dept8.e">e.g. refresh TOC page numbers with real pagination · export a PDF · confirm the file opens with no repair prompt</p><span class="count" data-i18n="dept8.c">7 TOOLS</span></div>
+      <div class="dept"><h3><span data-i18n="dept9.t">Live Editing</span> <span class="num">№ 120–123</span></h3><p data-i18n="dept9.p">Edit documents while they are OPEN in Word: changes appear in the window, each tool call is one Ctrl+Z step, the cursor is never touched. Cursor-point insert, scroll-to-show, track-changes toggle, crash repair.</p><p class="ex" data-i18n="dept9.e">e.g. insert text at the cursor while the document is open · scroll the window to what changed · toggle track changes mid-session</p><span class="count" data-i18n="dept9.c">NEW · 4 TOOLS + 9 ROUTED</span></div>
+      <div class="dept"><h3><span data-i18n="dept10.t">Workflow Suites</span> <span class="num">№ 124–147</span></h3><p data-i18n="dept10.p">Mail merge from CSV/JSON, batch operations across document sets, true redaction with verification, accessibility &amp; template-compliance audits, cross-reference and caption validation, submission prep, front-matter assembly, chapter headers, structural diagnostics, PDF import.</p><p class="ex" data-i18n="dept10.e">e.g. run a mail merge from a CSV · redact a name and verify it is gone · audit a report for accessibility</p><span class="count" data-i18n="dept10.c">NEW · 24 TOOLS</span></div>
+      <div class="dept"><h3><span data-i18n="dept11.t">Academic Suite</span> <span class="num">№ 148–170</span></h3><p data-i18n="dept11.p">LaTeX equations as native Word math, Zotero library citations, publication style conversion across eight styles, review-cycle analytics, journal word counts, peer-review anonymization, table data round-trips, document splitting.</p><p class="ex" data-i18n="dept11.e">e.g. turn LaTeX into native Word equations · cite straight from a Zotero library · anonymize a manuscript for peer review</p><span class="count" data-i18n="dept11.c">NEW · 23 TOOLS</span></div>
     </div>
   </div>
 </section>
@@ -241,27 +244,44 @@ footer a{color:var(--copper)}
     <div class="sec-head"><span class="no" data-i18n="no3">DEPT. 03</span><h2 data-i18n="h2.cmp">Against the field</h2></div>
     <div class="tablewrap">
       <table>
-        <tr><th data-i18n="cmp.cap">Capability</th><th class="us">🚰 KitchenSink4Word</th><th data-i18n="cmp.h2">GongRzhe (2.1k★, archived)</th><th>word-mcp-live (195★)</th><th>SecurityRonin (43★)</th></tr>
-        <tr><td data-i18n="cmp.r1">Table column insert/delete</td><td class="us yes" data-i18n="v.merge">✔ merge-aware</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td></tr>
-        <tr><td data-i18n="cmp.r2">Bulk cell edits, one call</td><td class="us yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td></tr>
-        <tr><td data-i18n="cmp.r3">Footnotes AND endnotes</td><td class="us yes" data-i18n="v.conv">✔ + conversion</td><td class="no" data-i18n="v.addonly">add only</td><td class="no">✘</td><td class="yes">✔</td></tr>
-        <tr><td data-i18n="cmp.r4">TOC insert + refresh</td><td class="us yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td></tr>
-        <tr><td data-i18n="cmp.r5">Native citations / bibliography</td><td class="us yes" data-i18n="v.styles">✔ 12 styles</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td></tr>
-        <tr><td data-i18n="cmp.r6">Index generation</td><td class="us yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td></tr>
-        <tr><td data-i18n="cmp.r7">Tracked-change writing</td><td class="us yes">✔</td><td class="no">✘</td><td class="yes">✔</td><td class="yes">✔</td></tr>
-        <tr><td data-i18n="cmp.r8">Document compare + combine</td><td class="us yes" data-i18n="v.native">✔ Word-native</td><td class="no">✘</td><td class="no">✘</td><td class="no" data-i18n="v.buggy">buggy</td></tr>
-        <tr><td data-i18n="cmp.r9">Watermarks / protection / line №s</td><td class="us yes">✔</td><td class="no" data-i18n="v.partial">partial</td><td class="no">✘</td><td class="no">✘</td></tr>
-        <tr><td data-i18n="cmp.r10">Section moving / template transfer</td><td class="us yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td></tr>
-        <tr><td data-i18n="cmp.r11">Atomic saves + auto-backup</td><td class="us yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td></tr>
+        <tr><th data-i18n="mx.cap">Capability</th><th class="us">🚰 KitchenSink4Word</th><th>word-mcp-live</th><th data-i18n="mx.h3">GongRzhe (archived)</th><th>docx-mcp (SecurityRonin)</th><th data-i18n="mx.h5">Official add-ins*</th></tr>
+        <tr><td data-i18n="mxr1">Native citations &amp; bibliography</td><td class="us yes" data-i18n="mv.s12">✔ 12 styles</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td><td class="nd">n/d</td></tr>
+        <tr><td data-i18n="mxr2">Citation style conversion (APA/Chicago/Turabian/MLA…)</td><td class="us yes" data-i18n="mv.s8">✔ 8 styles</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td><td class="nd">n/d</td></tr>
+        <tr><td data-i18n="mxr3">Tracked-changes authoring (writes edits as revisions)</td><td class="us yes">✔</td><td class="yes">✔</td><td class="no">✘</td><td class="yes">✔</td><td class="yes">✔</td></tr>
+        <tr><td data-i18n="mxr4">Footnote/endnote conversion</td><td class="us yes" data-i18n="mv.both">✔ both directions</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td><td class="nd">n/d</td></tr>
+        <tr><td data-i18n="mxr5">TOC insert + refresh</td><td class="us yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td><td class="nd">n/d</td></tr>
+        <tr><td data-i18n="mxr6">Index generation</td><td class="us yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td><td class="nd">n/d</td></tr>
+        <tr><td data-i18n="mxr7">Document protection</td><td class="us yes" data-i18n="mv.sha">✔ Word-compatible SHA-512</td><td class="nd">n/d</td><td class="nd">n/d</td><td class="nd">n/d</td><td class="nd">n/d</td></tr>
+        <tr><td data-i18n="mxr8">Mail merge</td><td class="us yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td><td class="nd">n/d</td></tr>
+        <tr><td data-i18n="mxr9">Accessibility audit</td><td class="us yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td><td class="nd">n/d</td></tr>
+        <tr><td data-i18n="mxr10">Equations (LaTeX to Word math)</td><td class="us yes">✔</td><td class="nd">n/d</td><td class="no">✘</td><td class="nd">n/d</td><td class="nd">n/d</td></tr>
+        <tr><td data-i18n="mxr11">Zotero integration</td><td class="us yes">✔</td><td class="no">✘</td><td class="nd">n/d</td><td class="nd">n/d</td><td class="nd">n/d</td></tr>
+        <tr><td data-i18n="mxr12">International style names</td><td class="us yes">✔</td><td class="nd">n/d</td><td class="no">✘</td><td class="nd">n/d</td><td class="nd">n/d</td></tr>
+        <tr><td data-i18n="mxr13">Works without Word installed</td><td class="us yes" data-i18n="mv.file">✔ file tools; COM optional</td><td class="nd">n/d</td><td class="nd">n/d</td><td class="yes">✔</td><td class="no">✘</td></tr>
+        <tr><td data-i18n="mxr14">Live editing while open in Word</td><td class="us yes" data-i18n="mv.undo">✔ one Ctrl+Z per call</td><td class="yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="yes" data-i18n="mv.inapp">✔ in-app</td></tr>
+        <tr><td data-i18n="mxr15">Published anti-corruption test evidence</td><td class="us yes" data-i18n="mv.evid">✔ 627 tests · ~3,200 adversarial calls · 0 corruptions</td><td class="nd">n/d</td><td class="nd">n/d</td><td class="nd">n/d</td><td class="nd">n/d</td></tr>
       </table>
     </div>
-    <p class="foot-note" data-i18n="cmp.note">Survey of every public Word MCP server, August 2026. Corrections welcome: open an issue.</p>
+    <p class="foot-note" data-i18n="mx.note">Capability survey as of 2026-08-28, compiled from public repositories, documentation, and issue trackers. n/d: not documented in the sources surveyed (not a claimed absence). * Official add-ins covers Microsoft's Word AI offerings and the Claude for Word add-in: cloud-based or Team/Enterprise scoped, not local MCP servers. Corrections welcome: open an issue.</p>
+  </div>
+</section>
+
+<section id="efficiency">
+  <div class="wrap">
+    <div class="sec-head"><span class="no" data-i18n="no4">DEPT. 04</span><h2 data-i18n="h2.eff">Context efficiency</h2></div>
+    <p class="for-lead" data-i18n="eff.lead">Every MCP server occupies part of an agent's context window before any work starts, and almost none of them tell you how much. Here is our bill, measured and published: when a client loads every tool schema and description up front, the full 170-tool surface costs about 27,000 tokens, an average of roughly 144 tokens per tool. Clients that defer tool schemas, as Claude Code does, pay close to zero until a tool is actually called. Publishing the number is the point: you should be able to see what the sink costs before you connect it.</p>
+    <div class="specs-strip" style="margin-top:26px">
+      <div class="spec"><span class="n">~27k</span><span class="l" data-i18n="eff.s1">Tokens, full surface up front</span></div>
+      <div class="spec"><span class="n">~144</span><span class="l" data-i18n="eff.s2">Tokens per tool, average</span></div>
+      <div class="spec"><span class="n">~0</span><span class="l" data-i18n="eff.s3">Practical cost when schemas are deferred (Claude Code)</span></div>
+    </div>
+    <p class="foot-note" style="margin-top:18px" data-i18n="eff.road"><b>ROADMAP</b> · v2 plans tiered loading: sessions start from a lite core of about 20 tools (roughly 4,000 tokens) and enable capability packs on demand. Starts lite, the whole sink one call away.</p>
   </div>
 </section>
 
 <section id="install">
   <div class="wrap">
-    <div class="sec-head"><span class="no" data-i18n="no4">DEPT. 04</span><h2 data-i18n="h2.install">Installation</h2></div>
+    <div class="sec-head"><span class="no" data-i18n="no5">DEPT. 05</span><h2 data-i18n="h2.install">Installation</h2></div>
     <div class="install-grid">
       <div>
         <h3 data-i18n="inst.s1">① GET THE FIXTURE</h3>
@@ -279,7 +299,7 @@ footer a{color:var(--copper)}
 
 <section id="service">
   <div class="wrap">
-    <div class="sec-head"><span class="no" data-i18n="no5">DEPT. 05</span><h2 data-i18n="h2.svc">Service department</h2></div>
+    <div class="sec-head"><span class="no" data-i18n="no6">DEPT. 06</span><h2 data-i18n="h2.svc">Service department</h2></div>
     <div class="service-grid">
       <a class="counter" href="https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=bug_report.yml">
         <span class="icon">🔧</span>
@@ -371,21 +391,44 @@ en: {
 "dept9.t": "Live Editing", "dept9.p": "Edit documents while they are OPEN in Word: changes appear in the window, each tool call is one Ctrl+Z step, the cursor is never touched. Cursor-point insert, scroll-to-show, track-changes toggle, crash repair.", "dept9.c": "NEW · 4 TOOLS + 9 ROUTED",
 "dept10.t": "Workflow Suites", "dept10.p": "Mail merge from CSV/JSON, batch operations across document sets, true redaction with verification, accessibility &amp; template-compliance audits, cross-reference and caption validation, submission prep, front-matter assembly, chapter headers, structural diagnostics, PDF import.", "dept10.c": "NEW · 24 TOOLS",
 "dept11.t": "Academic Suite", "dept11.p": "LaTeX equations as native Word math, Zotero library citations, publication style conversion across eight styles, review-cycle analytics, journal word counts, peer-review anonymization, table data round-trips, document splitting.", "dept11.c": "NEW · 23 TOOLS",
-"cmp.cap": "Capability",
-"cmp.h2": "GongRzhe (2.1k★, archived)",
-"cmp.r1": "Table column insert/delete",
-"cmp.r2": "Bulk cell edits, one call",
-"cmp.r3": "Footnotes AND endnotes",
-"cmp.r4": "TOC insert + refresh",
-"cmp.r5": "Native citations / bibliography",
-"cmp.r6": "Index generation",
-"cmp.r7": "Tracked-change writing",
-"cmp.r8": "Document compare + combine",
-"cmp.r9": "Watermarks / protection / line №s",
-"cmp.r10": "Section moving / template transfer",
-"cmp.r11": "Atomic saves + auto-backup",
-"v.merge": "✔ merge-aware", "v.conv": "✔ + conversion", "v.addonly": "add only", "v.styles": "✔ 12 styles", "v.native": "✔ Word-native", "v.buggy": "buggy", "v.partial": "partial",
-"cmp.note": "Survey of every public Word MCP server, August 2026. Corrections welcome: open an issue.",
+"no6": "DEPT. 06",
+"mx.cap": "Capability",
+"mx.h3": "GongRzhe (archived)",
+"mx.h5": "Official add-ins*",
+"mxr1": "Native citations &amp; bibliography",
+"mxr2": "Citation style conversion (APA/Chicago/Turabian/MLA…)",
+"mxr3": "Tracked-changes authoring (writes edits as revisions)",
+"mxr4": "Footnote/endnote conversion",
+"mxr5": "TOC insert + refresh",
+"mxr6": "Index generation",
+"mxr7": "Document protection",
+"mxr8": "Mail merge",
+"mxr9": "Accessibility audit",
+"mxr10": "Equations (LaTeX to Word math)",
+"mxr11": "Zotero integration",
+"mxr12": "International style names",
+"mxr13": "Works without Word installed",
+"mxr14": "Live editing while open in Word",
+"mxr15": "Published anti-corruption test evidence",
+"mv.s12": "✔ 12 styles", "mv.s8": "✔ 8 styles", "mv.both": "✔ both directions", "mv.sha": "✔ Word-compatible SHA-512", "mv.file": "✔ file tools; COM optional", "mv.undo": "✔ one Ctrl+Z per call", "mv.evid": "✔ 627 tests · ~3,200 adversarial calls · 0 corruptions", "mv.inapp": "✔ in-app",
+"mx.note": "Capability survey as of 2026-08-28, compiled from public repositories, documentation, and issue trackers. n/d: not documented in the sources surveyed (not a claimed absence). * Official add-ins covers Microsoft's Word AI offerings and the Claude for Word add-in: cloud-based or Team/Enterprise scoped, not local MCP servers. Corrections welcome: open an issue.",
+"h2.eff": "Context efficiency",
+"eff.lead": "Every MCP server occupies part of an agent's context window before any work starts, and almost none of them tell you how much. Here is our bill, measured and published: when a client loads every tool schema and description up front, the full 170-tool surface costs about 27,000 tokens, an average of roughly 144 tokens per tool. Clients that defer tool schemas, as Claude Code does, pay close to zero until a tool is actually called. Publishing the number is the point: you should be able to see what the sink costs before you connect it.",
+"eff.s1": "Tokens, full surface up front",
+"eff.s2": "Tokens per tool, average",
+"eff.s3": "Practical cost when schemas are deferred (Claude Code)",
+"eff.road": "<b>ROADMAP</b> · v2 plans tiered loading: sessions start from a lite core of about 20 tools (roughly 4,000 tokens) and enable capability packs on demand. Starts lite, the whole sink one call away.",
+"dept1.e": "e.g. add a column to a table full of merged cells · rewrite twenty cells in one call · sort a table by any column",
+"dept2.e": "e.g. insert a citation and build the bibliography · convert every footnote to an endnote · refresh the table of contents",
+"dept3.e": "e.g. write an edit as a tracked change under a chosen author · accept only one reviewer's changes · list every comment with its context",
+"dept4.e": "e.g. replace a phrase Word split across formatting runs · restyle every heading level in one pass · copy styles in from another document",
+"dept5.e": "e.g. switch front matter to roman numerals · add a DRAFT watermark · put Page X of Y in the footer",
+"dept6.e": "e.g. move a whole section with its tables · merge chapters into one file · password-protect the result",
+"dept7.e": "e.g. count words per section · check citations against the reference list both ways · pull Word's own readability statistics",
+"dept8.e": "e.g. refresh TOC page numbers with real pagination · export a PDF · confirm the file opens with no repair prompt",
+"dept9.e": "e.g. insert text at the cursor while the document is open · scroll the window to what changed · toggle track changes mid-session",
+"dept10.e": "e.g. run a mail merge from a CSV · redact a name and verify it is gone · audit a report for accessibility",
+"dept11.e": "e.g. turn LaTeX into native Word equations · cite straight from a Zotero library · anonymize a manuscript for peer review",
 "inst.s1": "① GET THE FIXTURE",
 "inst.s2": "② CONNECT THE PLUMBING (Claude Code)",
 "inst.note": "Windows. File-based tools need no Word installation; the seven COM tools (TOC refresh, PDF, proofing…) use a local Microsoft Word. Full setup in the <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>.",
@@ -442,21 +485,44 @@ ko: {
 "dept9.t": "라이브 편집", "dept9.p": "Word에 열려 있는 문서를 그대로 편집: 변경이 창에 바로 나타나고, 도구 호출 하나가 Ctrl+Z 한 단계이며, 커서는 절대 건드리지 않습니다. 커서 위치 삽입, 화면 스크롤 표시, 변경 추적 토글, 비정상 종료 복구.", "dept9.c": "신규 · 도구 4종 + 라우팅 9종",
 "dept10.t": "워크플로 묶음", "dept10.p": "CSV/JSON 편지 병합, 문서 묶음 일괄 작업, 검증을 동반한 진짜 검열 삭제, 접근성·서식 준수 감사, 상호 참조와 캡션 검증, 투고 준비, 앞부속 조립, 챕터 머리글, 구조 진단, PDF 가져오기.", "dept10.c": "신규 · 도구 24종",
 "dept11.t": "학술 도구", "dept11.p": "LaTeX 수식을 Word 수식으로 변환, Zotero 라이브러리 인용 삽입, 8개 출판 양식 간 변환, 리뷰 사이클 분석, 학술지 단어 수 계산, 피어 리뷰 익명화, 표 데이터 변환, 문서 분할.", "dept11.c": "신규 · 도구 23종",
-"cmp.cap": "기능",
-"cmp.h2": "GongRzhe (2.1k★, 보관됨)",
-"cmp.r1": "표 열 삽입/삭제",
-"cmp.r2": "셀 일괄 수정, 호출 한 번",
-"cmp.r3": "각주와 미주 모두",
-"cmp.r4": "목차 삽입 + 새로 고침",
-"cmp.r5": "네이티브 인용/참고문헌",
-"cmp.r6": "색인 생성",
-"cmp.r7": "추적 변경으로 쓰기",
-"cmp.r8": "문서 비교 + 병합",
-"cmp.r9": "워터마크/보호/줄 번호",
-"cmp.r10": "구역 이동/서식 이식",
-"cmp.r11": "원자적 저장 + 자동 백업",
-"v.merge": "✔ 병합 인식", "v.conv": "✔ + 상호 변환", "v.addonly": "추가만 가능", "v.styles": "✔ 12개 스타일", "v.native": "✔ Word 네이티브", "v.buggy": "불안정", "v.partial": "일부만",
-"cmp.note": "2026년 8월, 공개된 모든 Word MCP 서버 조사. 정정은 언제든 환영입니다. 이슈를 열어 주세요.",
+"no6": "부문 06",
+"mx.cap": "기능",
+"mx.h3": "GongRzhe (보관됨)",
+"mx.h5": "공식 추가 기능*",
+"mxr1": "네이티브 인용·참고문헌",
+"mxr2": "인용 스타일 변환 (APA/Chicago/Turabian/MLA…)",
+"mxr3": "추적 변경으로 쓰기 (편집을 수정 내역으로 기록)",
+"mxr4": "각주·미주 상호 변환",
+"mxr5": "목차 삽입 + 새로 고침",
+"mxr6": "색인 생성",
+"mxr7": "문서 보호",
+"mxr8": "편지 병합",
+"mxr9": "접근성 감사",
+"mxr10": "수식 (LaTeX → Word 수식)",
+"mxr11": "Zotero 연동",
+"mxr12": "다국어 스타일 이름",
+"mxr13": "Word 미설치 환경에서 동작",
+"mxr14": "Word에 열린 채 라이브 편집",
+"mxr15": "손상 방지 테스트 근거 공개",
+"mv.s12": "✔ 12개 스타일", "mv.s8": "✔ 8개 스타일", "mv.both": "✔ 양방향", "mv.sha": "✔ Word 호환 SHA-512", "mv.file": "✔ 파일 도구; COM은 선택", "mv.undo": "✔ 호출당 Ctrl+Z 한 단계", "mv.evid": "✔ 테스트 627건 · 적대적 호출 ~3,200건 · 손상 0건", "mv.inapp": "✔ 앱 내",
+"mx.note": "2026-08-28 기준 기능 조사. 공개 저장소, 문서, 이슈 트래커에서 취합했습니다. n/d: 조사한 자료에서 확인되지 않음(없다는 주장이 아닙니다). * 공식 추가 기능 열은 Microsoft의 Word AI 제품군과 Claude for Word 추가 기능을 묶은 것으로, 클라우드 기반이거나 Team/Enterprise 요금제 전용이며 로컬 MCP 서버가 아닙니다. 정정은 환영합니다. 이슈를 열어 주세요.",
+"h2.eff": "컨텍스트 효율",
+"eff.lead": "모든 MCP 서버는 작업을 시작하기도 전에 에이전트의 컨텍스트 창 일부를 차지하지만, 그 비용을 알려주는 서버는 거의 없습니다. 여기 측정해서 공개한 우리 청구서가 있습니다: 클라이언트가 모든 도구 스키마와 설명을 미리 불러오면 170개 도구 전체 표면이 약 27,000 토큰, 도구당 평균 약 144 토큰입니다. Claude Code처럼 도구 스키마를 지연 로드하는 클라이언트라면 도구가 실제로 호출되기 전까지 비용이 거의 0에 가깝습니다. 숫자를 공개한다는 것 자체가 핵심입니다: 연결하기 전에 싱크대의 비용을 볼 수 있어야 하니까요.",
+"eff.s1": "토큰, 전체 표면 선로드",
+"eff.s2": "도구당 평균 토큰",
+"eff.s3": "스키마 지연 로드 시 실질 비용 (Claude Code)",
+"eff.road": "<b>로드맵</b> · v2는 계층형 로딩을 계획하고 있습니다: 세션은 약 20개 도구의 라이트 코어(약 4,000 토큰)로 시작하고, 기능 팩은 필요할 때 켭니다. 가볍게 시작하고, 싱크대 전체는 호출 한 번 거리에 있습니다.",
+"dept1.e": "예: 병합 셀이 가득한 표에 열 추가 · 셀 스무 개를 호출 한 번에 수정 · 아무 열로나 표 정렬",
+"dept2.e": "예: 인용 삽입과 참고문헌 생성 · 모든 각주를 미주로 변환 · 목차 새로 고침",
+"dept3.e": "예: 지정한 작성자 이름으로 추적 변경 기록 · 특정 검토자의 변경만 승인 · 모든 메모를 맥락과 함께 나열",
+"dept4.e": "예: Word가 서식 런으로 쪼개 놓은 문구 바꾸기 · 모든 제목 수준을 한 번에 재스타일 · 다른 문서에서 스타일 가져오기",
+"dept5.e": "예: 앞부속을 로마 숫자로 전환 · DRAFT 워터마크 추가 · 바닥글에 Page X of Y 넣기",
+"dept6.e": "예: 표까지 포함해 구역 통째로 이동 · 챕터를 한 파일로 병합 · 결과물에 암호 보호 적용",
+"dept7.e": "예: 구역별 단어 수 집계 · 인용과 참고문헌 목록을 양방향으로 대조 · Word 자체 가독성 통계 추출",
+"dept8.e": "예: 실제 쪽 번호로 목차 새로 고침 · PDF 내보내기 · 복구 알림 없이 열리는지 확인",
+"dept9.e": "예: 문서가 열린 채 커서 위치에 텍스트 삽입 · 바뀐 곳으로 화면 스크롤 · 세션 중 변경 추적 토글",
+"dept10.e": "예: CSV로 편지 병합 실행 · 이름을 검열 삭제하고 사라졌는지 검증 · 보고서 접근성 감사",
+"dept11.e": "예: LaTeX를 Word 네이티브 수식으로 변환 · Zotero 라이브러리에서 바로 인용 · 피어 리뷰용 원고 익명화",
 "inst.s1": "① 기구 받기",
 "inst.s2": "② 배관 연결 (Claude Code)",
 "inst.note": "Windows 전용. 파일 기반 도구는 Word 설치가 필요 없고, COM 도구 7종(목차 새로 고침, PDF, 문법 검사…)만 로컬 Microsoft Word를 사용합니다. 전체 설정은 <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>에 있습니다.",
@@ -513,21 +579,44 @@ ja: {
 "dept9.t": "ライブ編集", "dept9.p": "Word で開いたままの文書を編集:変更はウィンドウに現れ、ツール呼び出し1回が Ctrl+Z の1段階、カーソルには一切触れません。カーソル位置への挿入、スクロール表示、変更履歴の切り替え、クラッシュ修復。", "dept9.c": "新着 · ツール4種 + ルーティング9種",
 "dept10.t": "ワークフロー一式", "dept10.p": "CSV/JSON からの差し込み印刷、文書セット横断の一括処理、検証付きの本当の墨消し、アクセシビリティとテンプレート準拠の監査、相互参照とキャプションの検証、投稿準備、前付けの組み立て、章ヘッダー、構造診断、PDF 取り込み。", "dept10.c": "新着 · ツール24種",
 "dept11.t": "学術スイート", "dept11.p": "LaTeX 数式を Word ネイティブ数式へ、Zotero ライブラリ引用、8 スタイル間の出版形式変換、レビュー分析、学術誌向け語数カウント、査読用匿名化、表データの相互変換、文書分割。", "dept11.c": "新着 · 23 ツール",
-"cmp.cap": "機能",
-"cmp.h2": "GongRzhe (2.1k★、アーカイブ済み)",
-"cmp.r1": "表の列の挿入/削除",
-"cmp.r2": "セル一括編集、呼び出し1回",
-"cmp.r3": "脚注と文末脚注の両方",
-"cmp.r4": "目次の挿入+更新",
-"cmp.r5": "ネイティブ引用/文献目録",
-"cmp.r6": "索引生成",
-"cmp.r7": "変更履歴としての書き込み",
-"cmp.r8": "文書の比較+組み込み",
-"cmp.r9": "透かし/保護/行番号",
-"cmp.r10": "セクション移動/テンプレート移植",
-"cmp.r11": "アトミック保存+自動バックアップ",
-"v.merge": "✔ 結合認識", "v.conv": "✔ + 相互変換", "v.addonly": "追加のみ", "v.styles": "✔ 12スタイル", "v.native": "✔ Word ネイティブ", "v.buggy": "不安定", "v.partial": "一部のみ",
-"cmp.note": "2026年8月、公開されている全 Word MCP サーバーの調査。訂正は歓迎します。Issue をどうぞ。",
+"no6": "第06部",
+"mx.cap": "機能",
+"mx.h3": "GongRzhe(アーカイブ済み)",
+"mx.h5": "公式アドイン*",
+"mxr1": "ネイティブ引用と文献目録",
+"mxr2": "引用スタイル変換 (APA/Chicago/Turabian/MLA…)",
+"mxr3": "変更履歴としての書き込み(編集を修正として記録)",
+"mxr4": "脚注・文末脚注の相互変換",
+"mxr5": "目次の挿入+更新",
+"mxr6": "索引生成",
+"mxr7": "文書保護",
+"mxr8": "差し込み印刷",
+"mxr9": "アクセシビリティ監査",
+"mxr10": "数式 (LaTeX → Word 数式)",
+"mxr11": "Zotero 連携",
+"mxr12": "多言語スタイル名",
+"mxr13": "Word 未インストールでも動作",
+"mxr14": "Word で開いたままライブ編集",
+"mxr15": "破損防止テストの証跡を公開",
+"mv.s12": "✔ 12 スタイル", "mv.s8": "✔ 8 スタイル", "mv.both": "✔ 双方向", "mv.sha": "✔ Word 互換 SHA-512", "mv.file": "✔ ファイルツール、COM は任意", "mv.undo": "✔ 呼び出し1回 = Ctrl+Z 1段階", "mv.evid": "✔ テスト 627 件 · 敵対的呼び出し ~3,200 件 · 破損 0 件", "mv.inapp": "✔ アプリ内",
+"mx.note": "2026-08-28 時点の機能調査。公開リポジトリ、ドキュメント、Issue トラッカーから集約しました。n/d:調査した資料では確認できず(欠如の断定ではありません)。* 公式アドインは Microsoft の Word AI 製品群と Claude for Word アドインをまとめた列で、クラウドまたは Team/Enterprise 限定のもの。ローカル MCP サーバーではありません。訂正歓迎、Issue をどうぞ。",
+"h2.eff": "コンテキスト効率",
+"eff.lead": "どの MCP サーバーも、仕事を始める前からエージェントのコンテキストウィンドウの一部を占めます。それなのに、その量を教えてくれるサーバーはほとんどありません。これが計測して公開した当方の請求書です:クライアントが全ツールのスキーマと説明を先読みした場合、170 ツールの全表面で約 27,000 トークン、1 ツールあたり平均およそ 144 トークン。Claude Code のようにツールスキーマを遅延読み込みするクライアントなら、ツールが実際に呼ばれるまでコストはほぼゼロです。数字を公開すること自体が要点です:接続する前に、この流しの値段が見えるべきだからです。",
+"eff.s1": "トークン(全表面を先読み)",
+"eff.s2": "1 ツールあたり平均トークン",
+"eff.s3": "スキーマ遅延読み込み時の実質コスト (Claude Code)",
+"eff.road": "<b>ロードマップ</b> · v2 では段階式読み込みを計画しています:セッションは約 20 ツールのライトコア(約 4,000 トークン)で始まり、機能パックは必要になったときに有効化します。軽く始めて、流し一式は呼び出し1回の距離に。",
+"dept1.e": "例:結合セルだらけの表に列を追加 · セル 20 個を呼び出し1回で書き換え · 任意の列で表を並べ替え",
+"dept2.e": "例:引用を挿入して文献目録を生成 · 全脚注を文末脚注へ変換 · 目次を更新",
+"dept3.e": "例:指定した作成者名で変更履歴として書き込み · 特定の校閲者の変更だけ承諾 · 全コメントを文脈付きで一覧化",
+"dept4.e": "例:Word が書式ランで分断した語句を置換 · 全見出しレベルを一括で再スタイル · 別の文書からスタイルを取り込み",
+"dept5.e": "例:前付けをローマ数字に切り替え · DRAFT の透かしを追加 · フッターに Page X of Y を配置",
+"dept6.e": "例:表ごとセクションを丸ごと移動 · 章を 1 ファイルに結合 · 結果をパスワード保護",
+"dept7.e": "例:セクション別に語数を集計 · 引用と参考文献を双方向で照合 · Word 自身の読みやすさ統計を取得",
+"dept8.e": "例:実際のページ番号で目次を更新 · PDF を書き出し · 修復ダイアログなしで開けるか確認",
+"dept9.e": "例:文書を開いたままカーソル位置にテキストを挿入 · 変更箇所まで画面をスクロール · セッション中に変更履歴を切り替え",
+"dept10.e": "例:CSV から差し込み印刷を実行 · 名前を墨消しして消えたことを検証 · 報告書のアクセシビリティを監査",
+"dept11.e": "例:LaTeX を Word ネイティブ数式へ変換 · Zotero ライブラリから直接引用 · 査読用に原稿を匿名化",
 "inst.s1": "① 器具を入手",
 "inst.s2": "② 配管を接続 (Claude Code)",
 "inst.note": "Windows 用。ファイルベースのツールに Word のインストールは不要、COM ツール7種(目次更新、PDF、文章校正…)のみローカルの Microsoft Word を使います。詳しい設定は <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a> へ。",
@@ -584,21 +673,44 @@ zh: {
 "dept9.t": "实时编辑", "dept9.p": "文档在 Word 里开着照样编辑:改动直接出现在窗口里,每次工具调用就是一步 Ctrl+Z,光标绝不被碰。光标处插入、滚动定位、修订开关、崩溃修复。", "dept9.c": "新品 · 4 件工具 + 9 件转接",
 "dept10.t": "工作流套装", "dept10.p": "CSV/JSON 邮件合并、跨文档集批量操作、带验证的真正涂黑、无障碍与模板合规审计、交叉引用与题注校验、投稿准备、前置页组装、章节页眉、结构诊断、PDF 导入。", "dept10.c": "新品 · 24 件工具",
 "dept11.t": "学术套件", "dept11.p": "LaTeX 公式转为 Word 原生公式、Zotero 文献库引用、8 种出版格式互转、评审周期分析、期刊字数统计、同行评审匿名化、表格数据互转、文档拆分。", "dept11.c": "新增 · 23 个工具",
-"cmp.cap": "能力",
-"cmp.h2": "GongRzhe(2.1k★,已归档)",
-"cmp.r1": "表格列插入/删除",
-"cmp.r2": "批量改单元格,一次调用",
-"cmp.r3": "脚注与尾注兼备",
-"cmp.r4": "目录插入+刷新",
-"cmp.r5": "原生引文/参考文献",
-"cmp.r6": "索引生成",
-"cmp.r7": "以修订方式写入",
-"cmp.r8": "文档比较+合并",
-"cmp.r9": "水印/保护/行号",
-"cmp.r10": "整节搬移/模板移植",
-"cmp.r11": "原子保存+自动备份",
-"v.merge": "✔ 识别合并", "v.conv": "✔ + 互转", "v.addonly": "仅能添加", "v.styles": "✔ 12 种样式", "v.native": "✔ Word 原生", "v.buggy": "有缺陷", "v.partial": "不完整",
-"cmp.note": "2026 年 8 月对所有公开 Word MCP 服务器的调查。欢迎指正,请开 issue。",
+"no6": "第06部",
+"mx.cap": "能力",
+"mx.h3": "GongRzhe(已归档)",
+"mx.h5": "官方加载项*",
+"mxr1": "原生引文与参考文献",
+"mxr2": "引文样式转换 (APA/Chicago/Turabian/MLA…)",
+"mxr3": "以修订方式写入(编辑记录为修订)",
+"mxr4": "脚注/尾注互转",
+"mxr5": "目录插入+刷新",
+"mxr6": "索引生成",
+"mxr7": "文档保护",
+"mxr8": "邮件合并",
+"mxr9": "无障碍审计",
+"mxr10": "公式 (LaTeX → Word 公式)",
+"mxr11": "Zotero 集成",
+"mxr12": "多语言样式名",
+"mxr13": "无需安装 Word 即可运行",
+"mxr14": "文档在 Word 中打开时实时编辑",
+"mxr15": "公开的防损坏测试证据",
+"mv.s12": "✔ 12 种样式", "mv.s8": "✔ 8 种样式", "mv.both": "✔ 双向", "mv.sha": "✔ Word 兼容 SHA-512", "mv.file": "✔ 文件工具;COM 可选", "mv.undo": "✔ 每次调用一步 Ctrl+Z", "mv.evid": "✔ 627 项测试 · ~3,200 次对抗性调用 · 0 次损坏", "mv.inapp": "✔ 应用内",
+"mx.note": "能力调查,截至 2026-08-28,汇总自公开仓库、文档与 issue 跟踪器。n/d:在所查资料中未见记载(并非断言其没有)。* 官方加载项一栏合并了 Microsoft 的 Word AI 产品与 Claude for Word 加载项:皆为云端或 Team/Enterprise 专属,不是本地 MCP 服务器。欢迎指正,请开 issue。",
+"h2.eff": "上下文效率",
+"eff.lead": "每个 MCP 服务器在干活之前就要占用智能体的一部分上下文窗口,却几乎没有服务器告诉你占多少。这是我们量出来并公开的账单:客户端若把所有工具的 schema 和说明一次性载入,170 件工具的完整表面约需 27,000 token,平均每件工具约 144 token。像 Claude Code 这样延迟加载工具 schema 的客户端,在工具真正被调用之前成本几乎为零。公开数字本身就是重点:接上水槽之前,你应该先看得到价钱。",
+"eff.s1": "token,完整表面预载",
+"eff.s2": "token,每件工具平均",
+"eff.s3": "schema 延迟加载时的实际成本 (Claude Code)",
+"eff.road": "<b>路线图</b> · v2 计划分层加载:会话从约 20 件工具的精简内核(约 4,000 token)启动,能力包按需启用。轻装上阵,整台水槽只隔一次调用。",
+"dept1.e": "例:给满是合并单元格的表格加一列 · 一次调用改写二十个单元格 · 按任意列给表格排序",
+"dept2.e": "例:插入引文并生成参考文献 · 把全部脚注转为尾注 · 刷新目录",
+"dept3.e": "例:以指定作者名写入修订 · 只接受某一位审阅者的修改 · 连同上下文列出全部批注",
+"dept4.e": "例:替换被 Word 拆进多个格式 run 的短语 · 一趟重排所有标题级别 · 从另一份文档引入样式",
+"dept5.e": "例:把前置页改为罗马数字 · 加 DRAFT 水印 · 在页脚放 Page X of Y",
+"dept6.e": "例:连表格整节搬移 · 把各章合并成一个文件 · 给成品加密码保护",
+"dept7.e": "例:分节统计字数 · 双向核对引文与参考文献 · 调出 Word 自带的可读性统计",
+"dept8.e": "例:用真实页码刷新目录 · 导出 PDF · 确认文件打开时没有修复提示",
+"dept9.e": "例:文档开着就在光标处插入文字 · 把窗口滚动到改动处 · 会话中切换修订开关",
+"dept10.e": "例:用 CSV 跑一次邮件合并 · 涂黑一个名字并验证它确实消失 · 审计报告的无障碍性",
+"dept11.e": "例:把 LaTeX 转成 Word 原生公式 · 直接引用 Zotero 文献库 · 为同行评审匿名化稿件",
 "inst.s1": "① 领取器具",
 "inst.s2": "② 接好管道(Claude Code)",
 "inst.note": "Windows 平台。基于文件的工具无需安装 Word;七件 COM 工具(目录刷新、PDF、校对…)使用本机的 Microsoft Word。完整设置见 <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>。",
@@ -655,21 +767,44 @@ de: {
 "dept9.t": "Live-Bearbeitung", "dept9.p": "Dokumente bearbeiten, während sie in Word GEÖFFNET sind: Änderungen erscheinen im Fenster, jeder Werkzeugaufruf ist ein Strg+Z-Schritt, der Cursor bleibt unberührt. Einfügen an der Cursorposition, Hinscrollen, Umschalten der Änderungsnachverfolgung, Absturzreparatur.", "dept9.c": "NEU · 4 WERKZEUGE + 9 GEROUTET",
 "dept10.t": "Workflow-Garnituren", "dept10.p": "Serienbriefe aus CSV/JSON, Stapelläufe über Dokumentsätze, echte Schwärzung mit Verifikation, Audits für Barrierefreiheit &amp; Vorlagenkonformität, Prüfung von Querverweisen und Beschriftungen, Einreichungsvorbereitung, Titelei-Montage, Kapitelkopfzeilen, Strukturdiagnose, PDF-Import.", "dept10.c": "NEU · 24 WERKZEUGE",
 "dept11.t": "Akademische Suite", "dept11.p": "LaTeX-Formeln als native Word-Formeln, Zitate aus der Zotero-Bibliothek, Stilkonvertierung zwischen acht Publikationsformaten, Review-Analysen, Wortzählung für Fachzeitschriften, Anonymisierung für Peer-Review, Tabellendaten-Austausch, Dokumentaufteilung.", "dept11.c": "NEU · 23 TOOLS",
-"cmp.cap": "Fähigkeit",
-"cmp.h2": "GongRzhe (2.1k★, archiviert)",
-"cmp.r1": "Tabellenspalten einfügen/löschen",
-"cmp.r2": "Massen-Zellbearbeitung, ein Aufruf",
-"cmp.r3": "Fußnoten UND Endnoten",
-"cmp.r4": "Inhaltsverzeichnis einfügen + aktualisieren",
-"cmp.r5": "Native Zitate / Literaturverzeichnis",
-"cmp.r6": "Indexerstellung",
-"cmp.r7": "Schreiben als nachverfolgte Änderung",
-"cmp.r8": "Dokumentvergleich + Zusammenführen",
-"cmp.r9": "Wasserzeichen / Schutz / Zeilennummern",
-"cmp.r10": "Abschnitte verschieben / Vorlagen-Transfer",
-"cmp.r11": "Atomares Speichern + Auto-Backup",
-"v.merge": "✔ verbund-bewusst", "v.conv": "✔ + Umwandlung", "v.addonly": "nur Hinzufügen", "v.styles": "✔ 12 Stile", "v.native": "✔ Word-nativ", "v.buggy": "fehlerhaft", "v.partial": "teilweise",
-"cmp.note": "Erhebung über jeden öffentlichen Word-MCP-Server, August 2026. Korrekturen willkommen: einfach ein Issue öffnen.",
+"no6": "ABT. 06",
+"mx.cap": "Fähigkeit",
+"mx.h3": "GongRzhe (archiviert)",
+"mx.h5": "Offizielle Add-ins*",
+"mxr1": "Native Zitate &amp; Literaturverzeichnis",
+"mxr2": "Zitierstil-Konvertierung (APA/Chicago/Turabian/MLA…)",
+"mxr3": "Schreiben als nachverfolgte Änderung",
+"mxr4": "Fußnoten-/Endnoten-Umwandlung",
+"mxr5": "Inhaltsverzeichnis einfügen + aktualisieren",
+"mxr6": "Indexerstellung",
+"mxr7": "Dokumentschutz",
+"mxr8": "Serienbriefe",
+"mxr9": "Barrierefreiheits-Audit",
+"mxr10": "Formeln (LaTeX zu Word-Mathematik)",
+"mxr11": "Zotero-Integration",
+"mxr12": "Internationale Stilnamen",
+"mxr13": "Läuft ohne installiertes Word",
+"mxr14": "Live-Bearbeitung bei in Word geöffnetem Dokument",
+"mxr15": "Veröffentlichte Anti-Korruptions-Testbelege",
+"mv.s12": "✔ 12 Stile", "mv.s8": "✔ 8 Stile", "mv.both": "✔ beide Richtungen", "mv.sha": "✔ Word-kompatibles SHA-512", "mv.file": "✔ Dateiwerkzeuge; COM optional", "mv.undo": "✔ ein Strg+Z pro Aufruf", "mv.evid": "✔ 627 Tests · ~3.200 adversariale Aufrufe · 0 Beschädigungen", "mv.inapp": "✔ in der App",
+"mx.note": "Fähigkeitserhebung, Stand 2026-08-28, zusammengetragen aus öffentlichen Repositories, Dokumentation und Issue-Trackern. n/d: in den gesichteten Quellen nicht dokumentiert (keine behauptete Abwesenheit). * Offizielle Add-ins bündelt Microsofts Word-KI-Angebote und das Claude-for-Word-Add-in: cloudbasiert oder auf Team/Enterprise beschränkt, keine lokalen MCP-Server. Korrekturen willkommen: einfach ein Issue öffnen.",
+"h2.eff": "Kontext-Effizienz",
+"eff.lead": "Jeder MCP-Server belegt einen Teil des Kontextfensters eines Agenten, bevor die Arbeit überhaupt beginnt, und kaum einer sagt, wie viel. Hier ist unsere Rechnung, gemessen und veröffentlicht: Lädt ein Client jedes Werkzeugschema samt Beschreibung im Voraus, kostet die volle Oberfläche mit 170 Werkzeugen etwa 27.000 Token, im Schnitt rund 144 Token pro Werkzeug. Clients, die Werkzeugschemata aufschieben, wie Claude Code, zahlen nahezu nichts, bis ein Werkzeug tatsächlich aufgerufen wird. Die Zahl zu veröffentlichen ist der Punkt: Man sollte sehen können, was die Spüle kostet, bevor man sie anschließt.",
+"eff.s1": "Token, volle Oberfläche im Voraus",
+"eff.s2": "Token pro Werkzeug, Durchschnitt",
+"eff.s3": "Praktische Kosten bei aufgeschobenen Schemata (Claude Code)",
+"eff.road": "<b>ROADMAP</b> · v2 plant gestuftes Laden: Sitzungen starten mit einem Lite-Kern von etwa 20 Werkzeugen (rund 4.000 Token) und schalten Fähigkeitspakete bei Bedarf zu. Startet leicht, die ganze Spüle ist einen Aufruf entfernt.",
+"dept1.e": "z. B. einer Tabelle voller verbundener Zellen eine Spalte hinzufügen · zwanzig Zellen in einem Aufruf umschreiben · eine Tabelle nach beliebiger Spalte sortieren",
+"dept2.e": "z. B. ein Zitat einfügen und das Literaturverzeichnis aufbauen · alle Fußnoten in Endnoten umwandeln · das Inhaltsverzeichnis aktualisieren",
+"dept3.e": "z. B. eine Änderung unter gewähltem Autor als nachverfolgte Änderung schreiben · nur die Änderungen eines Prüfers annehmen · jeden Kommentar mit Kontext auflisten",
+"dept4.e": "z. B. eine Phrase ersetzen, die Word über Formatierungs-Runs zerteilt hat · alle Überschriftenebenen in einem Durchgang umgestalten · Formatvorlagen aus einem anderen Dokument übernehmen",
+"dept5.e": "z. B. die Titelei auf römische Ziffern umstellen · ein DRAFT-Wasserzeichen einfügen · Seite X von Y in die Fußzeile setzen",
+"dept6.e": "z. B. einen ganzen Abschnitt samt Tabellen verschieben · Kapitel zu einer Datei zusammenführen · das Ergebnis mit Passwort schützen",
+"dept7.e": "z. B. Wörter je Abschnitt zählen · Zitate und Literaturliste in beide Richtungen abgleichen · Words eigene Lesbarkeitsstatistik abrufen",
+"dept8.e": "z. B. Inhaltsverzeichnis mit echten Seitenzahlen aktualisieren · ein PDF exportieren · prüfen, dass die Datei ohne Reparaturdialog öffnet",
+"dept9.e": "z. B. Text an der Cursorposition einfügen, während das Dokument offen ist · das Fenster zur Änderung scrollen · die Änderungsnachverfolgung mitten in der Sitzung umschalten",
+"dept10.e": "z. B. einen Serienbrief aus einer CSV fahren · einen Namen schwärzen und das Verschwinden verifizieren · einen Bericht auf Barrierefreiheit prüfen",
+"dept11.e": "z. B. LaTeX in native Word-Formeln übersetzen · direkt aus der Zotero-Bibliothek zitieren · ein Manuskript für Peer-Review anonymisieren",
 "inst.s1": "① DIE ARMATUR BESORGEN",
 "inst.s2": "② DIE ROHRE ANSCHLIESSEN (Claude Code)",
 "inst.note": "Windows. Dateibasierte Werkzeuge brauchen kein installiertes Word; die sieben COM-Werkzeuge (Inhaltsverzeichnis-Aktualisierung, PDF, Korrekturhilfen…) nutzen ein lokales Microsoft Word. Vollständige Einrichtung im <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>.",
@@ -726,21 +861,44 @@ fr: {
 "dept9.t": "Édition en direct", "dept9.p": "Modifier des documents pendant qu'ils sont OUVERTS dans Word : les changements apparaissent dans la fenêtre, chaque appel d'outil est un cran de Ctrl+Z, le curseur n'est jamais touché. Insertion au point du curseur, défilement d'affichage, bascule du suivi des modifications, réparation après plantage.", "dept9.c": "NOUVEAU · 4 OUTILS + 9 ROUTÉS",
 "dept10.t": "Panoplies de flux", "dept10.p": "Publipostage depuis CSV/JSON, opérations par lots sur des ensembles de documents, vrai caviardage avec vérification, audits d'accessibilité et de conformité aux modèles, validation des renvois et des légendes, préparation à la soumission, assemblage des pages liminaires, en-têtes de chapitre, diagnostics structurels, import PDF.", "dept10.c": "NOUVEAU · 24 OUTILS",
 "dept11.t": "Suite académique", "dept11.p": "Équations LaTeX en mathématiques Word natives, citations depuis la bibliothèque Zotero, conversion entre huit styles de publication, analyses du cycle de relecture, comptage de mots pour revues, anonymisation pour évaluation par les pairs, échange de données de tableaux, découpage de documents.", "dept11.c": "NOUVEAU · 23 OUTILS",
-"cmp.cap": "Capacité",
-"cmp.h2": "GongRzhe (2.1k★, archivé)",
-"cmp.r1": "Insertion/suppression de colonnes",
-"cmp.r2": "Cellules en masse, un appel",
-"cmp.r3": "Notes de bas de page ET de fin",
-"cmp.r4": "Table des matières : insertion + actualisation",
-"cmp.r5": "Citations / bibliographie natives",
-"cmp.r6": "Génération d'index",
-"cmp.r7": "Écriture en suivi des modifications",
-"cmp.r8": "Comparaison + combinaison de documents",
-"cmp.r9": "Filigranes / protection / № de lignes",
-"cmp.r10": "Déplacement de sections / transfert de modèles",
-"cmp.r11": "Enregistrements atomiques + sauvegarde auto",
-"v.merge": "✔ fusions gérées", "v.conv": "✔ + conversion", "v.addonly": "ajout seul", "v.styles": "✔ 12 styles", "v.native": "✔ natif Word", "v.buggy": "bogué", "v.partial": "partiel",
-"cmp.note": "Recensement de tous les serveurs MCP Word publics, août 2026. Corrections bienvenues : ouvrez un ticket.",
+"no6": "RAYON 06",
+"mx.cap": "Capacité",
+"mx.h3": "GongRzhe (archivé)",
+"mx.h5": "Compléments officiels*",
+"mxr1": "Citations et bibliographie natives",
+"mxr2": "Conversion de style de citation (APA/Chicago/Turabian/MLA…)",
+"mxr3": "Écriture en suivi des modifications",
+"mxr4": "Conversion notes de bas de page/notes de fin",
+"mxr5": "Table des matières : insertion + actualisation",
+"mxr6": "Génération d'index",
+"mxr7": "Protection du document",
+"mxr8": "Publipostage",
+"mxr9": "Audit d'accessibilité",
+"mxr10": "Équations (LaTeX vers maths Word)",
+"mxr11": "Intégration Zotero",
+"mxr12": "Noms de styles internationaux",
+"mxr13": "Fonctionne sans Word installé",
+"mxr14": "Édition en direct, document ouvert dans Word",
+"mxr15": "Preuves publiées des tests anti-corruption",
+"mv.s12": "✔ 12 styles", "mv.s8": "✔ 8 styles", "mv.both": "✔ dans les deux sens", "mv.sha": "✔ SHA-512 compatible Word", "mv.file": "✔ outils fichier ; COM en option", "mv.undo": "✔ un Ctrl+Z par appel", "mv.evid": "✔ 627 tests · ~3 200 appels adversariaux · 0 corruption", "mv.inapp": "✔ dans l'application",
+"mx.note": "Recensement des capacités au 2026-08-28, compilé à partir des dépôts publics, de la documentation et des traqueurs de tickets. n/d : non documenté dans les sources consultées (ce n'est pas une absence affirmée). * Compléments officiels regroupe les offres IA de Microsoft pour Word et le complément Claude for Word : en nuage ou réservés aux offres Team/Enterprise, pas des serveurs MCP locaux. Corrections bienvenues : ouvrez un ticket.",
+"h2.eff": "Efficacité de contexte",
+"eff.lead": "Chaque serveur MCP occupe une partie de la fenêtre de contexte d'un agent avant même que le travail commence, et presque aucun ne dit combien. Voici notre facture, mesurée et publiée : si un client charge d'avance chaque schéma d'outil et sa description, la surface complète des 170 outils coûte environ 27 000 tokens, soit en moyenne quelque 144 tokens par outil. Les clients qui diffèrent les schémas d'outils, comme Claude Code, ne paient presque rien tant qu'un outil n'est pas réellement appelé. Publier le chiffre, c'est justement l'idée : on devrait pouvoir voir ce que coûte l'évier avant de le raccorder.",
+"eff.s1": "Tokens, surface complète chargée d'avance",
+"eff.s2": "Tokens par outil, en moyenne",
+"eff.s3": "Coût pratique avec schémas différés (Claude Code)",
+"eff.road": "<b>FEUILLE DE ROUTE</b> · v2 prévoit un chargement par paliers : la session démarre sur un noyau allégé d'environ 20 outils (à peu près 4 000 tokens) et active des packs de capacités à la demande. On part léger, l'évier complet est à un appel de distance.",
+"dept1.e": "p. ex. ajouter une colonne à un tableau plein de cellules fusionnées · réécrire vingt cellules en un appel · trier un tableau par n'importe quelle colonne",
+"dept2.e": "p. ex. insérer une citation et bâtir la bibliographie · convertir toutes les notes de bas de page en notes de fin · actualiser la table des matières",
+"dept3.e": "p. ex. écrire une modification en suivi sous l'auteur de son choix · n'accepter que les changements d'un relecteur · lister chaque commentaire avec son contexte",
+"dept4.e": "p. ex. remplacer une phrase que Word a éclatée en runs de formatage · restyler tous les niveaux de titre en une passe · importer les styles d'un autre document",
+"dept5.e": "p. ex. passer les pages liminaires en chiffres romains · poser un filigrane DRAFT · mettre « Page X sur Y » en pied de page",
+"dept6.e": "p. ex. déplacer une section entière avec ses tableaux · fusionner les chapitres en un seul fichier · protéger le résultat par mot de passe",
+"dept7.e": "p. ex. compter les mots par section · vérifier citations et bibliographie dans les deux sens · récupérer les statistiques de lisibilité de Word lui-même",
+"dept8.e": "p. ex. actualiser la table des matières avec la vraie pagination · exporter un PDF · confirmer que le fichier s'ouvre sans invite de réparation",
+"dept9.e": "p. ex. insérer du texte au curseur pendant que le document est ouvert · faire défiler la fenêtre jusqu'au changement · basculer le suivi des modifications en pleine session",
+"dept10.e": "p. ex. lancer un publipostage depuis un CSV · caviarder un nom et vérifier qu'il a disparu · auditer l'accessibilité d'un rapport",
+"dept11.e": "p. ex. traduire du LaTeX en équations Word natives · citer directement depuis une bibliothèque Zotero · anonymiser un manuscrit pour l'évaluation par les pairs",
 "inst.s1": "① SE PROCURER LA ROBINETTERIE",
 "inst.s2": "② RACCORDER LA TUYAUTERIE (Claude Code)",
 "inst.note": "Windows. Les outils sur fichier ne demandent aucune installation de Word ; les sept outils COM (actualisation de la table des matières, PDF, vérification linguistique…) utilisent un Microsoft Word local. Configuration complète dans le <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>.",
@@ -797,21 +955,44 @@ es: {
 "dept9.t": "Edición en vivo", "dept9.p": "Edite documentos mientras están ABIERTOS en Word: los cambios aparecen en la ventana, cada llamada de herramienta es un paso de Ctrl+Z y el cursor nunca se toca. Inserción en el punto del cursor, desplazamiento para mostrar, alternar el control de cambios, reparación tras un cierre inesperado.", "dept9.c": "NUEVO · 4 HERRAMIENTAS + 9 ENRUTADAS",
 "dept10.t": "Juegos de flujo de trabajo", "dept10.p": "Combinación de correspondencia desde CSV/JSON, operaciones por lotes sobre conjuntos de documentos, censura auténtica con verificación, auditorías de accesibilidad y de conformidad con plantillas, validación de referencias cruzadas y títulos, preparación de envíos, montaje de páginas preliminares, encabezados de capítulo, diagnósticos estructurales, importación de PDF.", "dept10.c": "NUEVO · 24 HERRAMIENTAS",
 "dept11.t": "Suite académica", "dept11.p": "Ecuaciones LaTeX como matemáticas nativas de Word, citas desde la biblioteca de Zotero, conversión entre ocho estilos de publicación, análisis del ciclo de revisión, recuento de palabras para revistas, anonimización para revisión por pares, intercambio de datos de tablas, división de documentos.", "dept11.c": "NUEVO · 23 HERRAMIENTAS",
-"cmp.cap": "Capacidad",
-"cmp.h2": "GongRzhe (2.1k★, archivado)",
-"cmp.r1": "Insertar/eliminar columnas de tabla",
-"cmp.r2": "Celdas en masa, una llamada",
-"cmp.r3": "Notas al pie Y al final",
-"cmp.r4": "Tabla de contenido: insertar + actualizar",
-"cmp.r5": "Citas / bibliografía nativas",
-"cmp.r6": "Generación de índices",
-"cmp.r7": "Escritura como cambios rastreados",
-"cmp.r8": "Comparar + combinar documentos",
-"cmp.r9": "Marcas de agua / protección / № de línea",
-"cmp.r10": "Mover secciones / transferir plantillas",
-"cmp.r11": "Guardado atómico + copia automática",
-"v.merge": "✔ consciente de combinaciones", "v.conv": "✔ + conversión", "v.addonly": "solo añadir", "v.styles": "✔ 12 estilos", "v.native": "✔ nativo de Word", "v.buggy": "con fallos", "v.partial": "parcial",
-"cmp.note": "Estudio de todos los servidores MCP de Word públicos, agosto de 2026. Correcciones bienvenidas: abra un issue.",
+"no6": "DEPTO. 06",
+"mx.cap": "Capacidad",
+"mx.h3": "GongRzhe (archivado)",
+"mx.h5": "Complementos oficiales*",
+"mxr1": "Citas y bibliografía nativas",
+"mxr2": "Conversión de estilo de citas (APA/Chicago/Turabian/MLA…)",
+"mxr3": "Escritura como cambios rastreados",
+"mxr4": "Conversión notas al pie/al final",
+"mxr5": "Tabla de contenido: insertar + actualizar",
+"mxr6": "Generación de índices",
+"mxr7": "Protección del documento",
+"mxr8": "Combinación de correspondencia",
+"mxr9": "Auditoría de accesibilidad",
+"mxr10": "Ecuaciones (LaTeX a matemáticas de Word)",
+"mxr11": "Integración con Zotero",
+"mxr12": "Nombres de estilo internacionales",
+"mxr13": "Funciona sin Word instalado",
+"mxr14": "Edición en vivo con el documento abierto en Word",
+"mxr15": "Evidencia publicada de pruebas anticorrupción",
+"mv.s12": "✔ 12 estilos", "mv.s8": "✔ 8 estilos", "mv.both": "✔ en ambos sentidos", "mv.sha": "✔ SHA-512 compatible con Word", "mv.file": "✔ herramientas de archivo; COM opcional", "mv.undo": "✔ un Ctrl+Z por llamada", "mv.evid": "✔ 627 pruebas · ~3.200 llamadas adversariales · 0 corrupciones", "mv.inapp": "✔ dentro de la aplicación",
+"mx.note": "Estudio de capacidades a 2026-08-28, compilado de repositorios públicos, documentación y gestores de incidencias. n/d: no documentado en las fuentes consultadas (no es una ausencia afirmada). * Complementos oficiales agrupa las ofertas de IA de Microsoft para Word y el complemento Claude for Word: en la nube o limitados a planes Team/Enterprise, no servidores MCP locales. Correcciones bienvenidas: abra un issue.",
+"h2.eff": "Eficiencia de contexto",
+"eff.lead": "Todo servidor MCP ocupa parte de la ventana de contexto de un agente antes de empezar a trabajar, y casi ninguno dice cuánto. Esta es nuestra factura, medida y publicada: si un cliente carga por adelantado cada esquema de herramienta con su descripción, la superficie completa de 170 herramientas cuesta unos 27.000 tokens, una media de unos 144 tokens por herramienta. Los clientes que aplazan los esquemas, como Claude Code, no pagan casi nada hasta que una herramienta se invoca de verdad. Publicar la cifra es justamente la gracia: uno debería poder ver lo que cuesta el fregadero antes de conectarlo.",
+"eff.s1": "Tokens, superficie completa por adelantado",
+"eff.s2": "Tokens por herramienta, de media",
+"eff.s3": "Coste práctico con esquemas aplazados (Claude Code)",
+"eff.road": "<b>HOJA DE RUTA</b> · La v2 planea carga por niveles: la sesión arranca con un núcleo ligero de unas 20 herramientas (unos 4.000 tokens) y activa paquetes de capacidades bajo demanda. Arranca ligero, con el fregadero entero a una llamada de distancia.",
+"dept1.e": "p. ej. añadir una columna a una tabla llena de celdas combinadas · reescribir veinte celdas en una llamada · ordenar una tabla por cualquier columna",
+"dept2.e": "p. ej. insertar una cita y construir la bibliografía · convertir todas las notas al pie en notas al final · actualizar la tabla de contenido",
+"dept3.e": "p. ej. escribir una edición como cambio rastreado con el autor elegido · aceptar solo los cambios de un revisor · listar cada comentario con su contexto",
+"dept4.e": "p. ej. reemplazar una frase que Word partió en runs de formato · reestilizar todos los niveles de título en una pasada · traer estilos de otro documento",
+"dept5.e": "p. ej. pasar las páginas preliminares a números romanos · añadir una marca de agua DRAFT · poner «Página X de Y» en el pie",
+"dept6.e": "p. ej. mover una sección entera con sus tablas · fusionar capítulos en un solo archivo · proteger el resultado con contraseña",
+"dept7.e": "p. ej. contar palabras por sección · cotejar citas y bibliografía en ambos sentidos · extraer las estadísticas de legibilidad del propio Word",
+"dept8.e": "p. ej. actualizar la tabla de contenido con la paginación real · exportar un PDF · confirmar que el archivo abre sin aviso de reparación",
+"dept9.e": "p. ej. insertar texto en el cursor con el documento abierto · desplazar la ventana hasta el cambio · alternar el control de cambios en plena sesión",
+"dept10.e": "p. ej. ejecutar una combinación de correspondencia desde un CSV · censurar un nombre y verificar que desapareció · auditar la accesibilidad de un informe",
+"dept11.e": "p. ej. convertir LaTeX en ecuaciones nativas de Word · citar directamente desde una biblioteca Zotero · anonimizar un manuscrito para revisión por pares",
 "inst.s1": "① CONSIGA LA GRIFERÍA",
 "inst.s2": "② CONECTE LA TUBERÍA (Claude Code)",
 "inst.note": "Windows. Las herramientas basadas en archivo no necesitan Word instalado; las siete herramientas COM (actualización de la tabla de contenido, PDF, revisión…) usan un Microsoft Word local. Configuración completa en el <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>.",
