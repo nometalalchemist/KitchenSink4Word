@@ -173,8 +173,13 @@ pip install kitchensink4word
 claude mcp add word -s user -- kitchensink4word
 ```
 
-For Claude Desktop / Cursor / any MCP client, point the server command at the
-installed `kitchensink4word` (or `word-mcp`) executable:
+Claude Desktop one-click: download `kitchensink4word.mcpb` from the latest
+release, then in Desktop use Settings > Extensions > Advanced settings >
+Install extension and pick the file. Requires [uv](https://docs.astral.sh/uv/)
+on your PATH (`pip install uv`), which the bundle uses to launch the server.
+
+For other MCP clients, point the server command at the installed
+`kitchensink4word` (or `word-mcp`) executable:
 
 ```json
 {"mcpServers": {"word": {"command": "kitchensink4word"}}}

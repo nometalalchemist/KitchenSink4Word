@@ -100,3 +100,12 @@ package metadata).
 
 `mcpb sign` is optional and currently skipped — unsigned bundles install
 with a warning. Revisit if a directory submission requires a signature.
+
+
+## Field notes (validated 2026-08-28 on the Microsoft Store Desktop build)
+- End users need uv on PATH (pip install uv); without it Desktop shows a
+  generic "Server disconnected". First launch after installing uv may need
+  a full Desktop restart (running processes hold a stale environment).
+- The Store build has no .mcpb file association and no drag-drop install;
+  the working path is Settings > Extensions > Advanced settings > Install
+  extension. Dropping the file on the window attaches it to the chat.
