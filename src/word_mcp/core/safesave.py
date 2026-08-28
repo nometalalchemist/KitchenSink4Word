@@ -382,9 +382,8 @@ def write_lock(doc_path: str | os.PathLike):
     lock_path: Path | None = None
     try:
         try:
-            if os.path.exists(doc_path):
-                d = slot_dir(doc_path, create=True)
-                lock_path = d / LOCK_FILE_NAME
+            d = slot_dir(doc_path, create=True)
+            lock_path = d / LOCK_FILE_NAME
         except OSError:
             lock_path = None  # cannot host a lockfile; mutex still serializes
         if lock_path is not None:

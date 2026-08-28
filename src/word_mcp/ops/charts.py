@@ -105,15 +105,28 @@ def _col_letter(idx0: int) -> str:
 
 
 def _num(v, where: str, *, scatter_x: bool = False) -> float:
+    import math
+
     if isinstance(v, bool) or v is None:
         raise WordMcpError(f"non-numeric value {v!r} {where}")
     if isinstance(v, (int, float)):
-        return float(v)
+        f = float(v)
+        if not math.isfinite(f):
+            raise WordMcpError(
+                f"non-finite value {v!r} {where} (NaN/Inf are not valid chart data)"
+            )
+        return f
     if isinstance(v, str):
         try:
-            return float(v.strip())
+            f = float(v.strip())
         except ValueError:
             pass
+        else:
+            if not math.isfinite(f):
+                raise WordMcpError(
+                    f"non-finite value {v!r} {where} (NaN/Inf are not valid chart data)"
+                )
+            return f
     msg = f"non-numeric value {v!r} {where}"
     if scatter_x:
         msg += (

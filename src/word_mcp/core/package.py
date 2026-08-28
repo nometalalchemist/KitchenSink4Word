@@ -24,6 +24,7 @@ from .errors import (
     DocumentLocked,
     DocumentNotFound,
     DocumentProtected,
+    WordMcpError,
 )
 from .sandbox import check_path
 
@@ -192,8 +193,19 @@ class DocxPackage:
             # path, and the old bytes survive the final replace below under
             # the prev slot's directory entry.
             if in_place and do_backup and dest_path.exists():
-                safesave.rotate_slots(dest_path)
+                try:
+                    safesave.rotate_slots(dest_path)
+                except PermissionError as exc:
+                    raise WordMcpError(
+                        f"cannot rotate backup slots for {dest_path.name}: "
+                        f"another process holds a handle on a slot file. "
+                        f"Close any program reading the backups and retry. "
+                        f"({exc})"
+                    ) from exc
             safesave.replace_with_retry(tmp, dest_path)
+        except WordMcpError:
+            tmp.unlink(missing_ok=True)
+            raise
         except Exception:
             tmp.unlink(missing_ok=True)
             raise

@@ -141,6 +141,10 @@ def check_path(path: str | os.PathLike, purpose: str = "access") -> str:
     p = os.fspath(path)
     if isinstance(p, bytes):  # never happens in this codebase; be safe
         p = os.fsdecode(p)
+    if "\x00" in p:
+        raise SandboxViolation(
+            f"refusing to {purpose}: path contains a null byte"
+        )
     roots = _allowed_roots()
     if not roots:
         return p
