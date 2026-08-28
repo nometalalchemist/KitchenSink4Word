@@ -294,3 +294,39 @@ class TestEnforcement:
         pkg.save()  # first save: rotates slots under root/.ks4w-backups
         pkg2 = DocxPackage(f)
         assert pkg2.body() is not None
+
+    # ---- COM path sandboxing (wired 2026-08-28 evening) ----
+
+    def test_com_export_pdf_output_outside_blocked(self, root, tmp_path):
+        """Sandbox refuses a PDF export path outside the allowed roots
+        before any COM call is made."""
+        from word_mcp.com import bridge
+        f = _fresh_doc(root)
+        with pytest.raises(SandboxViolation):
+            bridge.export_pdf(str(f), pdf_path=str(tmp_path / "outside" / "out.pdf"))
+
+    def test_com_compare_output_outside_blocked(self, root, tmp_path):
+        from word_mcp.com import bridge
+        a = _fresh_doc(root, "a.docx")
+        b = _fresh_doc(root, "b.docx")
+        with pytest.raises(SandboxViolation):
+            bridge.compare_documents(
+                str(a), str(b),
+                output_path=str(tmp_path / "outside" / "cmp.docx"),
+            )
+
+    def test_com_save_with_password_output_outside_blocked(self, root, tmp_path):
+        from word_mcp.com import bridge
+        f = _fresh_doc(root)
+        with pytest.raises(SandboxViolation):
+            bridge.save_with_password(
+                str(f), str(tmp_path / "outside" / "enc.docx"), password="pw",
+            )
+
+    def test_com_import_pdf_source_outside_blocked(self, root, tmp_path):
+        from word_mcp.com import convert
+        fake_pdf = tmp_path / "outside" / "evil.pdf"
+        fake_pdf.parent.mkdir(parents=True, exist_ok=True)
+        fake_pdf.write_bytes(b"%PDF-1.4 fake")
+        with pytest.raises(SandboxViolation):
+            convert.import_pdf(str(fake_pdf), output_path=str(root / "out.docx"))

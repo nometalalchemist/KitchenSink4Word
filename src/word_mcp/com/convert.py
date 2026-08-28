@@ -38,6 +38,11 @@ def import_pdf(pdf_path: str, output_path: str | None = None) -> dict:
     A near-zero word count in the result triggers a warning saying exactly
     that.
     """
+    from ..core.sandbox import check_path
+
+    pdf_path = check_path(pdf_path, "PDF import source")
+    if output_path:
+        output_path = check_path(output_path, "PDF import output")
     src = Path(pdf_path)
     if not src.exists():
         raise DocumentNotFound(f"no file at {pdf_path}")

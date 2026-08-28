@@ -13,6 +13,7 @@ import contextlib
 from pathlib import Path
 
 from ..core.errors import DocumentNotFound, WordMcpError
+from ..core.sandbox import check_path
 
 _WD_ALERTS_NONE = 0
 _WD_FORMAT_PDF = 17
@@ -79,6 +80,7 @@ def refresh_fields(path: str) -> dict:
     """Open invisibly, update every field (TOC page numbers, PAGEREF, SEQ),
     update TOC-family tables explicitly, save, close. This is the immediate
     alternative to the update-on-open flag."""
+    path = check_path(path, "refresh fields")
     p = Path(path)
     if not p.exists():
         raise DocumentNotFound(f"no file at {path}")
@@ -111,6 +113,9 @@ def refresh_fields(path: str) -> dict:
 
 def export_pdf(path: str, pdf_path: str | None = None) -> dict:
     """Export to PDF via Word (highest fidelity available on this machine)."""
+    path = check_path(path, "PDF export source")
+    if pdf_path:
+        pdf_path = check_path(pdf_path, "PDF export output")
     p = Path(path)
     if not p.exists():
         raise DocumentNotFound(f"no file at {path}")
@@ -136,6 +141,10 @@ def compare_documents(
     """Word-native compare: produces a NEW document where every difference
     between original and revised appears as a tracked change. Neither input is
     modified. Perfect for diffing two DTG versions of a draft."""
+    original_path = check_path(original_path, "compare original")
+    revised_path = check_path(revised_path, "compare revised")
+    if output_path:
+        output_path = check_path(output_path, "compare output")
     orig = Path(original_path)
     rev = Path(revised_path)
     for p in (orig, rev):
@@ -179,6 +188,7 @@ def compare_documents(
 
 def validate_opens_clean(path: str) -> dict:
     """Open in invisible Word and confirm no repair/recovery path triggers."""
+    path = check_path(path, "validate opens clean")
     p = Path(path)
     if not p.exists():
         raise DocumentNotFound(f"no file at {path}")
@@ -210,6 +220,8 @@ def merge_documents(
     section break between them so per-chapter headers/numbering stay possible."""
     if len(paths) < 2:
         raise WordMcpError("give at least two documents to merge")
+    paths = [check_path(p, "merge input") for p in paths]
+    output_path = check_path(output_path, "merge output")
     srcs = [Path(p) for p in paths]
     for p in srcs:
         if not p.exists():
@@ -296,6 +308,10 @@ def combine_documents(
     merging two reviewers' edits of the same draft; both authors' revisions
     survive as separate attributions). Distinct from compare, which diffs
     content."""
+    original_path = check_path(original_path, "combine original")
+    revised_path = check_path(revised_path, "combine revised")
+    if output_path:
+        output_path = check_path(output_path, "combine output")
     orig = Path(original_path)
     rev = Path(revised_path)
     for p in (orig, rev):
@@ -341,6 +357,7 @@ def _find_open_document(path: str):
     import win32com.client
 
     pythoncom.CoInitialize()
+    path = check_path(path, "find open document")
     target = str(Path(path).resolve()).lower()
     word_seen = False
     try:
@@ -403,6 +420,7 @@ def close_open_document(path: str, *, save: bool = True) -> dict:
 def proofing_errors(path: str, *, limit: int = 100) -> dict:
     """Word's own spelling and grammar error lists (with context). Slower on
     long documents; capped by limit per category."""
+    path = check_path(path, "proofing errors")
     p = Path(path)
     if not p.exists():
         raise DocumentNotFound(f"no file at {path}")
@@ -441,6 +459,7 @@ def proofing_errors(path: str, *, limit: int = 100) -> dict:
 def readability_statistics(path: str) -> dict:
     """Word's readability statistics (Flesch Reading Ease, grade level, word
     and sentence counts...)."""
+    path = check_path(path, "readability statistics")
     p = Path(path)
     if not p.exists():
         raise DocumentNotFound(f"no file at {path}")
@@ -460,6 +479,9 @@ def save_with_password(
 ) -> dict:
     """Save a copy encrypted with an open-password (real encryption, unlike
     document protection). Word will demand the password to open the copy."""
+    path = check_path(path, "encrypt source")
+    if output_path:
+        output_path = check_path(output_path, "encrypt output")
     p = Path(path)
     if not p.exists():
         raise DocumentNotFound(f"no file at {path}")
