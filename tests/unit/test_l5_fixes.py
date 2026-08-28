@@ -115,8 +115,7 @@ def test_f1_inactive_document_reports_ungrouped(live_doc, tmp_path):
         r = srv.search_and_replace(
             live_doc, [{"find": "qbert", "replace": "QBERT"}], live="force"
         )
-        assert r["replacements" if "replacements" in r else
-                 "total_replacements"] == 8
+        assert r["total"] == 8  # L7 parity: file-mode key
         assert r["undo_grouped"] is False
         assert "undo_note" in r
         srv.search_and_replace(
@@ -152,13 +151,13 @@ def test_f1_active_document_still_groups(live_doc):
 @live_mark
 @needs_word
 def test_f2_zero_length_regex_refused_live(live_doc):
-    before = [p["text"] for p in srv.get_text(live_doc)["paragraphs"]]
+    before = [p["text"] for p in srv.get_text(live_doc)]
     with pytest.raises(WordMcpError, match="empty string"):
         srv.search_and_replace(
             live_doc, [{"find": "z*", "replace": "Q", "regex": True}],
             live="force",
         )
-    after = [p["text"] for p in srv.get_text(live_doc)["paragraphs"]]
+    after = [p["text"] for p in srv.get_text(live_doc)]
     assert before == after  # nothing was shredded
 
 
@@ -171,9 +170,8 @@ def test_f4_enforced_tracking_uses_deletion_counter(live_doc):
             live_doc, [{"find": "paragraph 3", "replace": "PARAGRAPH 3"}],
             track=True, author="L5",
         )
-        item = r["items"][0]
         # no fields exist in this doc: the field counter must stay silent
-        assert "skipped_inside_fields" not in item
+        assert "skipped_inside_fields" not in r
     finally:
         def cleanup(s):
             s.doc.Revisions.RejectAll()
@@ -202,7 +200,35 @@ def test_f9_live_format_text_extended_keys(live_doc):
 
     read = live.run_live(live_doc, "verify", check)
     assert read["sc"] is True and read["sp"] == 1.5
-    with pytest.raises(UnsupportedStructure, match="file-based"):
+    # WS-L: language keys now WORK live via the LCID map. Latin-script tags
+    # go to Range.LanguageID; East-Asian tags (ko/ja/zh) go to
+    # LanguageIDFarEast (Word silently ignores them in the latin slot).
+    r2 = srv.format_text(
+        live_doc, {"language": "fr-FR", "east_asian_language": "ja-JP"},
+        paragraph_index=1, live="force",
+    )
+    assert r2["live"] is True
+
+    def check_lang(s):
+        from word_mcp.com import live_ops
+
+        p = live_ops._body_paragraphs(s.doc)[1]
+        rng = s.doc.Range(p.Range.Start, p.Range.End - 1)
+        return {
+            "latin": int(rng.LanguageID),
+            "far_east": int(rng.LanguageIDFarEast),
+        }
+
+    langs = live.run_live(live_doc, "verify lang", check_lang)
+    assert langs["latin"] == 1036      # fr-FR
+    assert langs["far_east"] == 1041   # ja-JP
+    with pytest.raises(WordMcpError, match="no live LCID"):
+        srv.format_text(
+            live_doc, {"language": "xx-XX"}, paragraph_index=1, live="force"
+        )
+    # ko-KR in the latin slot would be silently ignored by Word — the tool
+    # must refuse with routing guidance rather than fake success
+    with pytest.raises(WordMcpError, match="east_asian_language"):
         srv.format_text(
             live_doc, {"language": "ko-KR"}, paragraph_index=1, live="force"
         )

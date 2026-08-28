@@ -2,11 +2,16 @@
 
 Contract for every mutating tool:
 - `file_path` is the target .docx (absolute path).
-- A timestamped .bak copy is written next to the file before the first
-  mutation unless backup=False.
+- Before each mutation the current content is rotated into stable backup
+  slots (prev.docx / anchor.docx) inside a hidden .ks4w-backups/ folder next
+  to the file, unless backup=False (see core.safesave; manage_backups
+  lists/restores/purges them).
+- Mutations of one file are serialized (in-process mutex + cross-process
+  advisory lockfile), so parallel calls see each other's results.
 - Saves are atomic and validated; on any failure the original is untouched
   and the error message says exactly what was wrong.
-- A file open in Word is refused with a clear message (COM tools still work).
+- A file open in Word is edited live by dual-mode tools (live='auto');
+  tools with no live route refuse with a clear message until it is closed.
 """
 
 from __future__ import annotations
@@ -48,7 +53,12 @@ from .ops import (
     redaction as _rx,
     reffields as _rf,
     anonymize as _an,
+    assembly as _asm,
+    backups as _bk,
+    charts as _charts,
+    citesystem as _cs,
     dataio as _dio,
+    workflows as _wf,
     equations as _eq,
     journalcount as _jc,
     preview as _pv,
@@ -64,17 +74,25 @@ mcp = FastMCP(
     instructions=(
         "Full-featured Word (.docx) editor: text, tables (including column "
         "insert/delete and bulk cell edits), footnotes/endnotes, TOC, "
-        "headers/footers, images, comments, tracked changes. File-based; "
-        "documents open in Word are refused (use the com_* tools for those "
-        "cases). Every mutation auto-backs up the file first."
+        "headers/footers, images, charts, citations, comments, tracked "
+        "changes, document assembly. File-based with auto-backup before "
+        "every mutation; dual-mode tools edit documents open in Word live "
+        "(live='auto'), tools without a live route refuse until the file "
+        "is closed."
     ),
 )
 
 
 def _edit(file_path: str, fn, *, backup: bool = True) -> dict:
-    pkg = DocxPackage(file_path)
-    result = fn(pkg)
-    saved = pkg.save(do_backup=backup)
+    from .core.safesave import write_lock
+
+    # Serialize the full read-modify-validate-save cycle per file: concurrent
+    # mutations of one document otherwise race (stale response metadata, lost
+    # updates). Covers threads in this process AND other server processes.
+    with write_lock(file_path):
+        pkg = DocxPackage(file_path)
+        result = fn(pkg)
+        saved = pkg.save(do_backup=backup)
     result["saved"] = str(saved)
     return result
 
@@ -101,8 +119,12 @@ def _route_live(live: str, file_call, live_call) -> dict:
 
 @mcp.tool
 def get_document_info(file_path: str, live: str = "auto") -> dict:
-    """Overview: paragraph/table/footnote/comment/revision counts, sections, parts.
-    Documents open in Word are read live."""
+    """Read a one-call document overview:
+    paragraph/table/footnote/comment/revision counts, sections, and package
+    parts. Documents open in Word are read live (same key names; live adds
+    'words' from Word's own ComputeStatistics counter plus track_revisions,
+    and omits the part list). Read-only.
+    """
     from .com import live_ops as _lo
 
     return _route_live(
@@ -114,8 +136,12 @@ def get_document_info(file_path: str, live: str = "auto") -> dict:
 
 @mcp.tool
 def get_outline(file_path: str, live: str = "auto") -> list | dict:
-    """Headings with paragraph indices and levels. Documents open in Word
-    are read live."""
+    """List every heading with its body paragraph index and level. Detects
+    both heading systems: built-in Heading styles AND w:outlineLvl
+    overrides (direct or style-inherited, the academic-template pattern on
+    Normal-styled paragraphs); detected_via on each entry names which.
+    Documents open in Word are read live (same flat-list shape). Read-only.
+    """
     from .com import live_ops as _lo
 
     return _route_live(
@@ -131,19 +157,38 @@ def get_text(
     start: int = 0,
     end: int | None = None,
     contains: str | None = None,
+    include_textboxes: bool = False,
     live: str = "auto",
 ) -> list | dict:
-    """Body paragraphs with indices, styles, heading levels. Slice with
-    start/end; filter with contains. If the document is open in Word the
-    CURRENT in-memory state is read live (live='off' restores v1 refusal)."""
+    """Read body paragraphs as [{index, text, style, ...}]; every paragraph
+    reports its effective style, including the default (usually Normal).
+    start/end slice by paragraph index (0-based, end EXCLUSIVE); contains
+    filters to matching paragraphs. include_textboxes=True appends text-box
+    content as labeled extra entries (source 'textbox', box_index
+    addressing set_textbox_text) without touching body indices; file-mode
+    only. Documents open in Word are read live with the same shape (live
+    styles are Word's localized display names; file styles are style ids).
+    Equations are invisible here (list_equations reads those).
+    """
     from .com import live_ops as _lo
+
+    def _live_call():
+        if include_textboxes:
+            from .core.errors import WordMcpError
+
+            raise WordMcpError(
+                "include_textboxes is file-mode only; close the document in "
+                "Word, use get_textbox_text, or pass include_textboxes=False"
+            )
+        return _lo.get_text(file_path, start, end, contains)
 
     return _route_live(
         live,
         lambda: _rd.get_paragraphs(
-            DocxPackage(file_path), start, end, contains=contains
+            DocxPackage(file_path), start, end, contains=contains,
+            include_textboxes=include_textboxes,
         ),
-        lambda: _lo.get_text(file_path, start, end, contains),
+        _live_call,
     )
 
 
@@ -153,45 +198,90 @@ def find_text(
     query: str,
     regex: bool = False,
     context_chars: int = 60,
+    include_textboxes: bool = False,
     live: str = "auto",
 ) -> list | dict:
     """Find text in paragraphs and table cells; returns locations + context.
-    Documents open in Word are searched live (current in-memory state)."""
+    include_textboxes=True also searches text-box/shape content, returned as
+    clearly-labeled extra matches (source 'textbox' with box_index) without
+    affecting body match entries or paragraph indices; file-mode only.
+    Documents open in Word are searched live (current in-memory state, same
+    flat-list shape; live additionally reports matches inside content
+    controls as labeled in_sdt entries, and caps at 500 matches with a
+    trailing truncated sentinel entry)."""
     from .com import live_ops as _lo
+
+    def _live_call():
+        if include_textboxes:
+            from .core.errors import WordMcpError
+
+            raise WordMcpError(
+                "include_textboxes is file-mode only; close the document in "
+                "Word, use get_textbox_text, or pass include_textboxes=False"
+            )
+        return _lo.find_text(file_path, query, regex, context_chars)
 
     return _route_live(
         live,
         lambda: _rd.find_text(
             DocxPackage(file_path), query, regex=regex,
-            context_chars=context_chars,
+            context_chars=context_chars, include_textboxes=include_textboxes,
         ),
-        lambda: _lo.find_text(file_path, query, regex, context_chars),
+        _live_call,
     )
 
 
 @mcp.tool
 def get_styles(file_path: str) -> list:
-    """Styles defined in the document (id, name, type, based_on)."""
+    """List the styles defined in the document: id, name, type, based_on, plus
+    each style's EXPLICITLY defined paragraph_formatting and
+    character_formatting in the exact shape define_style accepts (template
+    cloning is one read + one define). Inherited values are not
+    synthesized; follow the based_on chain. Exact/atLeast line spacing and
+    theme font/color references have no define_style representation and are
+    omitted. Read-only.
+    """
     return _rd.list_styles(DocxPackage(file_path))
 
 
 @mcp.tool
-def word_count(file_path: str, by_section: bool = True) -> dict:
-    """Word/character/paragraph counts, total and per heading section."""
-    return _st.word_count(DocxPackage(file_path), by_section=by_section)
+def word_count(file_path: str, by_section: bool = True, live: str = "auto") -> dict:
+    """Count words/characters/paragraphs, total and per heading section.
+    Documents open in Word are counted live via Word's own statistics
+    engine (ComputeStatistics, the status-bar number); file mode counts
+    whitespace tokens, so the two can differ by a few words on identical
+    content. Live per-section counts are best-effort mirrors of the
+    file-mode logic. For journal counts that exclude references, captions,
+    or other zones, use word_count_with_exclusions. Read-only.
+    """
+    from .com import live_ops as _lo
+
+    return _route_live(
+        live,
+        lambda: _st.word_count(DocxPackage(file_path), by_section=by_section),
+        lambda: _lo.word_count(file_path, by_section=by_section),
+    )
 
 
 @mcp.tool
 def check_citation_parity(file_path: str) -> dict:
-    """Cross-check APA in-text citations against the reference list, both
+    """Cross-check APA in-text citations against the reference list in both
     directions: cited-but-not-listed (serious) and listed-but-never-cited
-    (review). Heuristic flagging tool — results are review candidates."""
+    (review). Heuristic flagging: results are review candidates, not
+    verdicts. Read-only.
+    """
     return _cc.check_citation_parity(DocxPackage(file_path))
 
 
 @mcp.tool
 def validate_document(file_path: str) -> dict:
-    """Structural integrity: package opens, notes consistent, fields balanced."""
+    """Run a quick structural check: the package opens, footnotes/endnotes are
+    consistent, and field begin/end markers balance. Returns {package_ok,
+    notes, fields_balanced, field_begins, field_ends}. For the deep
+    multi-check health report (relationships, orphan parts, undefined
+    styles, bookmarks, images), use diagnose_document; for Word's own
+    verdict use com_validate_opens_clean. Read-only.
+    """
     pkg = DocxPackage(file_path)
     notes_report = _nt.validate_notes(pkg)
     xml = pkg.raw_part("word/document.xml").decode("utf-8", errors="replace")
@@ -208,12 +298,16 @@ def validate_document(file_path: str) -> dict:
 
 @mcp.tool
 def create_document(file_path: str, title: str | None = None) -> dict:
-    """Create a new blank .docx (refuses to overwrite an existing file)."""
+    """Create a new blank .docx, optionally setting the title property.
+    Refuses to overwrite an existing file. Returns {created: path}.
+    """
     from pathlib import Path
 
     from docx import Document
 
-    p = Path(file_path)
+    from .core.sandbox import check_path
+
+    p = Path(check_path(file_path, "create document"))
     if p.exists():
         raise FileExistsError(f"{file_path} already exists")
     doc = Document()
@@ -225,15 +319,84 @@ def create_document(file_path: str, title: str | None = None) -> dict:
 
 
 @mcp.tool
-def copy_document(file_path: str, dest_path: str) -> dict:
-    """Copy a document (e.g. to a new DTG-stamped filename before editing)."""
+def copy_document(
+    file_path: str, dest_path: str, overwrite: bool = False
+) -> dict:
+    """Copy a document byte-for-byte, e.g. to a new DTG-stamped filename
+    before editing (create_snapshot names such a copy for you; this tool
+    takes an explicit dest_path). Refuses an existing dest_path unless
+    overwrite=True; an overwritten destination's previous content rotates
+    into its .ks4w-backups prev slot first, so the overwrite is undoable
+    via manage_backups restore.
+    """
     import shutil
     from pathlib import Path
 
-    if Path(dest_path).exists():
-        raise FileExistsError(f"{dest_path} already exists")
-    shutil.copy2(file_path, dest_path)
-    return {"copied_to": dest_path}
+    from .core import safesave
+    from .core.sandbox import check_path
+
+    file_path = check_path(file_path, "copy source (read)")
+    dest_path = check_path(dest_path, "copy destination")
+    dest = Path(dest_path)
+    overwrote = False
+    if dest.exists():
+        if not overwrite:
+            raise FileExistsError(
+                f"{dest_path} already exists (pass overwrite=True to "
+                "replace it; its current content will be kept in the "
+                ".ks4w-backups prev slot)"
+            )
+        with safesave.write_lock(dest_path):
+            safesave.rotate_slots(dest_path)
+            # prev.docx may be a hardlink to dest: never write into dest
+            # in place (it would write through the link and corrupt the
+            # backup); copy aside, then atomically replace.
+            tmp_copy = dest.with_name(dest.name + ".ks4w-copy-tmp")
+            shutil.copy2(file_path, tmp_copy)
+            safesave.replace_with_retry(tmp_copy, dest_path)
+        overwrote = True
+    else:
+        shutil.copy2(file_path, dest_path)
+    return {"copied_to": dest_path, "overwrote_existing": overwrote}
+
+
+@mcp.tool
+def manage_backups(
+    action: str,
+    file_path: str | None = None,
+    directory: str | None = None,
+    source: str | None = None,
+    scope: str | None = None,
+    dry_run: bool = True,
+) -> dict:
+    """Manage the automatic backups under the hidden .ks4w-backups/ folder
+    next to each mutated document: two stable slots per document, prev
+    (state before the most recent mutation) and anchor (session start).
+    Snapshots from create_snapshot are permanent keepers this tool never
+    touches.
+
+    action='list': slot files with sizes and mtimes, legacy *.bak-* files
+    from the pre-v1.6 scheme, and orphaned slot folders whose source
+    document is gone; give file_path for one document or directory for a
+    folder.
+
+    action='restore': overwrite file_path with a backup; source is 'prev',
+    'anchor', or a legacy *.bak-* path. The current content rotates into
+    prev FIRST, so a restore is itself undoable. Refuses documents open in
+    Word; the payload is validated before the atomic replace.
+
+    action='purge': delete backups; scope: 'legacy', 'orphans', or 'slots'.
+    dry_run defaults to TRUE (report only); dry_run=False deletes. Exact
+    paths and sizes are reported either way.
+    """
+    return _bk.manage_backups(
+        action,
+        file_path=file_path,
+        directory=directory,
+        source=source,
+        scope=scope,
+        dry_run=dry_run,
+    )
 
 
 # ----------------------------------------------------------------------- text
@@ -251,12 +414,19 @@ def search_and_replace(
     live: str = "auto",
 ) -> dict:
     """Batch find/replace, safe across Word's fragmented runs. Each item:
-    {find, replace, regex?}. scope: body | footnotes | headers | all.
-    max_replacements: abort (changing nothing) if the total match count would
-    exceed it — set this when using broad regex patterns. track: record each
-    replacement as a tracked change attributed to `author`. Documents open in
-    Word are edited LIVE (visible immediately, one Ctrl+Z step, nothing saved
-    to disk until the user saves); live='off' restores the v1 refusal."""
+    {find, replace, regex?}; scope: body | footnotes | headers | all.
+    max_replacements aborts, changing nothing, when total matches would
+    exceed it: set it for broad regexes (preview_replace dry-runs this tool
+    and yields the count). track records each replacement as a tracked
+    change by `author`. Siblings: replace_formatted replaces only text with
+    specific formatting; replace_paragraph_text rewrites one whole
+    paragraph by index. Live edits appear immediately as one Ctrl+Z step,
+    unsaved until the user saves; the live result adds "live": true and
+    skip counters, and literal finds beyond Word's ~255-char limit are
+    handled automatically. Auto-backup in file mode: prev/anchor slots in
+    .ks4w-backups (backup=False skips rotation only); atomic validated
+    save. Documents open in Word are edited live.
+    """
     from .com import live_ops as _lo
 
     return _route_live(
@@ -296,16 +466,49 @@ def insert_paragraphs(
     before_index: int | None = None,
     after_anchor: str | None = None,
     at_end: bool = False,
+    inherit_format: bool = False,
+    copy_format_from: int | None = None,
     track: bool = False,
     author: str = "Claude",
     backup: bool = True,
     live: str = "auto",
 ) -> dict:
-    """Insert paragraphs ({text, style?, formatting?}) at one position:
-    after_index | before_index | after_anchor (unique text) | at_end.
-    track: record as tracked insertions by `author`. Documents open in Word
-    are edited live."""
+    """Insert paragraphs ({text, style?, formatting?}) at ONE position:
+    after_index | before_index | after_anchor | at_end. Anchors match a
+    paragraph's PLAIN text (write '&', never the XML entity '&amp;') and
+    must be unique; heading text recurs in body prose, so prefer index
+    addressing for structural work. On a fresh document, index 0 addresses
+    the implicit empty paragraph. inherit_format=True clones the anchor
+    paragraph's direct formatting onto the inserted paragraphs (a reference
+    entry matches its neighbors' hanging indent and font in one call); with
+    before_index/at_end use copy_format_from=<body paragraph index> instead
+    (mutually exclusive). Explicit per-item style/formatting wins; track
+    records tracked insertions by `author`. Format cloning is file-mode
+    only. Auto-backup in file mode: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Documents
+    open in Word are edited live.
+    """
     from .com import live_ops as _lo
+
+    def _live() -> dict:
+        if inherit_format or copy_format_from is not None:
+            from .core.errors import WordMcpError
+
+            raise WordMcpError(
+                "inherit_format/copy_format_from are file-mode features and "
+                "this document is open in Word: close it in Word and retry, "
+                "or insert without format cloning"
+            )
+        return _lo.insert_paragraphs(
+            file_path,
+            paragraphs,
+            after_index=after_index,
+            before_index=before_index,
+            after_anchor=after_anchor,
+            at_end=at_end,
+            track=track,
+            author=author,
+        )
 
     return _route_live(
         live,
@@ -318,21 +521,14 @@ def insert_paragraphs(
                 before_index=before_index,
                 after_anchor=after_anchor,
                 at_end=at_end,
+                inherit_format=inherit_format,
+                copy_format_from=copy_format_from,
                 track=track,
                 author=author,
             ),
             backup=backup,
         ),
-        lambda: _lo.insert_paragraphs(
-            file_path,
-            paragraphs,
-            after_index=after_index,
-            before_index=before_index,
-            after_anchor=after_anchor,
-            at_end=at_end,
-            track=track,
-            author=author,
-        ),
+        _live,
     )
 
 
@@ -346,9 +542,14 @@ def delete_paragraphs(
     backup: bool = True,
     live: str = "auto",
 ) -> dict:
-    """Delete body paragraphs [start..end] inclusive. Refuses ranges that cut
-    through a field or carry a section break. track: mark as tracked deletions
-    by `author` instead of removing. Documents open in Word are edited live."""
+    """Delete body paragraphs start..end (0-based, INCLUSIVE; end defaults to
+    start). Refuses ranges that cut through a field or carry a section
+    break. Deleting every paragraph leaves one empty paragraph behind (a
+    document always keeps one). track marks tracked deletions by `author`
+    instead of removing (result key deleted_tracked). Auto-backup in file
+    mode: prev/anchor slots in .ks4w-backups (backup=False skips rotation
+    only); atomic validated save. Documents open in Word are edited live.
+    """
     from .com import live_ops as _lo
 
     return _route_live(
@@ -368,13 +569,37 @@ def delete_paragraphs(
 
 @mcp.tool
 def replace_paragraph_text(
-    file_path: str, index: int, new_text: str, backup: bool = True
+    file_path: str, index: int, new_text: str, expect: str | None = None,
+    backup: bool = True, live: str = "auto",
 ) -> dict:
-    """Replace one paragraph's full text, keeping style and base formatting."""
-    return _edit(
-        file_path,
-        lambda pkg: _tx.replace_paragraph_text(pkg, index, new_text),
-        backup=backup,
+    """Replace one paragraph's full text, keeping style and base formatting.
+    IMPORTANT: paragraph indices SHIFT after insert/delete operations -
+    pass expect (a substring the target paragraph currently contains) to
+    refuse instead of silently hitting the wrong paragraph, and verify the
+    returned replaced_text (the old text) matches what you meant to
+    replace. For text-anchored replacement immune to index shifts, use
+    search_and_replace; this tool is the natural fallback when a find
+    string would exceed live search_and_replace's length limit (no limit
+    here). Auto-backup in file mode: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Documents
+    open in Word are edited live. Live edits leave the paragraph mark
+    untouched (style and section breaks survive); paragraphs carrying
+    tracked revisions are refused live - accept/reject first.
+    """
+    from .com import live_ops as _lo
+
+    return _route_live(
+        live,
+        lambda: _edit(
+            file_path,
+            lambda pkg: _tx.replace_paragraph_text(
+                pkg, index, new_text, expect=expect
+            ),
+            backup=backup,
+        ),
+        lambda: _lo.replace_paragraph_text(
+            file_path, index, new_text, expect=expect
+        ),
     )
 
 
@@ -388,8 +613,15 @@ def add_heading(
     at_end: bool = False,
     backup: bool = True,
 ) -> dict:
-    """Insert a heading (level 1-9). Heading styles are auto-created if the
-    document lacks them."""
+    """Insert a NEW heading paragraph (level 1-9; Heading styles auto-created
+    if missing) positioned by after_index, after_anchor, or at_end. Anchors
+    match plain paragraph text, and heading text recurs in body prose, so
+    prefer after_index for structural work. To restyle an EXISTING
+    paragraph use apply_style; to shift existing heading levels use
+    change_heading_level. Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tx.add_heading(
@@ -406,7 +638,10 @@ def add_heading(
 
 @mcp.tool
 def add_page_break(file_path: str, after_index: int, backup: bool = True) -> dict:
-    """Insert a page break after a body paragraph."""
+    """Insert a page break after body paragraph after_index (0-based).
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path, lambda pkg: _tx.add_page_break(pkg, after_index=after_index),
         backup=backup,
@@ -423,10 +658,18 @@ def format_text(
     backup: bool = True,
     live: str = "auto",
 ) -> dict:
-    """Character formatting on a text range. formatting keys: bold, italic,
-    underline, strike, font, size_pt, color, highlight, superscript, subscript.
-    Target: paragraph_index + find (substring), find alone, or whole paragraph.
-    Documents open in Word are edited live."""
+    """Apply character formatting to a text range. formatting keys: bold,
+    italic, underline, strike, font, size_pt, color, highlight,
+    superscript, subscript, small_caps, all_caps, hidden, double_strike,
+    char_spacing_pt, kerning_pt, position_pt, language, east_asian_language
+    (BCP-47; ko/ja/zh go in east_asian_language, Word's East-Asian proofing
+    slot; live maps tags to LCIDs, unmapped tags are file-mode only).
+    Target: paragraph_index + find (substring), find alone (occurrence
+    picks the match), or the whole paragraph. For a named character style
+    use apply_character_style. Auto-backup in file mode: prev/anchor slots
+    in .ks4w-backups (backup=False skips rotation only); atomic validated
+    save. Documents open in Word are edited live.
+    """
     from .com import live_ops as _lo
 
     return _route_live(
@@ -456,9 +699,17 @@ def format_text(
 def set_paragraph_format(
     file_path: str, indices: list[int], formatting: dict, backup: bool = True
 ) -> dict:
-    """Paragraph formatting for a batch of paragraphs. Keys: alignment,
-    space_before_pt, space_after_pt, line_spacing, indent_left_pt,
-    indent_right_pt, first_line_indent_pt, keep_with_next."""
+    """Set paragraph formatting on a batch of paragraphs (0-based indices).
+    Keys: alignment, space_before_pt, space_after_pt, line_spacing,
+    indent_left_pt, indent_right_pt, first_line_indent_pt, keep_with_next,
+    outline_level. outline_level (0-8, 0 = top; null removes the override)
+    sets w:outlineLvl without touching style or visual formatting: the way
+    to give template headings (Normal-styled, direct-formatted) a place in
+    Word's navigation pane and TOC harvesting, where apply_style would
+    change their look. get_paragraph_format is the matching reader.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tx.set_paragraph_format(pkg, indices, formatting),
@@ -470,8 +721,14 @@ def set_paragraph_format(
 def apply_style(
     file_path: str, indices: list[int], style: str, backup: bool = True
 ) -> dict:
-    """Apply a paragraph style (by id or name) to a batch of paragraphs.
-    Heading1-9 are auto-created when missing."""
+    """Apply a paragraph style (by id or name) to a batch of paragraphs,
+    changing their full look; Heading1-9 are auto-created when missing. To
+    give a paragraph an outline level WITHOUT changing its appearance use
+    set_paragraph_format's outline_level; to promote/demote existing
+    built-in headings use change_heading_level. Auto-backup: prev/anchor
+    slots in .ks4w-backups (backup=False skips rotation only); atomic
+    validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path, lambda pkg: _tx.apply_style(pkg, indices, style), backup=backup
     )
@@ -489,8 +746,11 @@ def add_list(
 ) -> dict:
     """Insert a bulleted or numbered list with real bullet/number glyphs
     (numbering.xml infrastructure created as needed). items: strings or
-    {text, level} dicts (level 0-8 nests). kind: bullet | number. Each call
-    is an independent list, so numbering restarts at 1."""
+    {text, level} dicts (level 0-8 nests); kind: bullet | number. Each call
+    is an independent list, so numbering restarts at 1. Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _ls.add_list(
@@ -519,8 +779,12 @@ def change_case(
     find: str | None = None,
     backup: bool = True,
 ) -> dict:
-    """Change text case: upper | lower | title | sentence. Target: paragraph
-    indices, or every occurrence of `find` (case-insensitive)."""
+    """Change text case: transform is upper | lower | title | sentence.
+    Target: paragraph indices, or every occurrence of `find`
+    (case-insensitive). Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tx.change_case(pkg, transform, indices=indices, find=find),
@@ -533,13 +797,18 @@ def change_case(
 
 @mcp.tool
 def list_tables(file_path: str) -> list:
-    """Tables with dimensions, merge flags, and header previews."""
+    """List tables with dimensions, merge flags, and header previews; the
+    position is the 0-based table_index the other table tools take.
+    Read-only.
+    """
     return _rd.list_tables(DocxPackage(file_path))
 
 
 @mcp.tool
 def get_table(file_path: str, table_index: int) -> dict:
-    """Full table content + structure: cell texts, gridSpan/vMerge map, widths."""
+    """Read one table in full: cell texts, gridSpan/vMerge merge map, and
+    widths (table_index from list_tables). Read-only.
+    """
     return _rd.get_table(DocxPackage(file_path), table_index)
 
 
@@ -554,7 +823,11 @@ def create_table(
     width_pt: float | None = None,
     backup: bool = True,
 ) -> dict:
-    """Create a table from 2D data with single-line borders."""
+    """Create a table from 2D string data with single-line borders. To build a
+    table from a CSV/JSON file, use import_table. Auto-backup: prev/anchor
+    slots in .ks4w-backups (backup=False skips rotation only); atomic
+    validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tb.create_table(
@@ -572,7 +845,10 @@ def create_table(
 
 @mcp.tool
 def delete_table(file_path: str, table_index: int, backup: bool = True) -> dict:
-    """Delete a whole table."""
+    """Delete a whole table (table_index from list_tables). Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path, lambda pkg: _tb.delete_table(pkg, table_index), backup=backup
     )
@@ -587,8 +863,11 @@ def insert_rows(
     copy_format_from: int | None = None,
     backup: bool = True,
 ) -> dict:
-    """Insert rows before row `at` (at=row count appends), copying structure
-    and formatting from an existing row."""
+    """Insert rows before row `at` (at = row count appends), copying structure
+    and formatting from an existing row (copy_format_from). Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tb.insert_rows(
@@ -606,7 +885,11 @@ def delete_rows(
     end: int | None = None,
     backup: bool = True,
 ) -> dict:
-    """Delete rows [start..end]. Vertical merges are re-rooted, not broken."""
+    """Delete rows start..end (inclusive). Vertical merges are re-rooted, not
+    broken. Auto-backup: prev/anchor slots in .ks4w-backups (backup=False
+    skips rotation only); atomic validated save. Refuses documents open in
+    Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tb.delete_rows(pkg, table_index, start, end),
@@ -623,8 +906,11 @@ def insert_columns(
     width_pt: float | None = None,
     backup: bool = True,
 ) -> dict:
-    """Insert grid columns before position `at` (at=column count appends).
-    Merge-aware: inserting inside a merged cell widens it."""
+    """Insert grid columns before position `at` (at = column count appends).
+    Merge-aware: inserting inside a merged cell widens it. Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tb.insert_columns(
@@ -639,7 +925,10 @@ def delete_columns(
     file_path: str, table_index: int, columns: list[int], backup: bool = True
 ) -> dict:
     """Delete grid columns (0-based list). Merge-aware: merged cells shrink,
-    single cells are removed, the grid stays consistent."""
+    single cells are removed, the grid stays consistent. Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tb.delete_columns(pkg, table_index, columns),
@@ -657,9 +946,15 @@ def set_cells(
     backup: bool = True,
     live: str = "auto",
 ) -> dict:
-    """Bulk cell writes in ONE call: [{row, cell, text}, ...]. Use for any
-    multi-cell edit instead of per-cell calls. track: record as tracked
-    changes by `author`. Documents open in Word are edited live."""
+    """Write many table cells in ONE call: edits = [{row, cell, text}]. Use
+    this for any multi-cell edit instead of per-cell calls; set_cells_block
+    writes a contiguous 2D block instead. track records tracked changes by
+    `author`; the result reports cells_written. Live mode refuses
+    vertically merged tables (the file-based path is merge-aware).
+    Auto-backup in file mode: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Documents
+    open in Word are edited live.
+    """
     from .com import live_ops as _lo
 
     return _route_live(
@@ -686,7 +981,11 @@ def set_cells_block(
     data: list[list[str]],
     backup: bool = True,
 ) -> dict:
-    """Write a 2D block of values starting at (origin_row, origin_cell)."""
+    """Write a 2D block of values starting at (origin_row, origin_cell); for
+    scattered single-cell edits use set_cells. Auto-backup: prev/anchor
+    slots in .ks4w-backups (backup=False skips rotation only); atomic
+    validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tb.set_cells_grid(
@@ -704,8 +1003,12 @@ def format_cells(
     formatting: dict,
     backup: bool = True,
 ) -> dict:
-    """Bulk cell formatting. targets: [{row, cell?}] ({row} alone = whole row).
-    formatting: shading, bold, italic, alignment, valign, padding_pt."""
+    """Format table cells in bulk. targets: [{row, cell?}] ({row} alone =
+    whole row); formatting: shading, bold, italic, alignment, valign,
+    padding_pt. Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tb.format_cells(pkg, table_index, targets, formatting),
@@ -723,7 +1026,10 @@ def merge_cells(
     end_col: int,
     backup: bool = True,
 ) -> dict:
-    """Merge a rectangle of cells (grid coordinates, inclusive)."""
+    """Merge a rectangle of cells (grid coordinates, inclusive). Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tb.merge_cells(
@@ -742,7 +1048,10 @@ def merge_cells(
 def unmerge_cells(
     file_path: str, table_index: int, row: int, cell: int, backup: bool = True
 ) -> dict:
-    """Split a merged cell back into single cells (horizontal and vertical)."""
+    """Split a merged cell back into single cells (horizontal and vertical).
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tb.unmerge_cells(pkg, table_index, row=row, cell=cell),
@@ -754,7 +1063,10 @@ def unmerge_cells(
 def set_column_widths(
     file_path: str, table_index: int, widths_pt: list[float], backup: bool = True
 ) -> dict:
-    """Set every grid column width in points."""
+    """Set every grid column width in points (one value per grid column).
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tb.set_column_widths(pkg, table_index, widths_pt),
@@ -772,7 +1084,11 @@ def apply_table_style(
     backup: bool = True,
 ) -> dict:
     """Apply a named table style: TableGrid (bordered) | PlainTable |
-    BandedTable (alternating shading). Definitions injected when missing."""
+    BandedTable (alternating shading); definitions are injected when
+    missing. Auto-backup: prev/anchor slots in .ks4w-backups (backup=False
+    skips rotation only); atomic validated save. Refuses documents open in
+    Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tb.apply_table_style(
@@ -793,8 +1109,11 @@ def sort_table(
     has_header: bool = True,
     backup: bool = True,
 ) -> dict:
-    """Sort data rows by a column (CELL index). Refused when vertical merges
-    make rows interdependent."""
+    """Sort data rows by a column (CELL index, 0-based). Refused when vertical
+    merges make rows interdependent. Auto-backup: prev/anchor slots in
+    .ks4w-backups (backup=False skips rotation only); atomic validated
+    save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tb.sort_table(
@@ -809,7 +1128,10 @@ def sort_table(
 def split_table(
     file_path: str, table_index: int, at_row: int, backup: bool = True
 ) -> dict:
-    """Split a table into two at a row (that row starts the new table)."""
+    """Split a table into two at a row (that row starts the new table).
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tb.split_table(pkg, table_index, at_row=at_row),
@@ -825,7 +1147,10 @@ def set_header_row_repeat(
     on: bool = True,
     backup: bool = True,
 ) -> dict:
-    """Repeat the first N rows as the table header on every page."""
+    """Repeat the first N rows as the table header on every page. Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tb.set_header_row_repeat(pkg, table_index, rows=rows, on=on),
@@ -858,7 +1183,12 @@ def set_nested_cells(
     nested_index: int = 0,
     backup: bool = True,
 ) -> dict:
-    """Bulk cell writes inside a NESTED table ([{row, cell, text}])."""
+    """Write cells inside a NESTED table (edits = [{row, cell, text}]; the
+    host cell is addressed by table_index/row/cell, nested_index picks
+    among several). Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tb.set_nested_cells(
@@ -892,8 +1222,12 @@ def add_footnote(
     occurrence: int = 1,
     backup: bool = True,
 ) -> dict:
-    """Add a footnote anchored after `anchor_text`. Creates all note
-    infrastructure (parts, styles, superscript) if the document has none."""
+    """Add a footnote anchored after the occurrence-th match of anchor_text;
+    creates all note infrastructure (parts, styles, superscript) if the
+    document has none. Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _nt.add_note(
@@ -915,7 +1249,11 @@ def add_endnote(
     occurrence: int = 1,
     backup: bool = True,
 ) -> dict:
-    """Add an endnote anchored after `anchor_text`."""
+    """Add an endnote anchored after anchor_text (same mechanics as
+    add_footnote). Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _nt.add_note(
@@ -937,7 +1275,11 @@ def edit_footnote(
     position: int | None = None,
     backup: bool = True,
 ) -> dict:
-    """Rewrite a footnote's text, addressed by id or 1-based display position."""
+    """Rewrite a footnote's text, addressed by note_id or 1-based display
+    position (exactly one). Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _nt.edit_note(
@@ -955,7 +1297,11 @@ def edit_endnote(
     position: int | None = None,
     backup: bool = True,
 ) -> dict:
-    """Rewrite an endnote's text, addressed by id or display position."""
+    """Rewrite an endnote's text, addressed by note_id or 1-based display
+    position. Auto-backup: prev/anchor slots in .ks4w-backups (backup=False
+    skips rotation only); atomic validated save. Refuses documents open in
+    Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _nt.edit_note(
@@ -972,7 +1318,11 @@ def delete_footnote(
     position: int | None = None,
     backup: bool = True,
 ) -> dict:
-    """Delete a footnote: definition AND body reference (both, always)."""
+    """Delete a footnote: the definition AND the body reference mark, always
+    both. Auto-backup: prev/anchor slots in .ks4w-backups (backup=False
+    skips rotation only); atomic validated save. Refuses documents open in
+    Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _nt.delete_note(
@@ -989,7 +1339,10 @@ def delete_endnote(
     position: int | None = None,
     backup: bool = True,
 ) -> dict:
-    """Delete an endnote: definition AND body reference."""
+    """Delete an endnote: the definition AND the body reference mark.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _nt.delete_note(
@@ -1010,7 +1363,10 @@ def validate_notes(file_path: str) -> dict:
 def cleanup_orphan_notes(file_path: str, backup: bool = True) -> dict:
     """Remove footnote/endnote definitions no body reference points to.
     Content-deleting tools already do this automatically; use this for
-    documents that arrived with orphans."""
+    documents that arrived with orphans. Auto-backup: prev/anchor slots in
+    .ks4w-backups (backup=False skips rotation only); atomic validated
+    save. Refuses documents open in Word.
+    """
     return _edit(file_path, lambda pkg: _nt.purge_orphans(pkg), backup=backup)
 
 
@@ -1022,7 +1378,10 @@ def add_bookmark(
     file_path: str, name: str, anchor_text: str, occurrence: int = 1,
     backup: bool = True,
 ) -> dict:
-    """Bookmark a text range (target for cross-references)."""
+    """Bookmark a text range (the target add_cross_reference points at).
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _fl.add_bookmark(
@@ -1034,7 +1393,9 @@ def add_bookmark(
 
 @mcp.tool
 def list_bookmarks(file_path: str) -> list:
-    """User-visible bookmarks in the document."""
+    """List the user-visible bookmarks defined in the document (targets for
+    add_cross_reference). Read-only.
+    """
     return _fl.list_bookmarks(DocxPackage(file_path))
 
 
@@ -1046,8 +1407,12 @@ def add_cross_reference(
     kind: str = "page",
     backup: bool = True,
 ) -> dict:
-    """Insert a cross-reference after anchor text. kind: 'page' (page number)
-    or 'text' (bookmarked text). Word computes the value on field update."""
+    """Insert a cross-reference field after anchor text. kind: 'page' (page
+    number) or 'text' (the bookmarked text); Word computes the value on
+    field update. Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _fl.add_cross_reference(
@@ -1067,8 +1432,11 @@ def add_caption(
     above: bool = True,
     backup: bool = True,
 ) -> dict:
-    """Numbered caption (SEQ field): 'Table N: text' above/below a table or at
-    an anchor. label: Table | Figure | Equation."""
+    """Insert a numbered caption (SEQ field), 'Table N: text', above/below a
+    table or at an anchor. label: Table | Figure | Equation. Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _fl.add_caption(
@@ -1088,7 +1456,11 @@ def add_hyperlink(
     file_path: str, anchor_text: str, url: str, occurrence: int = 1,
     backup: bool = True,
 ) -> dict:
-    """Turn existing text into an external hyperlink."""
+    """Turn existing text (occurrence-th match of anchor_text) into an
+    external hyperlink. Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _fl.add_hyperlink(
@@ -1111,9 +1483,13 @@ def insert_toc(
     update_on_open: bool = True,
     backup: bool = True,
 ) -> dict:
-    """Insert a TOC (SDT-wrapped field). Page numbers appear after Word
-    updates fields: automatically on next open (update_on_open) or immediately
-    via com_refresh_fields."""
+    """Insert a Table of Contents (SDT-wrapped TOC field); levels like '1-3'
+    picks heading depth. Page numbers appear after Word updates fields:
+    automatically on next open (update_on_open) or immediately via
+    com_refresh_fields. Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tc.insert_toc(
@@ -1137,7 +1513,10 @@ def read_toc(file_path: str) -> dict:
 
 @mcp.tool
 def delete_toc(file_path: str, which: int = 0, backup: bool = True) -> dict:
-    """Delete one TOC-family field by index (see read_toc's tocs list)."""
+    """Delete one TOC-family field by index (read_toc's tocs list order).
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path, lambda pkg: _tc.delete_toc(pkg, which=which), backup=backup
     )
@@ -1147,7 +1526,11 @@ def delete_toc(file_path: str, which: int = 0, backup: bool = True) -> dict:
 def set_update_fields_flag(
     file_path: str, on: bool = True, backup: bool = True
 ) -> dict:
-    """Toggle 'update all fields on next open' (one-shot; Word clears it)."""
+    """Toggle 'update all fields on next open' (one-shot; Word clears it after
+    updating). Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path, lambda pkg: _tc.set_update_fields_flag(pkg, on), backup=backup
     )
@@ -1164,7 +1547,10 @@ def insert_caption_list(
     backup: bool = True,
 ) -> dict:
     """Insert a List of Tables/Figures/Equations built from add_caption SEQ
-    entries. label: Table | Figure | Equation. Default title 'List of Xs'."""
+    entries. label: Table | Figure | Equation; default title 'List of Xs'.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tc.insert_caption_list(
@@ -1187,9 +1573,12 @@ def convert_notes(
     position: int | None = None,
     backup: bool = True,
 ) -> dict:
-    """Convert footnotes<->endnotes. direction: footnotes_to_endnotes |
-    endnotes_to_footnotes. Give note_id or position for ONE note, neither
-    for ALL. Word renumbers automatically."""
+    """Convert footnotes to endnotes or back. direction: footnotes_to_endnotes
+    | endnotes_to_footnotes; give note_id or position for ONE note, neither
+    for ALL. Word renumbers automatically. Auto-backup: prev/anchor slots
+    in .ks4w-backups (backup=False skips rotation only); atomic validated
+    save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _nt.convert_notes(
@@ -1226,10 +1615,16 @@ def add_source(
     extra_fields: dict | None = None,
     backup: bool = True,
 ) -> dict:
-    """Add a Word-native bibliography source. tag = unique citation key;
-    source_type: JournalArticle | Book | BookSection | Report | InternetSite
-    | ...; authors/editors: [{last, first, middle?}] or [{corporate}].
-    Cite with insert_citation; render the list with insert_bibliography."""
+    """Add a Word-native bibliography source to the document store. tag =
+    unique citation key; source_type: JournalArticle | Book | BookSection |
+    Report | InternetSite | ...; authors/editors: [{last, first, middle?}]
+    or [{corporate}]. Cite with insert_citation; render the list with
+    insert_bibliography. Run detect_citation_system first on unfamiliar
+    documents: mixing Word-native and Zotero/Mendeley/EndNote citations
+    creates a bibliography no single manager maintains. Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _bib.add_source(
@@ -1247,13 +1642,18 @@ def add_source(
 
 @mcp.tool
 def list_sources(file_path: str) -> list:
-    """Bibliography sources in the document source store."""
+    """List the bibliography sources stored in the document. Read-only.
+    """
     return _bib.list_sources(DocxPackage(file_path))
 
 
 @mcp.tool
 def delete_source(file_path: str, tag: str, force: bool = False, backup: bool = True) -> dict:
-    """Delete a bibliography source (refused while cited unless force)."""
+    """Delete a bibliography source by tag (refused while cited unless
+    force=True). Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path, lambda pkg: _bib.delete_source(pkg, tag, force=force),
         backup=backup,
@@ -1262,9 +1662,17 @@ def delete_source(file_path: str, tag: str, force: bool = False, backup: bool = 
 
 @mcp.tool
 def set_bibliography_style(file_path: str, style: str, backup: bool = True) -> dict:
-    """Citation/bibliography style: APA | Chicago | MLA | IEEE | Turabian |
-    Harvard - Anglia | GB7714 | GOST - Name Sort | GOST - Title Sort |
-    ISO 690 - First Element and Date | ISO 690 - Numerical Reference | SIST02."""
+    """Set the style Word-native CITATION and BIBLIOGRAPHY fields render in:
+    APA | Chicago | MLA | IEEE | Turabian | Harvard - Anglia | GB7714 |
+    GOST - Name Sort | GOST - Title Sort | ISO 690 - First Element and Date
+    | ISO 690 - Numerical Reference | SIST02. Affects Word-native fields
+    only: manager citations restyle in their own manager, plain-text
+    citations take convert_citation_style. Run detect_citation_system first
+    on unfamiliar documents: mixing Word-native and Zotero/Mendeley/EndNote
+    citations creates a bibliography no single manager maintains.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path, lambda pkg: _bib.set_bibliography_style(pkg, style),
         backup=backup,
@@ -1284,8 +1692,16 @@ def insert_citation(
     suffix: str | None = None,
     backup: bool = True,
 ) -> dict:
-    """Insert a CITATION field for a stored source after anchor_text. Renders
-    in the document citation style on field update (placeholder until then)."""
+    """Insert a CITATION field for a stored source (tag from add_source /
+    list_sources) after the occurrence-th anchor_text match; renders in the
+    document citation style on field update (placeholder until then).
+    pages, prefix/suffix, and the suppress flags shape the rendered cite.
+    Run detect_citation_system first on unfamiliar documents: mixing
+    Word-native and Zotero/Mendeley/EndNote citations creates a
+    bibliography no single manager maintains. Auto-backup: prev/anchor
+    slots in .ks4w-backups (backup=False skips rotation only); atomic
+    validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _bib.insert_citation(
@@ -1306,8 +1722,14 @@ def insert_bibliography(
     update_on_open: bool = True,
     backup: bool = True,
 ) -> dict:
-    """Insert the BIBLIOGRAPHY field: Word generates the full styled
-    reference list from the source store on field update."""
+    """Insert the BIBLIOGRAPHY field: Word generates the full styled reference
+    list from the source store on field update. Run detect_citation_system
+    first on unfamiliar documents: mixing Word-native and
+    Zotero/Mendeley/EndNote citations creates a bibliography no single
+    manager maintains. Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _bib.insert_bibliography(
@@ -1333,8 +1755,11 @@ def mark_index_entry(
     see: str | None = None,
     backup: bool = True,
 ) -> dict:
-    """Mark a location for the index (invisible XE field). see='other entry'
-    creates a cross-reference instead of a page number."""
+    """Mark a location for the index (invisible XE field at the anchor).
+    see='other entry' writes a cross-reference instead of a page number.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _fl.mark_index_entry(
@@ -1364,7 +1789,10 @@ def insert_index(
     backup: bool = True,
 ) -> dict:
     """Insert the INDEX field compiling all XE entries with page numbers
-    (generated when Word updates fields)."""
+    (generated when Word updates fields). Auto-backup: prev/anchor slots in
+    .ks4w-backups (backup=False skips rotation only); atomic validated
+    save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _fl.insert_index(
@@ -1388,9 +1816,14 @@ def move_section(
     at_end: bool = False,
     backup: bool = True,
 ) -> dict:
-    """Move a heading and its ENTIRE section (content + tables until the next
-    same-or-higher heading) to a new location. Refuses moves that would cut
-    fields or section breaks."""
+    """Move a heading and its ENTIRE section (content and tables until the
+    next same-or-higher heading) before/after another heading or to the
+    end. Sections are addressed by exact heading text; only headings are
+    matched, so body prose repeating the words does not collide. Refuses
+    moves that would cut fields or section breaks. Auto-backup: prev/anchor
+    slots in .ks4w-backups (backup=False skips rotation only); atomic
+    validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _sx.move_section(
@@ -1416,8 +1849,12 @@ def apply_template(
     backup: bool = True,
 ) -> dict:
     """Restyle this document to match a reference document: styles, theme,
-    fonts, layout settings, optionally page geometry. Content untouched;
-    style references remapped by name, unmatched styles preserved."""
+    fonts, layout settings, optionally page geometry. This is also the
+    import-styles-from-another-document tool: style definitions are
+    remapped by name, unmatched styles preserved, content untouched.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tp.apply_template(
@@ -1438,8 +1875,11 @@ def set_document_properties(
     comments: str | None = None,
     backup: bool = True,
 ) -> dict:
-    """Core document metadata (File > Info): title, author, subject,
-    keywords, category, comments."""
+    """Set core document metadata (File > Info): title, author, subject,
+    keywords, category, comments; only the parameters given change.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _sx.set_document_properties(
@@ -1463,7 +1903,11 @@ def define_style(
     backup: bool = True,
 ) -> dict:
     """Create or replace a custom style (paragraph or character) with full
-    formatting control."""
+    formatting control; get_styles returns existing definitions in this
+    exact input shape, so cloning a style is one read + one define.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _sx.define_style(
@@ -1484,7 +1928,11 @@ def apply_character_style(
     occurrence: int = 1,
     backup: bool = True,
 ) -> dict:
-    """Apply a character style to a text range."""
+    """Apply a named character style to a text range (occurrence-th match of
+    find). For direct formatting without a style, use format_text.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _sx.apply_character_style(
@@ -1502,7 +1950,10 @@ def set_image_alt_text(
     title: str | None = None,
     backup: bool = True,
 ) -> dict:
-    """Accessibility alt text for an image (list_images index)."""
+    """Set accessibility alt text for an image (image_index from list_images).
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _sx.set_image_alt_text(
@@ -1524,8 +1975,11 @@ def add_watermark(
     diagonal: bool = True,
     backup: bool = True,
 ) -> dict:
-    """Text watermark behind the text on every page (all header parts;
-    compatible with Word's own Remove Watermark command)."""
+    """Add a text watermark behind the text on every page (all header parts;
+    compatible with Word's own Remove Watermark command). Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _fu.add_watermark(
@@ -1537,7 +1991,10 @@ def add_watermark(
 
 @mcp.tool
 def remove_watermark(file_path: str, backup: bool = True) -> dict:
-    """Remove watermark shapes from every header."""
+    """Remove watermark shapes from every header. Auto-backup: prev/anchor
+    slots in .ks4w-backups (backup=False skips rotation only); atomic
+    validated save. Refuses documents open in Word.
+    """
     return _edit(file_path, lambda pkg: _fu.remove_watermark(pkg), backup=backup)
 
 
@@ -1549,10 +2006,13 @@ def set_document_protection(
     restrict_formatting: bool = False,
     backup: bool = True,
 ) -> dict:
-    """Restrict editing: readOnly | comments | trackedChanges | forms.
-    trackedChanges forces every edit by the recipient to be tracked — the
-    send-to-committee mode. Password hashing is Word-compatible (SHA-512).
-    NOT encryption."""
+    """Restrict editing: edit = readOnly | comments | trackedChanges | forms.
+    trackedChanges forces every edit by the recipient to be tracked (the
+    send-to-committee mode). Password hashing is Word-compatible SHA-512;
+    this is NOT encryption (com_save_with_password encrypts). Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _pr.set_document_protection(
@@ -1565,7 +2025,10 @@ def set_document_protection(
 
 @mcp.tool
 def remove_document_protection(file_path: str, backup: bool = True) -> dict:
-    """Lift the editing restriction."""
+    """Lift the editing restriction set by set_document_protection.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path, lambda pkg: _pr.remove_document_protection(pkg),
         backup=backup,
@@ -1596,7 +2059,10 @@ def set_header(
     alignment: str = "center",
     backup: bool = True,
 ) -> dict:
-    """Set a section's header. ref_type: default | first | even."""
+    """Set a section's header text. ref_type: default | first | even.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _fu.set_header_footer(
@@ -1617,7 +2083,10 @@ def set_footer(
     include_page_number: bool = False,
     backup: bool = True,
 ) -> dict:
-    """Set a section's footer, optionally with a page-number field."""
+    """Set a section's footer text, optionally with a page-number field.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _fu.set_header_footer(
@@ -1639,8 +2108,11 @@ def add_page_numbers(
     x_of_y: bool = False,
     backup: bool = True,
 ) -> dict:
-    """Add page numbers (PAGE field) to the header or footer. x_of_y renders
-    'Page N of M'."""
+    """Add page numbers (PAGE field) to the header or footer; x_of_y renders
+    'Page N of M'. Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _fu.add_page_numbers(
@@ -1661,8 +2133,11 @@ def set_columns(
     widths_pt: list[float] | None = None,
     backup: bool = True,
 ) -> dict:
-    """Multi-column text layout for a section (equal widths, or explicit
-    widths_pt per column; separator draws a line between columns)."""
+    """Set multi-column text layout for a section (equal widths, or explicit
+    widths_pt per column; separator draws a line between columns).
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _fu.set_columns(
@@ -1681,8 +2156,11 @@ def set_page_number_format(
     start_at: int | None = None,
     backup: bool = True,
 ) -> dict:
-    """Page-number FORMAT per section: lowerRoman for front
-    matter, decimal restarting at 1 for the body, upperRoman, letters, etc."""
+    """Set the page-number FORMAT per section: lowerRoman for front matter,
+    decimal restarting at 1 for the body, upperRoman, letters, etc.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _fu.set_page_number_format(
@@ -1703,8 +2181,11 @@ def set_line_numbering(
     remove: bool = False,
     backup: bool = True,
 ) -> dict:
-    """Manuscript line numbering for a section (journal submissions).
-    restart: continuous | newPage | newSection. remove=True clears it."""
+    """Set manuscript line numbering for a section (journal submissions).
+    restart: continuous | newPage | newSection; remove=True clears it.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _fu.set_line_numbering(
@@ -1731,7 +2212,12 @@ def set_section_properties(
     margins_pt: dict | None = None,
     backup: bool = True,
 ) -> dict:
-    """Page size, orientation, margins for one section."""
+    """Set page size, orientation, and margins for one section. Every response
+    carries the section's full state; call with no change parameters to
+    read the current values. Auto-backup: prev/anchor slots in
+    .ks4w-backups (backup=False skips rotation only); atomic validated
+    save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _fu.set_section_properties(
@@ -1748,7 +2234,11 @@ def add_section_break(
     file_path: str, after_index: int, break_type: str = "nextPage",
     backup: bool = True,
 ) -> dict:
-    """Insert a section break: nextPage | continuous | evenPage | oddPage."""
+    """Insert a section break after a body paragraph: nextPage | continuous |
+    evenPage | oddPage. Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _fu.add_section_break(
@@ -1772,7 +2262,10 @@ def add_image(
     alignment: str = "center",
     backup: bool = True,
 ) -> dict:
-    """Insert an inline image (PNG/JPEG/GIF/BMP/TIFF); aspect ratio kept."""
+    """Insert an inline image (PNG/JPEG/GIF/BMP/TIFF), aspect ratio kept.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _md.add_image(
@@ -1785,7 +2278,8 @@ def add_image(
 
 @mcp.tool
 def list_images(file_path: str) -> list:
-    """Images with sizes and media targets."""
+    """List the document's images with sizes and media targets. Read-only.
+    """
     return _md.list_images(DocxPackage(file_path))
 
 
@@ -1793,7 +2287,11 @@ def list_images(file_path: str) -> list:
 def resize_image(
     file_path: str, image_index: int, width_pt: float, backup: bool = True
 ) -> dict:
-    """Resize an inline image (aspect ratio kept)."""
+    """Resize an inline image to width_pt, aspect ratio kept (image_index from
+    list_images). Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _md.resize_image(pkg, image_index, width_pt=width_pt),
@@ -1805,7 +2303,10 @@ def resize_image(
 def replace_image(
     file_path: str, image_index: int, new_image_path: str, backup: bool = True
 ) -> dict:
-    """Swap an image's file, keeping placement and display size."""
+    """Swap an image's file, keeping placement and display size. Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _md.replace_image(pkg, image_index, new_image_path),
@@ -1813,13 +2314,120 @@ def replace_image(
     )
 
 
+@mcp.tool
+def add_chart(
+    file_path: str,
+    chart_type: str,
+    data: list | dict | str,
+    title: str | None = None,
+    width_pt: float | None = None,
+    height_pt: float | None = None,
+    after_index: int | None = None,
+    after_anchor: str | None = None,
+    at_end: bool = False,
+    alignment: str = "center",
+    legend: bool = True,
+    colors: list | None = None,
+    backup: bool = True,
+) -> dict:
+    """Insert a native, theme-following Word chart built from data (no image
+    rendering). chart_type: 'bar' (horizontal), 'column' (vertical),
+    'line', 'pie', or 'scatter'. data shapes: rows like import_table ([["",
+    "S1", "S2"], ["Alpha", 4.3, 1.2], ...]; first row series names, first
+    column categories), a dict {"categories": [...], "series": [{"name",
+    "values"}]} (scatter: {"series": [{"name", "x", "y"}]}), or a
+    .csv/.json file path. The chart part carries literal data caches AND a
+    matching embedded workbook, so it renders everywhere and right-click >
+    Edit Data works in Word. Size defaults to 6.0 x 3.5 in
+    (width_pt/height_pt override); position with at most one of
+    after_index/after_anchor/at_end (default document end); colors takes
+    one hex per series (default: theme accents). Refused: other chart types
+    (3D/area/doughnut/radar/...), ragged or non-numeric data, multi-series
+    pie. Auto-backup: prev/anchor slots in .ks4w-backups (backup=False
+    skips rotation only); atomic validated save. Refuses documents open in
+    Word.
+    """
+    return _edit(
+        file_path,
+        lambda pkg: _charts.add_chart(
+            pkg,
+            chart_type,
+            data,
+            title=title,
+            width_pt=width_pt,
+            height_pt=height_pt,
+            after_index=after_index,
+            after_anchor=after_anchor,
+            at_end=at_end,
+            alignment=alignment,
+            legend=legend,
+            colors=colors,
+        ),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def update_chart_data(
+    file_path: str,
+    chart_index: int,
+    data: list | dict | str,
+    series_names: list | None = None,
+    backup: bool = True,
+) -> dict:
+    """Replace the data of an existing bar/column/line/pie/scatter chart in
+    place (chart_index from list_charts): literal caches, range formulas,
+    and the embedded workbook are rewritten together, so rendering and Edit
+    Data stay in sync; formatting and styles are preserved. data takes the
+    same shapes as add_chart and must keep the existing series COUNT (point
+    count may change); series_names renames. Refused with the reason named:
+    chartex/modern, combo, 3D/area/doughnut/radar/surface/stock/bubble,
+    multi-level categories, series-count changes, ragged data. Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
+    return _edit(
+        file_path,
+        lambda pkg: _charts.update_chart_data(
+            pkg,
+            chart_index,
+            data,
+            series_names=series_names,
+        ),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def list_charts(file_path: str) -> list:
+    """Enumerate every chart in the document body, in document order. Each
+    entry reports index (use it with update_chart_data), chart part name,
+    plot type (barChart/lineChart/pieChart/scatterChart/... or 'chartex'
+    for modern charts like treemap/sunburst/waterfall), title, series
+    names, point count, size in points, whether an embedded data workbook
+    exists, and supported_for_update with a reason when updating is
+    refused (chartex, combo, 3D/area/radar/..., multi-level categories).
+    Read-only against the document."""
+    return _charts.list_charts(DocxPackage(file_path))
+
+
 # ------------------------------------------------------------------- comments
 
 
 @mcp.tool
-def get_comments(file_path: str, author: str | None = None) -> list:
-    """Comments with authors, anchored text, threading, resolved state."""
-    return _rd.get_comments(DocxPackage(file_path), author=author)
+def get_comments(
+    file_path: str, author: str | None = None, live: str = "auto"
+) -> list:
+    """Comments with authors, anchored text, threading, resolved state.
+    Documents open in Word are read live (same entry shape; live ids are
+    the comment's position, not the XML id)."""
+    from .com import live_ops as _lo
+
+    return _route_live(
+        live,
+        lambda: _rd.get_comments(DocxPackage(file_path), author=author),
+        lambda: _lo.get_comments(file_path, author=author),
+    )
 
 
 @mcp.tool
@@ -1831,7 +2439,11 @@ def add_comment(
     occurrence: int = 1,
     backup: bool = True,
 ) -> dict:
-    """Comment on a text range (threaded-comment infrastructure included)."""
+    """Add a comment on a text range (threaded-comment infrastructure created
+    as needed). Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _cm.add_comment(
@@ -1847,7 +2459,11 @@ def reply_to_comment(
     file_path: str, comment_id: str, text: str, author: str = "Claude",
     backup: bool = True,
 ) -> dict:
-    """Threaded reply to an existing comment."""
+    """Add a threaded reply to an existing comment (comment_id from
+    get_comments). Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _cm.reply_to_comment(
@@ -1861,7 +2477,10 @@ def reply_to_comment(
 def resolve_comment(
     file_path: str, comment_id: str, done: bool = True, backup: bool = True
 ) -> dict:
-    """Mark a comment thread resolved (or reopen with done=False)."""
+    """Mark a comment thread resolved, or reopen it with done=False.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _cm.resolve_comment(pkg, comment_id=comment_id, done=done),
@@ -1871,7 +2490,10 @@ def resolve_comment(
 
 @mcp.tool
 def delete_comment(file_path: str, comment_id: str, backup: bool = True) -> dict:
-    """Delete a comment and its replies, including all body markers."""
+    """Delete a comment and its replies, including all body markers.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _cm.delete_comment(pkg, comment_id=comment_id),
@@ -1890,7 +2512,10 @@ def get_tracked_changes(file_path: str, author: str | None = None) -> list:
 
 @mcp.tool
 def revision_summary(file_path: str) -> dict:
-    """Revision counts by author and type."""
+    """Summarize tracked-change counts by author and type. For word-level
+    analytics and per-section concentration use revision_analytics.
+    Read-only.
+    """
     return _rd.revision_summary(DocxPackage(file_path))
 
 
@@ -1898,7 +2523,10 @@ def revision_summary(file_path: str) -> dict:
 def accept_revisions(
     file_path: str, author: str | None = None, backup: bool = True
 ) -> dict:
-    """Accept tracked changes — all, or one author's only."""
+    """Accept tracked changes: all of them, or one author's only. Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path, lambda pkg: _rv.accept_revisions(pkg, author=author),
         backup=backup,
@@ -1909,7 +2537,10 @@ def accept_revisions(
 def reject_revisions(
     file_path: str, author: str | None = None, backup: bool = True
 ) -> dict:
-    """Reject tracked changes — all, or one author's only."""
+    """Reject tracked changes: all of them, or one author's only. Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path, lambda pkg: _rv.reject_revisions(pkg, author=author),
         backup=backup,
@@ -1993,7 +2624,10 @@ def com_refresh_fields(file_path: str) -> dict:
 
 @mcp.tool
 def com_export_pdf(file_path: str, pdf_path: str | None = None) -> dict:
-    """Export to PDF via Word (full fidelity: fields, footnotes, TOC)."""
+    """Export to PDF via an invisible Word instance (full fidelity: fields,
+    footnotes, TOC). Output defaults beside the source; the source file is
+    unmodified.
+    """
     from .com import bridge
 
     return bridge.export_pdf(file_path, pdf_path)
@@ -2023,9 +2657,12 @@ def com_merge_documents(
     output_path: str,
     section_break_between: bool = True,
 ) -> dict:
-    """Merge documents in order into ONE file with full fidelity (styles,
-    footnotes, numbering) — e.g. chapters into one manuscript. Section
-    breaks between parts keep per-chapter headers/numbering possible."""
+    """Concatenate whole documents in order into ONE new file via Word, full
+    fidelity (styles, footnotes, numbering); section breaks between parts
+    keep per-chapter headers/numbering possible. To insert a document INTO
+    an existing one at a chosen position with style reconciliation, use
+    insert_document; for a single table, copy_table.
+    """
     from .com import bridge
 
     return bridge.merge_documents(
@@ -2097,7 +2734,10 @@ def com_save_with_password(
 
 @mcp.tool
 def com_validate_opens_clean(file_path: str) -> dict:
-    """Definitive corruption check: open in invisible Word, report clean/fail."""
+    """Run the definitive corruption check: open the file in an invisible Word
+    instance and report clean/fail. The Word-verdict companion to
+    validate_document / diagnose_document.
+    """
     from .com import bridge
 
     return bridge.validate_opens_clean(file_path)
@@ -2110,11 +2750,12 @@ def com_validate_opens_clean(file_path: str) -> dict:
 @mcp.tool
 def validate_cross_references(file_path: str) -> dict:
     """Check every REF/PAGEREF cross-reference against the bookmarks that
-    actually exist: broken refs (target bookmark missing — renders as an
-    error in Word), bookmarks nothing references (informational), and
-    plain-text references like "see Figure 3" that match no caption or
-    heading number (heuristic review candidates). Paragraph indices included
-    for every finding."""
+    actually exist: broken refs (target missing; renders as an error in
+    Word), bookmarks nothing references (informational), and plain-text
+    references like 'see Figure 3' that match no caption or heading number
+    (heuristic review candidates). Paragraph indices included for every
+    finding. Read-only.
+    """
     return _ig.validate_cross_references(DocxPackage(file_path))
 
 
@@ -2136,13 +2777,16 @@ def prepare_for_submission(
     keep_title: bool = True,
     backup: bool = True,
 ) -> dict:
-    """One-call submission prep: accept all tracked changes (every author),
-    delete all comments including the comments-family parts, and scrub
-    identifying metadata (author, last-modified-by, company; title kept
-    unless keep_title=False). Content is never removed — footnotes, fields,
-    and citations all stay. Refuses protected documents rather than
-    delivering a half-clean file. Returns exactly what was done, what was
-    deliberately left (rsids), and what remains in the document."""
+    """Prepare a manuscript for submission in one call: accept all tracked
+    changes (every author), delete all comments including the
+    comments-family parts, and scrub identifying metadata (author,
+    last-modified-by, company; title kept unless keep_title=False). Content
+    is never removed: footnotes, fields, and citations all stay. Refuses
+    protected documents rather than delivering a half-clean file. Reports
+    what was done, what was deliberately left (rsids), and what remains.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _cu.prepare_for_submission(
@@ -2161,17 +2805,22 @@ def list_reference_fields(file_path: str) -> dict:
     """Inventory every Zotero, EndNote, and Mendeley field in the body,
     footnotes, and endnotes: manager, kind (citation or bibliography),
     location, cached rendered text, and whether the field markers are still
-    intact. Broken pairs are reported loudly — they disconnect the citation
-    from the reference manager."""
+    intact (broken pairs are reported loudly; they disconnect the citation
+    from its manager). Mendeley/EndNote support is preservation-only: their
+    fields survive edits, but this server cannot insert or generate them
+    (Zotero insertion exists: insert_zotero_citation). Read-only.
+    """
     return _rf.list_reference_fields(DocxPackage(file_path))
 
 
 @mcp.tool
 def check_reference_field_integrity(file_path: str) -> dict:
-    """Post-edit health check for reference-manager citations: counts by
-    manager and kind plus an ok flag that goes False on any broken or stray
-    field marker. Run after editing a document that contains Zotero, EndNote,
-    or Mendeley citations to confirm the edit broke nothing."""
+    """Check reference-manager citations after an edit: counts by manager and
+    kind plus an ok flag that goes False on any broken or stray field
+    marker. Run it after editing a document containing Zotero, EndNote, or
+    Mendeley citations (the latter two are preservation-only: fields
+    survive edits, no insertion). Read-only.
+    """
     return _rf.check_reference_field_integrity(DocxPackage(file_path))
 
 
@@ -2181,20 +2830,23 @@ def check_template_compliance(file_path: str, rules: dict) -> dict:
     dissertation guide, journal style sheet). Every rule key is optional;
     unknown keys are rejected with the allowed list. Example ruleset:
 
-    {"page": {"margins_pt": {"top": 72, "bottom": 72, "left": 90, "right": 72},
-              "tolerance_pt": 1, "size": "letter", "orientation": "portrait"},
+    {"page": {"margins_pt": {"top": 72, "bottom": 72, "left": 90,
+                           "right": 72},
+              "tolerance_pt": 1, "size": "letter",
+              "orientation": "portrait"},
      "fonts": {"allowed": ["Times New Roman"], "body_size_pt": 12},
      "line_spacing": {"body": 2.0},
      "headings": {"max_skip": 0, "required_first_level": 1},
      "page_numbering": [{"section": 0, "format": "lowerRoman"},
-                        {"section": 1, "format": "decimal", "restart_at": 1}],
+                        {"section": 1, "format": "decimal",
+                         "restart_at": 1}],
      "required_headings_in_order": ["Abstract", "Acknowledgments"]}
 
     Returns {compliant, violations: [{rule, expected, found, location,
-    severity}], unverified, rules_checked}. Fonts/sizes/spacing are resolved
-    through explicit formatting, the style basedOn chain, and docDefaults;
-    theme-indirected fonts are listed under "unverified" (reported, never
-    guessed). Read-only — the file is not modified."""
+    severity}], unverified, rules_checked}. Fonts/sizes/spacing resolve
+    through explicit formatting, the basedOn chain, and docDefaults;
+    theme-indirected fonts land in 'unverified', never guessed. Read-only.
+    """
     return _cp.check_template_compliance(DocxPackage(file_path), rules)
 
 
@@ -2214,14 +2866,72 @@ def check_brand_compliance(file_path: str, rules: dict) -> dict:
 
 @mcp.tool
 def audit_accessibility(file_path: str) -> dict:
-    """Accessibility audit: heading hierarchy (skipped levels, empty headings,
-    no Heading 1), images missing alt text, tables whose first row is not a
-    repeating header, low-contrast text (explicit color vs explicit run
-    background below WCAG 4.5:1 — skipped, not guessed, when either side is
-    absent or automatic), missing document title, and generic hyperlink text
-    ("click here", "here", "link"). Each finding carries a location and a fix
-    hint; the summary has per-category counts and a pass flag. Read-only."""
+    """Audit accessibility, read-only: heading hierarchy (skipped levels,
+    empty headings, no Heading 1), images missing alt text, tables whose
+    first row is not a repeating header, low-contrast text (explicit color
+    vs explicit run background below WCAG 4.5:1; skipped, not guessed, when
+    either side is absent), missing document title, and generic hyperlink
+    text ('click here'). Each finding carries a location and a fix hint;
+    the summary has per-category counts and a pass flag. fix_accessibility
+    repairs opted-in categories.
+    """
     return _ac.audit_accessibility(DocxPackage(file_path))
+
+
+@mcp.tool
+def fix_accessibility(
+    file_path: str,
+    alt_text_placeholders: bool = False,
+    heading_skips: bool = False,
+    heading_strategy: str = "promote",
+    table_headers: bool = False,
+    doc_title: bool = False,
+    dry_run: bool = False,
+    backup: bool = True,
+) -> dict:
+    """Repair audit_accessibility findings, one opted-in category at a time
+    (detection mirrors the audit, so audit -> fix -> audit shows the
+    opted-in findings resolved). Every category defaults to OFF; with none
+    enabled the call refuses. Each category reports fixed items, skipped
+    items with reasons, and items needing human review.
+
+    alt_text_placeholders: images without alt text get a clearly marked
+    placeholder (never an invented description), all listed for a human
+    pass via set_image_alt_text. heading_skips: repairs skipped levels via
+    heading_strategy 'promote' or 'demote_following'; nested/mixed
+    patterns, custom-style headings, and any repair that would leave a skip
+    or remove the only Heading 1 are refused with details. table_headers:
+    sets w:tblHeader on flagged first rows, skipping single-row tables and
+    empty or all-numeric first rows. doc_title: fills an EMPTY title from
+    the first Heading 1, never overwriting.
+
+    dry_run=True returns the identical report without touching the file.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
+    if dry_run:
+        return _ac.fix_accessibility(
+            DocxPackage(file_path),
+            alt_text_placeholders=alt_text_placeholders,
+            heading_skips=heading_skips,
+            heading_strategy=heading_strategy,
+            table_headers=table_headers,
+            doc_title=doc_title,
+            dry_run=True,
+        )
+    return _edit(
+        file_path,
+        lambda pkg: _ac.fix_accessibility(
+            pkg,
+            alt_text_placeholders=alt_text_placeholders,
+            heading_skips=heading_skips,
+            heading_strategy=heading_strategy,
+            table_headers=table_headers,
+            doc_title=doc_title,
+            dry_run=False,
+        ),
+        backup=backup,
+    )
 
 
 @mcp.tool
@@ -2250,12 +2960,15 @@ def fill_template(
     missing: str = "error",
     backup: bool = True,
 ) -> dict:
-    """Fill a template IN PLACE: replace every {{name}} with data[name]
-    (safe across fragmented runs, first run's formatting kept) and set
+    """Fill a template IN PLACE: replace every {{name}} with data[name] (safe
+    across fragmented runs, first run's formatting kept) and set
     MERGEFIELDs to their values as plain text. missing: 'error' refuses and
     changes nothing if the template needs a key data lacks; 'skip' leaves
-    those markers; 'empty' fills them with empty strings. To produce copies
-    instead of editing in place, use mail_merge."""
+    those markers; 'empty' fills them with empty strings. To produce filled
+    COPIES instead of editing in place, use mail_merge. Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _mm.fill_template(pkg, data, missing=missing),
@@ -2296,17 +3009,18 @@ def batch_apply(
     stop_on_error: bool = True,
     backup: bool = True,
 ) -> dict:
-    """Apply the same operations to MANY documents. Each operation:
-    {'tool': name, 'params': {...}} with the tool's normal parameters minus
-    file_path (e.g. {'tool': 'search_and_replace', 'params': {'replacements':
-    [{'find': 'a', 'replace': 'b'}]}}). Allowed tools: search_and_replace,
-    insert_paragraphs, delete_paragraphs, replace_paragraph_text,
-    format_text, set_paragraph_format, apply_style, set_header, set_footer,
+    """Apply the same operations to MANY documents. operations: [{'tool':
+    name, 'params': {...}}] with each tool's normal parameters minus
+    file_path. Allowed tools: search_and_replace, insert_paragraphs,
+    delete_paragraphs, replace_paragraph_text, format_text,
+    set_paragraph_format, apply_style, set_header, set_footer,
     add_page_numbers, set_page_number_format, set_document_properties,
     set_cells, add_watermark, remove_watermark. Per file: ALL operations,
-    then one backup and one atomic save; if any operation fails that file is
-    left untouched, and stop_on_error=True also skips the remaining files
-    (already-saved files keep their changes and are reported)."""
+    then one slot rotation and one atomic validated save; a failing
+    operation leaves that file untouched, and stop_on_error=True skips the
+    remaining files (already-saved files keep their changes). Refuses files
+    open in Word.
+    """
     return _bt.batch_apply(
         file_paths, operations, stop_on_error=stop_on_error, backup=backup
     )
@@ -2331,11 +3045,15 @@ def fill_form_fields(
     missing: str = "error",
     backup: bool = True,
 ) -> dict:
-    """Set form-field values by name (legacy) or tag/alias (content
-    control): text fields take strings, checkboxes booleans, dropdowns only
-    values from their options (refused otherwise). Duplicate field names are
-    refused with locations. missing: 'error' refuses (changing nothing) if a
-    key matches no field; 'skip' ignores such keys and reports them."""
+    """Set form-field values by name (legacy fields) or tag/alias (content
+    controls): text fields take strings, checkboxes booleans, dropdowns
+    only values from their options (refused otherwise). Duplicate field
+    names are refused with locations. missing: 'error' refuses, changing
+    nothing, if a key matches no field; 'skip' ignores and reports them.
+    For SDT types this tool skips, use set_content_control_value.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _fm.fill_form_fields(pkg, values, missing=missing),
@@ -2360,25 +3078,28 @@ def validate_form_completeness(
 
 @mcp.tool
 def assemble_front_matter(file_path: str, spec: dict, backup: bool = True) -> dict:
-    """Set up standard long-document front matter in one call: the requested
-    sequence is inserted at the START of the document (existing content
-    becomes the body), page breaks separate front-matter pages, and one
-    section break separates front matter from body so page numbering can
-    switch (front lowerRoman, body decimal restarting at 1, by default).
+    """Assemble long-document front matter in one call: the requested sequence
+    is inserted at the START (existing content becomes the body), page
+    breaks separate front-matter pages, and one section break lets page
+    numbering switch (front lowerRoman, body decimal restarting at 1, by
+    default).
 
     spec = {"sections": [{"kind": "title_page", "lines": [...]},
                          {"kind": "blank_or_copyright", "lines": [...]},
-                         {"kind": "abstract", "title": "Abstract", "text": "..."},
+                         {"kind": "abstract", "title": "Abstract",
+                          "text": "..."},
                          {"kind": "toc"}, {"kind": "list_of_figures"},
                          {"kind": "list_of_tables"}],
             "page_numbering": {"front": "lowerRoman", "body": "decimal",
                                "body_restart_at": 1}}
 
-    Title-page lines are centered; the abstract gets a Heading-styled title.
-    Refuses when front matter appears to exist already (document starts with
-    a TOC, or a section already uses lowerRoman numbering) unless spec has
-    "force": true. Reports exactly what was inserted and which section
-    indices carry which numbering."""
+    Title-page lines are centered; the abstract gets a Heading-styled
+    title. Refuses when front matter appears to exist (leading TOC, or a
+    lowerRoman section) unless spec has "force": true. Reports what was
+    inserted and which sections carry which numbering. Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _fma.assemble_front_matter(pkg, spec),
@@ -2397,15 +3118,17 @@ def setup_chapter_headers(
     backup: bool = True,
 ) -> dict:
     """Put the current chapter title in the running header via a STYLEREF
-    field referencing the Heading style of `level` — the standard Word
-    mechanism, evaluated per page, so it updates automatically and needs no
-    per-chapter section breaks. include_number adds the heading number
-    (STYLEREF \\n) before the title. scope 'auto' targets every section
-    containing body headings of that level; pass a list of section indices
-    to override. first_page_blank sets titlePg so section-opening pages show
-    no header. Watermarks in rewritten headers are preserved; other existing
-    header content is replaced and reported. Reports the sections touched
-    and the exact field codes written."""
+    field referencing the Heading style of `level`: the standard Word
+    mechanism, evaluated per page, no per-chapter section breaks needed.
+    include_number adds the heading number (STYLEREF \\n). scope 'auto'
+    targets every section containing body headings of that level; pass a
+    list of section indices to override. first_page_blank sets titlePg (no
+    header on section-opening pages). Watermarks are preserved; other
+    header content is replaced and reported, with the exact field codes
+    written. Auto-backup: prev/anchor slots in .ks4w-backups (backup=False
+    skips rotation only); atomic validated save. Refuses documents open in
+    Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _ch.setup_chapter_headers(
@@ -2431,15 +3154,34 @@ def validate_chapter_headers(file_path: str) -> dict:
 
 @mcp.tool
 def diagnose_document(file_path: str) -> dict:
-    """One-call structural health report, read-only: content-type coverage,
-    dangling relationships and orphan parts, field begin/end balance per
+    """Produce a one-call structural health report, read-only: content-type
+    coverage, dangling relationships and orphan parts, field balance per
     story part, footnote/endnote integrity, references to undefined styles
     and numbering, content-control and bookmark sanity, duplicate revision
-    ids, images whose targets are missing, broken cross-references, and a
-    per-part size profile. Never fails on a weird-but-openable document —
-    every check degrades to a reported problem. ok=false only for problems
-    that render broken or lose content in Word."""
-    return _dg.diagnose_document(DocxPackage(file_path))
+    ids, missing image targets, broken cross-references, and a per-part
+    size profile. Never fails on a weird-but-openable document; every check
+    degrades to a reported problem, and ok=false only for problems that
+    render broken or lose content in Word. The deep companion to
+    validate_document's quick check.
+
+    No live mode BY DESIGN: this reads the saved package's XML, stale while
+    Word holds unsaved changes. Close the document first
+    (com_close_open_document saves and closes), or use
+    com_validate_opens_clean / live get_document_info.
+    """
+    from .core.errors import DocumentLocked
+
+    try:
+        return _dg.diagnose_document(DocxPackage(file_path))
+    except DocumentLocked as exc:
+        raise DocumentLocked(
+            f"{file_path} is open in Word (or locked). diagnose_document "
+            "reads the saved file's XML, which is stale while Word holds "
+            "unsaved changes, so there is no live route by design. Close "
+            "the document (com_close_open_document saves and closes) and "
+            "rerun; for open-document checks use com_validate_opens_clean "
+            "or get_document_info (live)."
+        ) from exc
 
 
 @mcp.tool
@@ -2450,21 +3192,22 @@ def redact_text(
     scope: str = "all",
     backup: bool = True,
 ) -> dict:
-    """Permanently REMOVE matched text from the document (true redaction,
-    not black highlighting — the characters are replaced in the XML). Each
-    target: {find, regex?}. Runmap-safe: secrets fragmented across Word's
-    split runs are found and removed as one match. Scrubs body incl. tables,
-    headers/footers, footnotes/endnotes (per scope: body | headers |
-    footnotes | all), and ALWAYS: comment text, document properties,
-    hyperlink display text/tooltips/URL targets, field instruction text,
-    cached field results, and tracked-change deleted text.
-
-    The result reports per-location-class counts, what was scrubbed, what
-    was NOT examined (embedded images, charts, OLE objects — text drawn in
-    an image is NOT redacted), and verified_clean from a full post-redaction
-    re-scan of every XML part. Zero-width regexes and empty finds are
-    refused before anything is touched; any error leaves the file unchanged.
-    Irreversible in the saved file — the auto-backup is the undo."""
+    """Permanently REMOVE matched text (true redaction: the characters are
+    replaced in the XML, not highlighted). targets: [{find, regex?}].
+    Runmap-safe: secrets fragmented across Word's split runs are removed as
+    one match. Scrubs body incl. tables, headers/footers,
+    footnotes/endnotes (per scope: body | headers | footnotes | all), and
+    ALWAYS: comment text, document properties, hyperlink text/tooltips/URL
+    targets, field instructions, cached field results, tracked-change
+    deleted text. Reports per-class counts, what was NOT examined (images,
+    charts, OLE; text drawn in an image is not redacted), and
+    verified_clean from a full post-redaction re-scan. Zero-width regexes
+    and empty finds are refused up front; any error leaves the file
+    unchanged. Irreversible in the saved file: the prev backup slot is the
+    undo. Auto-backup: prev/anchor slots in .ks4w-backups (backup=False
+    skips rotation only); atomic validated save. Refuses documents open in
+    Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _rx.redact_text(
@@ -2490,15 +3233,17 @@ def verify_redaction(file_path: str, targets: list[dict]) -> dict:
 def check_defined_terms(
     file_path: str, definition_patterns: list | None = None
 ) -> dict:
-    """BETA (heuristic) — review the flagged-items list in the result rather than trusting silently. Legal-document defined-terms audit. Finds definitions («"Term"
-    means», «"Term" shall mean», «(the "Term")», «(each, a "Term")» —
-    defaults overridable via definition_patterns, each regex capturing the
-    term as group 1) and reports, with paragraph indices: defined_never_used,
-    defined_multiple_times, first_use_before_definition, and
-    used_never_defined — a HEURISTIC list of capitalized recurring terms
-    with no definition, filtered so words capitalized only at sentence
-    starts are not flagged; treat those as review candidates. Body-level
-    paragraphs only (stated in the result notes). Read-only."""
+    """BETA (heuristic): review the flagged-items list in the result rather
+    than trusting silently. Audit a legal document's defined terms. Finds
+    definitions («"Term" means», «"Term" shall mean», «(the "Term")»,
+    «(each, a "Term")»; defaults overridable via definition_patterns, each
+    regex capturing the term as group 1) and reports, with paragraph
+    indices: defined_never_used, defined_multiple_times,
+    first_use_before_definition, and used_never_defined (a HEURISTIC list
+    of capitalized recurring terms, filtered so sentence-start capitals are
+    not flagged; treat as review candidates). Body-level paragraphs only.
+    Read-only.
+    """
     return _dt.check_defined_terms(
         DocxPackage(file_path), definition_patterns=definition_patterns
     )
@@ -2508,11 +3253,12 @@ def check_defined_terms(
 def com_import_pdf(pdf_path: str, output_path: str | None = None) -> dict:
     """Convert a PDF to .docx via Word's built-in PDF reflow, in a dedicated
     invisible Word instance. Output defaults next to the PDF with a .docx
-    extension; an existing output file is refused. The produced .docx is
-    validated by a full package round-trip. Reflow quality depends on the
-    PDF: text-based PDFs convert well, complex layouts may reflow
-    imperfectly, and scanned image PDFs yield little or no text (Word does
-    not OCR) — a near-zero word count triggers an explicit warning."""
+    extension; an existing output file is refused; the produced .docx is
+    validated by a full package round-trip. Text-based PDFs convert well,
+    complex layouts may reflow imperfectly, and scanned image PDFs yield
+    little or no text (Word does not OCR; a near-zero word count triggers
+    an explicit warning).
+    """
     from word_mcp.com import convert  # when pasted: from .com import convert
 
     return convert.import_pdf(pdf_path, output_path)
@@ -2533,22 +3279,19 @@ def add_equation(
     backup: bool = True,
 ) -> dict:
     """Insert a LaTeX equation as NATIVE Word math (editable in Word's
-    equation editor, not an image). display=True inserts a block equation in
-    its own paragraph — position with exactly one of after_index /
-    after_anchor / at_end. display=False inserts an inline equation
-    immediately after anchor_text inside that paragraph (occurrence picks
-    among repeated matches), leaving the surrounding text untouched.
-
-    Supports the standard academic LaTeX repertoire: fractions, roots, sums
-    and integrals with limits, matrices (pmatrix/bmatrix), cases, align*
-    (aligned is rewritten to align* automatically — upstream converter
-    quirk), Greek letters, operators, accents, sub/superscripts, \\text{}.
-    A LaTeX expression that will not convert raises a clear error carrying
-    the converter's message and the document is NOT modified.
-
-    Equations do not appear in get_text/find_text output (math runs live
-    outside the plain-text layer, which also makes search-and-replace
-    equation-safe); read them back with list_equations."""
+    equation editor, not an image). display=True: a block equation in its
+    own paragraph, positioned by exactly one of after_index / after_anchor
+    / at_end. display=False: inline immediately after anchor_text within
+    that paragraph (occurrence picks the match), surrounding text
+    untouched. Supports the standard academic repertoire: fractions, roots,
+    sums/integrals with limits, matrices, cases, align* (aligned is
+    rewritten automatically), Greek, operators, accents, sub/superscripts,
+    \\text{}. Unconvertible LaTeX raises a clear error; the document is NOT
+    modified. Equations are invisible to get_text/find_text
+    (search-and-replace is equation-safe); read them with list_equations.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _eq.add_equation(
@@ -2567,13 +3310,13 @@ def add_equation(
 
 @mcp.tool
 def list_equations(file_path: str) -> dict:
-    """Every equation in the document (body, tables, footnotes, endnotes):
-    index, display vs inline, location (body paragraph index, in_table, or
-    note part), and a plain-text approximation of the math. THIS is how
-    equation content is read — equations are invisible to get_text and
-    find_text because math runs sit outside the plain-text layer. The index
-    is the handle delete_equation takes; equation_count summarizes.
-    Read-only."""
+    """List every equation in the document (body, tables, footnotes,
+    endnotes): index, display vs inline, location, and a plain-text
+    approximation of the math. THIS is how equation content is read;
+    equations are invisible to get_text and find_text because math runs sit
+    outside the plain-text layer. The index is the handle delete_equation
+    takes. Read-only.
+    """
     return _eq.list_equations(DocxPackage(file_path))
 
 
@@ -2582,7 +3325,9 @@ def delete_equation(file_path: str, index: int, backup: bool = True) -> dict:
     """Delete an equation by its list_equations index. A display equation's
     paragraph is removed with it when the paragraph holds nothing else
     (the usual case); an inline equation is removed from within its
-    paragraph, surrounding text untouched."""
+    paragraph, surrounding text untouched. Auto-backup: prev/anchor slots
+    in .ks4w-backups (backup=False skips rotation only); atomic validated
+    save. Refuses documents open in Word."""
     return _edit(
         file_path,
         lambda pkg: _eq.delete_equation(pkg, index),
@@ -2595,14 +3340,15 @@ def search_zotero_library(
     query: str, db_path: str | None = None, limit: int = 20
 ) -> dict:
     """Search the user's LOCAL Zotero library (read-only; the database is
-    never modified). Every word in the query must match the item's title, a
-    creator's last name, the year, or the publication name. Returns each
-    match's Zotero item key — the handle insert_zotero_citation takes —
-    plus item type, title, creators, year, and publication. Attachments,
-    notes, and trashed items are excluded. The database defaults to
+    never modified). Every query word must match the title, a creator's
+    last name, the year, or the publication name. Returns each match's
+    Zotero item key (the handle insert_zotero_citation takes) plus type,
+    title, creators, year, and publication. Attachments, notes, and trashed
+    items are excluded. The database defaults to
     <home>/Zotero/zotero.sqlite; pass db_path for a nonstandard data
-    directory. Reads a point-in-time snapshot, so edits made in a running
-    Zotero in the last moments may not appear yet."""
+    directory. Reads a point-in-time snapshot, so last-moment edits in a
+    running Zotero may not appear yet.
+    """
     return _zl.search_zotero_library(query, db_path=db_path, limit=limit)
 
 
@@ -2619,16 +3365,18 @@ def insert_zotero_citation(
     backup: bool = True,
 ) -> dict:
     """Insert a REAL Zotero citation field (ADDIN ZOTERO_ITEM CSL_CITATION)
-    after `anchor_text`, built from the user's local Zotero library exactly
-    the way the Zotero Word plugin builds it — so Zotero recognizes it,
-    refreshes it, and includes it in the bibliography. item_keys come from
-    search_zotero_library. page becomes the locator; prefix/suffix attach to
-    the cited item (single-item citations only — with several keys Zotero
-    applies them per item, so this tool refuses rather than guessing).
-
-    The visible text is a plain (Author, Year) PLACEHOLDER until the user
-    clicks Refresh in Zotero's Word plugin, which restyles it to the
-    document's citation style. The Zotero database is only ever read."""
+    after anchor_text, built exactly as the Zotero Word plugin builds it,
+    so Zotero recognizes, refreshes, and bibliographs it. item_keys come
+    from search_zotero_library; page becomes the locator; prefix/suffix
+    attach to the cited item (single-item citations only; several keys
+    refuse rather than guess). The visible text is a plain (Author, Year)
+    PLACEHOLDER until the user clicks Refresh in Zotero's Word plugin. The
+    Zotero database is only ever read. Run detect_citation_system first on
+    unfamiliar documents: mixing Word-native and Zotero/Mendeley/EndNote
+    citations creates a bibliography no single manager maintains.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _zl.insert_zotero_citation(
@@ -2653,19 +3401,42 @@ def find_formatted(
     scope: str = "body",
 ) -> dict:
     """Find text by its EFFECTIVE formatting: bold/italic/underline/strike
-    (true/false), font, size_pt, color (hex), highlight, style (id or name).
-    All criteria must hold together. Formatting is resolved the way Word
-    resolves it — run properties, then character style, then paragraph
-    style chain, then document defaults — and every match reports which
-    level satisfied each criterion, so explicit bold and Heading-inherited
-    bold are distinguishable. query=None returns every stretch of text with
-    the formatting; a query (case-sensitive) returns only its occurrences
-    inside such stretches. scope: 'body' (tables included) or 'all' (adds
-    footnotes/endnotes). Theme font/color references cannot be resolved
-    from the file and are counted, never guessed. Read-only."""
+    (true/false), font, size_pt, color (hex), highlight, style (id or
+    name); all criteria must hold together. Resolution follows Word (run
+    properties, then character style, then paragraph-style chain, then
+    document defaults); every match reports which level satisfied each
+    criterion, so explicit and Heading-inherited bold are distinguishable.
+    query=None returns every stretch with the formatting; a query
+    (case-sensitive) returns only occurrences inside such stretches. scope:
+    'body' (tables included) or 'all' (adds footnotes/endnotes). Text-box
+    content is EXCLUDED: read boxes via get_textbox_text or get_text
+    include_textboxes. Theme references are counted, never guessed.
+    replace_formatted is the mutation twin. Read-only.
+    """
     return _sf.find_formatted(
         DocxPackage(file_path), query, formatting=formatting, scope=scope
     )
+
+
+@mcp.tool
+def get_paragraph_format(
+    file_path: str, start: int, end: int | None = None
+) -> dict:
+    """Read EFFECTIVE paragraph formatting for body paragraphs start..end
+    (inclusive; end defaults to start): alignment, space_before_pt,
+    space_after_pt, line_spacing, indent_left_pt, indent_right_pt,
+    first_line_indent_pt (negative = hanging), keep_with_next,
+    widow_control, page_break_before. Resolution follows Word (own
+    properties, then the style basedOn chain, then document defaults);
+    every property reports value AND source ('explicit' | 'paragraph_style'
+    | 'document_defaults' | 'word_default'), mirroring find_formatted's
+    matched_via, so direct overrides and style inheritance are
+    distinguishable. line_spacing carries its rule ('auto' = multiple;
+    'exact'/'atLeast' = points). Numbering-contributed indents are not
+    resolved (flagged has_numbering). set_paragraph_format takes the same
+    keys. Read-only.
+    """
+    return _sf.get_paragraph_format(DocxPackage(file_path), start, end)
 
 
 @mcp.tool
@@ -2685,12 +3456,13 @@ def comment_report(file_path: str, include_resolved: bool = True) -> dict:
 
 @mcp.tool
 def comment_report_multi(file_paths: list[str]) -> dict:
-    """Reviewer matrix merged across several documents — e.g., three committee
-    members' copies of the same draft. Entries are keyed by (author, anchored
-    text) with per-file provenance on every occurrence, and collisions (the
-    same span commented on by two or more different reviewers) are detected
-    and listed. Copies should share the draft text: merging matches anchored
-    spans verbatim. Read-only on every file."""
+    """Merge the reviewer matrix across several documents (e.g. three
+    committee members' copies of the same draft). Entries are keyed by
+    (author, anchored text) with per-file provenance on every occurrence,
+    and collisions (the same span commented on by two or more reviewers)
+    are detected and listed. Copies should share the draft text; merging
+    matches anchored spans verbatim. Read-only on every file.
+    """
     return _rc.comment_report_multi(file_paths)
 
 
@@ -2707,29 +3479,30 @@ def revision_analytics(file_path: str) -> dict:
 
 @mcp.tool
 def structured_diff(old_path: str, new_path: str, detail_cap: int = 200) -> dict:
-    """Agent-readable diff between two saved drafts, computed without Word:
+    """Diff two saved drafts agent-readably, computed without Word:
     unchanged/modified/inserted/deleted paragraphs with indices in both
     documents, moved paragraphs (identical text at a new position),
-    intra-paragraph change opcodes for modified pairs, per-section change
-    summary, table changes (dimension changes plus changed cells, compared
-    positionally), footnote/endnote count deltas, and heading structure
-    changes. Deliberately NOT a redline — use com_compare_documents for a
-    Word-rendered tracked-changes comparison. Per-change detail is capped at
-    detail_cap entries on huge diffs (counts stay complete; detail_capped
-    reports it). Read-only on both files."""
+    intra-paragraph change opcodes, per-section change summary, table
+    changes (dimensions plus changed cells, compared positionally),
+    footnote/endnote count deltas, and heading structure changes.
+    Deliberately NOT a redline: use com_compare_documents for a
+    Word-rendered tracked-changes comparison. Per-change detail is capped
+    at detail_cap entries on huge diffs (counts stay complete). Read-only
+    on both files.
+    """
     return _rc.structured_diff(old_path, new_path, detail_cap=detail_cap)
 
 
 @mcp.tool
 def get_textbox_text(file_path: str) -> dict:
-    """Text inside every text box / shape text frame, per box, across the
-    body, headers, and footers — modern drawings and legacy VML alike. Each
-    box reports its text, paragraphs, part, anchoring body paragraph index
-    (where determinable), and shape name. Use this instead of get_text for
-    box content: the generic tools smear box text into the host paragraph
-    (doubled by Word's mc:Fallback compatibility copy) with no boundary.
-    box_index in the result is the address set_textbox_text takes.
-    Read-only."""
+    """Read the text inside every text box / shape text frame, per box, across
+    the body, headers, and footers (modern drawings and legacy VML alike).
+    Each box reports its text, paragraphs, part, anchoring body paragraph
+    index (where determinable), and shape name. Use this instead of
+    get_text for box content: the generic tools smear box text into the
+    host paragraph (doubled by the mc:Fallback compatibility copy) with no
+    boundary. box_index is the address set_textbox_text takes. Read-only.
+    """
     return _tbx.get_textbox_text(DocxPackage(file_path))
 
 
@@ -2741,7 +3514,10 @@ def set_textbox_text(
     Keeps the first paragraph's style and first run's formatting; '\\n'
     splits into multiple paragraphs; the mc:Fallback compatibility copy is
     rewritten to match. Boxes holding non-text content (nested tables,
-    images) are refused rather than flattened."""
+    images) are refused rather than flattened. Auto-backup: prev/anchor
+    slots in .ks4w-backups (backup=False skips rotation only); atomic
+    validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _tbx.set_textbox_text(pkg, box_index, text),
@@ -2753,16 +3529,15 @@ def set_textbox_text(
 def preview_replace(
     file_path: str, replacements: list[dict], scope: str = "body"
 ) -> dict:
-    """DRY RUN for search_and_replace — the file is NEVER modified. Same
-    items ({find, replace, regex?}) and scope (body | footnotes | headers |
-    all), same matching engine (fragmented-run map, guarded regex, chained
-    items), so the preview shows exactly what a real run would change:
-    per-item counts, each match with paragraph index and ~60 chars of
-    before/after context, the grand total, and a refusals list of problems
-    the real run would hit (control characters in replacements, zero-width
-    regexes, empty finds). Run this, review, then run search_and_replace
-    with confidence — and with max_replacements set to the previewed total
-    so any drift aborts instead of over-replacing."""
+    """Dry-run search_and_replace; the file is NEVER modified. Same items
+    ({find, replace, regex?}), scope (body | footnotes | headers | all),
+    and matching engine (fragmented-run map, guarded regex, chained items),
+    so the preview shows exactly what a real run would change: per-item
+    counts, each match with paragraph index and ~60 chars of before/after
+    context, the grand total, and the refusals a real run would hit.
+    Review, then run search_and_replace with max_replacements set to the
+    previewed total so any drift aborts instead of over-replacing.
+    """
     return _pv.preview_replace(
         DocxPackage(file_path), replacements, scope=scope
     )
@@ -2773,13 +3548,14 @@ def word_count_with_exclusions(
     file_path: str,
     exclude: list[str] = ["references", "captions", "footnotes"],
 ) -> dict:
-    """Word count minus named zones — the number a journal actually wants.
-    exclude any of: references, captions, footnotes, endnotes, block_quotes,
-    tables, headings, front_matter, abstract (unknown names rejected with
-    the allowed list). Returns total, per-zone excluded breakdown, and the
-    included count; total = included + sum(excluded) always. Same
-    whitespace tokenization as get_word_count; detected zone locations are
-    reported for review. Read-only."""
+    """Count words minus named zones: the number a journal actually wants.
+    exclude any of: references, captions, footnotes, endnotes,
+    block_quotes, tables, headings, front_matter, abstract (unknown names
+    rejected with the allowed list). Returns total, per-zone excluded
+    breakdown, and the included count; total = included + sum(excluded)
+    always. Same whitespace tokenization as word_count's file mode;
+    detected zone locations are reported for review. Read-only.
+    """
     return _jc.word_count_with_exclusions(
         DocxPackage(file_path), exclude=tuple(exclude)
     )
@@ -2793,17 +3569,19 @@ def anonymize_for_review(
     mapping_path: str | None = None,
     backup: bool = True,
 ) -> dict:
-    """BETA (heuristic) — review the flagged-items list in the result rather than trusting silently. Anonymize a manuscript for double-blind peer review, reversibly.
-    Masks self-citations by the named authors ("Hurd (1999)" -> "Author
-    (1999)", "(Hurd, 1999)" -> "(Author, 1999)") keeping years and pages,
-    rewrites their reference-list entries to "Author (Year). [Details
-    removed for peer review.]", and scrubs identifying metadata. Prose that
-    identifies the author ("my previous work", "this author", an
-    Acknowledgments section, surnames outside citation syntax) is FLAGGED
-    with locations, never auto-edited. Writes a reversal mapping JSON
-    (default <name>.anonymization.json beside the file; never overwritten)
-    for deanonymize_document. KEEP THE MAPPING PRIVATE — it re-identifies
-    the author."""
+    """BETA (heuristic): review the flagged-items list in the result rather
+    than trusting silently. Anonymize a manuscript for double-blind peer
+    review, reversibly. Masks self-citations by the named authors ('Hurd
+    (1999)' -> 'Author (1999)') keeping years and pages, rewrites their
+    reference-list entries to 'Author (Year). [Details removed for peer
+    review.]', and scrubs identifying metadata. Prose that identifies the
+    author (Acknowledgments, 'my previous work', surnames outside citation
+    syntax) is FLAGGED with locations, never auto-edited. Writes a reversal
+    mapping JSON (default <name>.anonymization.json, never overwritten) for
+    deanonymize_document; KEEP IT PRIVATE. Auto-backup: prev/anchor slots
+    in .ks4w-backups (backup=False skips rotation only); atomic validated
+    save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _an.anonymize_for_review(
@@ -2825,7 +3603,10 @@ def deanonymize_document(
     is verified to still sit where the mapping says before anything is
     restored; if the document drifted since anonymization, NOTHING is
     restored and the refusal lists every mismatch. The mapping file is left
-    on disk for you to delete once the restore is confirmed."""
+    on disk to delete once the restore is confirmed. Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _an.deanonymize(pkg, mapping_path=mapping_path),
@@ -2869,15 +3650,17 @@ def import_table(
     has_header: bool = True,
     backup: bool = True,
 ) -> dict:
-    """Fill a table from data: a .csv path, a .json path (export_table's
-    JSON form or a bare list of rows), or an inline list of lists. Without
-    table_index a NEW table is created (positioned by at_end/after_anchor,
-    default document end; has_header bolds and repeats the first row). With
-    table_index the existing table's cell texts are OVERWRITTEN in place:
-    data must exactly match the table's rows x grid-columns shape (refused
-    otherwise, listing both shapes), merged cells take their value from the
-    anchor position, and values in merge-covered positions are refused
-    because Word would never display them."""
+    """Fill a table from data: a .csv path, a .json path (export_table's form
+    or a bare row list), or an inline list of lists. Without table_index a
+    NEW table is created (at_end/after_anchor, default end; has_header
+    bolds and repeats the first row). With table_index the existing table's
+    cell texts are OVERWRITTEN in place: data must exactly match rows x
+    grid-columns (refused otherwise, listing both shapes); merged cells
+    take their value at the anchor position; values in merge-covered
+    positions are refused. Auto-backup: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Refuses
+    documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _dio.import_table(
@@ -2915,17 +3698,17 @@ def split_document(
     level: int = 1,
     filename_from: str = "heading",
 ) -> dict:
-    """Split a document into one standalone .docx per heading section — the
+    """Split a document into one standalone .docx per heading section, the
     inverse of com_merge_documents (no Word needed). Sections start at each
-    heading of `level` (or higher) and carry everything to the next one:
-    paragraphs, tables, images, footnotes. Content before the first heading
-    becomes 00_front_matter.docx when non-empty. Outputs carry the source's
-    styles, numbering, settings, fonts, and themes; footnote/endnote
-    definitions and image parts belonging to other sections are stripped;
-    every output is round-trip validated. filename_from: 'heading' gives
-    01_Heading Text.docx, 'index' gives 01.docx. The source file is never
-    modified; existing output files are refused before anything is
-    written."""
+    heading of `level` (or higher) and carry everything to the next one;
+    content before the first heading becomes 00_front_matter.docx when
+    non-empty. Outputs carry the source's styles, numbering, settings,
+    fonts, and themes; other sections' note definitions and image parts are
+    stripped; every output is round-trip validated. filename_from:
+    'heading' gives 01_Heading Text.docx, 'index' gives 01.docx. The source
+    file is never modified; existing output files are refused before
+    anything is written.
+    """
     return _dio.split_document(
         file_path, output_dir, level=level, filename_from=filename_from
     )
@@ -2956,32 +3739,33 @@ def convert_citation_style(
     dry_run: bool = False,
     backup: bool = True,
 ) -> dict:
-    """BETA (heuristic) — review the flagged-items list in the result rather than trusting silently. Convert a manuscript's PLAIN-TEXT citations and reference list to a
-    target publication style: apa7, chicago17-author-date, chicago17-notes
-    (= Turabian), mla9, harvard, ieee, vancouver, asa (Sage).
+    """BETA (heuristic): review the flagged-items list in the result rather
+    than trusting silently. Convert a manuscript's PLAIN-TEXT citations and
+    reference list to a target publication style: apa7,
+    chicago17-author-date, chicago17-notes (= Turabian), mla9, harvard,
+    ieee, vancouver, asa.
 
-    This is HEURISTIC TEXT CONVERSION, not a citation processor: only
-    fully-parsed reference entries are rewritten (partial/failed entries are
-    left verbatim and flagged), only unambiguously-resolved citations are
-    converted, and the returned flagged list MUST be reviewed by a human.
-    Conversions between systems are supported: author-date <-> numbered
-    ([n] brackets or Vancouver superscripts, numbered by first appearance),
-    author-date -> Chicago notes (each citation becomes a REAL footnote:
-    first-use long note, then short notes), and notes -> author-date
-    (only footnotes that are recognizably pure citations are harvested;
-    mixed-content footnotes are flagged and left alone). Narrative
-    citations keep the author's name ('Hurd (1999) argues' -> 'Hurd [12]
-    argues'). Reference-list italics, ordering, and the section heading
-    are converted; hanging indents are preserved.
+    Heuristic text conversion, not a citation processor: only fully-parsed
+    reference entries and unambiguously-resolved citations are converted;
+    everything else is left verbatim and flagged for human review. Supports
+    author-date <-> numbered ([n] or Vancouver superscripts, numbered by
+    first appearance), author-date -> Chicago notes (each citation becomes
+    a REAL footnote), and notes -> author-date (only recognizably pure
+    citation footnotes are harvested; mixed ones are flagged and left
+    alone). Narrative citations keep the author's name; reference-list
+    italics, ordering, heading, and hanging indents are handled. Documents
+    using Word-native or Zotero/Mendeley/EndNote citation FIELDS are routed
+    away (set_bibliography_style, or restyle in the manager); fields are
+    never rewritten as text. Run detect_citation_system first on unfamiliar
+    documents: mixing Word-native and Zotero/Mendeley/EndNote citations
+    creates a bibliography no single manager maintains.
 
-    Documents using Word-native CITATION fields or Zotero/Mendeley/EndNote
-    fields are ROUTED (use set_bibliography_style, or restyle in the
-    manager) — their fields are never rewritten as text.
-
-    dry_run=True returns the complete change plan (per-entry and
-    per-citation before/after plus all flags) and leaves the file
-    byte-identical. Any error during a real run leaves the original file
-    untouched."""
+    dry_run=True returns the complete change plan and leaves the file
+    byte-identical; parse_references is the read-only stage 1. Any error
+    during a real run leaves the original untouched. Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
     if dry_run:
         return _sc2.convert_citation_style(
             DocxPackage(file_path), target_style,
@@ -3004,21 +3788,20 @@ def apply_manuscript_format(
     author_last_name: str | None = None,
     backup: bool = True,
 ) -> dict:
-    """Apply a style's page-level manuscript conventions where they are
-    publicly well-defined: 'apa7' (= apa7-student: 1in margins, double
-    spacing, page number top right, APA heading-style formatting L1-L5),
-    'apa7-professional' (adds the running head: pass running_head or the
-    document title is used, flagged), 'mla9' (1in margins, double spacing,
-    surname + page header: pass author_last_name or the author metadata is
-    used, flagged), 'chicago17' (= turabian: 12pt base, double-spaced body,
-    single-spaced footnotes, page number bottom center). All three set a
-    hanging indent on the reference list when one is found.
-
-    Anything contested or requiring human judgment (run-in headings,
-    heading text casing, first-line indents around front matter) is NOT
-    applied and is itemized in the result's not_applied list. IEEE,
-    Vancouver, ASA, and Harvard page formats are journal-template-specific
-    and are refused with an explanation."""
+    """Apply a style's page-level manuscript conventions where publicly
+    well-defined: 'apa7' (= apa7-student: 1in margins, double spacing, page
+    number top right, APA heading formats L1-L5), 'apa7-professional' (adds
+    the running head; running_head or the title, flagged), 'mla9' (surname
+    + page header; author_last_name or the author metadata, flagged),
+    'chicago17' (= turabian: 12pt base, double-spaced body, single-spaced
+    footnotes, page number bottom center). All three set a hanging indent
+    on a found reference list. Anything contested (run-in headings, casing,
+    indents near front matter) is NOT applied and is itemized in
+    not_applied. IEEE/Vancouver/ASA/Harvard page formats are
+    journal-template-specific and refused. Auto-backup: prev/anchor slots
+    in .ks4w-backups (backup=False skips rotation only); atomic validated
+    save. Refuses documents open in Word.
+    """
     return _edit(
         file_path,
         lambda pkg: _sc2.apply_manuscript_format(
@@ -3028,6 +3811,374 @@ def apply_manuscript_format(
         backup=backup,
     )
 
+
+
+# ------------------------------------------------- api-review absorptions
+
+
+@mcp.tool
+def get_workflows(task: str | None = None) -> dict:
+    """Recommended tool sequences for common multi-step tasks, with a
+    one-line why per step. Call with no task to list the available tasks
+    ('process-feedback', 'prepare-submission', 'format-citations',
+    'build-from-template', 'heavy-editing'); call with task='<name>' for
+    that task's step-by-step sequence and notes. Pure guidance: reads
+    nothing, changes nothing."""
+    return _wf.get_workflows(task)
+
+
+@mcp.tool
+def detect_citation_system(file_path: str) -> dict:
+    """Which citation system(s) the document uses: Word native (CITATION
+    fields + sources store), Zotero (ADDIN ZOTERO_ITEM), Mendeley (ADDIN
+    CSL_CITATION), EndNote (ADDIN EN.CITE), or plain typed text only. Counts
+    per system across body, footnotes, and endnotes, plus a split_brain flag
+    when more than one managed system is present (a split-brain bibliography:
+    each manager only maintains its own fields). Run this BEFORE any citation
+    work on an unfamiliar document."""
+    return _cs.detect_citation_system(DocxPackage(file_path))
+
+
+@mcp.tool
+def change_heading_level(
+    file_path: str,
+    delta: int,
+    heading_text: str | None = None,
+    paragraph_index: int | None = None,
+    subtree: bool = False,
+    backup: bool = True,
+) -> dict:
+    """Promote (delta=-1) or demote (delta=1) a heading, addressed by exact
+    heading_text or by paragraph_index. subtree=True also shifts every
+    subordinate heading beneath it (until the next same-or-higher heading)
+    by the same delta, keeping the branch's shape. Refuses, changing
+    nothing, if any affected heading would leave levels 1-9 (the blocker is
+    named) or if a heading's level comes from an outlineLvl override or
+    custom style rather than a built-in Heading style (adjust those via
+    set_paragraph_format's outline_level). Auto-backup: prev/anchor slots
+    in .ks4w-backups (backup=False skips rotation only); atomic validated
+    save. Refuses documents open in Word.
+    """
+    return _edit(
+        file_path,
+        lambda pkg: _sx.change_heading_level(
+            pkg,
+            delta=delta,
+            heading_text=heading_text,
+            paragraph_index=paragraph_index,
+            subtree=subtree,
+        ),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def insert_field(
+    file_path: str,
+    field_code: str,
+    after_anchor: str,
+    occurrence: int = 1,
+    placeholder: str = "",
+    backup: bool = True,
+) -> dict:
+    """Insert a generic Word field right after `after_anchor` text. field_code
+    examples: 'DATE', 'TIME \\@ "HH:mm"', 'FILENAME', 'NUMPAGES', 'PAGE',
+    'SEQ Exhibit \\* Arabic'. Codes are validated against an allowlist of
+    known-safe fields (document info, page/date/time numbers, SEQ);
+    anything that links out or executes is refused, and the refusal names
+    the allowlist. The field is written dirty so Word computes the real
+    result on the next refresh; `placeholder` shows until then.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
+    return _edit(
+        file_path,
+        lambda pkg: _fl.insert_field(
+            pkg,
+            field_code=field_code,
+            after_anchor=after_anchor,
+            occurrence=occurrence,
+            placeholder=placeholder,
+        ),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def list_fields(file_path: str) -> dict:
+    """Every field in the body, headers, footers, footnotes, and endnotes:
+    instruction code, field type (DATE, PAGE, SEQ, TOC, ...), the current
+    cached result text, and location (part + body paragraph index where
+    applicable). Covers complex (fldChar) and simple (fldSimple) fields;
+    unclosed complex fields are flagged."""
+    return _fl.list_fields(DocxPackage(file_path))
+
+
+@mcp.tool
+def create_snapshot(
+    file_path: str,
+    label: str | None = None,
+    dest_dir: str | None = None,
+) -> dict:
+    """Save a DTG-stamped permanent copy of the document:
+    YYYYMMDD_HHMM_<name>.docx (an existing leading DTG in the name is
+    replaced, not stacked), with an optional short label suffix. Snapshots
+    are the PERMANENT keepers that complement the automatic prev/anchor
+    backup slots: the slots rotate on every mutation, snapshots are never
+    auto-pruned and manage_backups never touches them. Never overwrites
+    (collisions get a numeric suffix); returns the created path. The source
+    document is not modified."""
+    return _bk.create_snapshot(file_path, label=label, dest_dir=dest_dir)
+
+
+@mcp.tool
+def list_content_controls(file_path: str) -> dict:
+    """Every content control (SDT) in the document body, including the types
+    fill_form_fields skips: tag, alias, type (text / richtext / checkbox /
+    dropdown / combo / date / picture / group / citation / bibliography /
+    equation / gallery / repeating_section), current value, lock state,
+    placeholder flag, and block/inline. The index is the addressing handle
+    for set_content_control_value when tags are missing or duplicated."""
+    return _fm.list_content_controls(DocxPackage(file_path))
+
+
+@mcp.tool
+def set_content_control_value(
+    file_path: str,
+    value: str | bool,
+    tag: str | None = None,
+    index: int | None = None,
+    backup: bool = True,
+) -> dict:
+    """Set one content control's value, addressed by tag or by
+    list_content_controls index (exactly one). Text, rich-text, combo, and
+    date controls take a string; checkboxes a boolean; dropdowns one of
+    their options (refused otherwise, naming the options). Locked controls
+    and unwritable types (gallery, repeating section, citation,
+    bibliography, picture, group, equation) are refused with nothing
+    changed. Auto-backup: prev/anchor slots in .ks4w-backups (backup=False
+    skips rotation only); atomic validated save. Refuses documents open in
+    Word.
+    """
+    return _edit(
+        file_path,
+        lambda pkg: _fm.set_content_control_value(
+            pkg, value, tag=tag, index=index
+        ),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def insert_content_control(
+    file_path: str,
+    tag: str,
+    after_anchor: str,
+    alias: str | None = None,
+    text: str = "",
+    occurrence: int = 1,
+    backup: bool = True,
+) -> dict:
+    """Insert a new PLAIN-TEXT content control (inline SDT) right after
+    `after_anchor` text, with a unique tag (refused if the tag exists) and
+    optional alias and initial text. Plain text is the one control type
+    this server can build verifiably safely; creating checkbox, dropdown,
+    date, picture, gallery, or repeating controls is refused (list/fill
+    still cover those when a template provides them). Fill it later via
+    fill_form_fields or set_content_control_value by its tag. Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
+    return _edit(
+        file_path,
+        lambda pkg: _fm.insert_content_control(
+            pkg,
+            tag=tag,
+            after_anchor=after_anchor,
+            alias=alias,
+            text=text,
+            occurrence=occurrence,
+        ),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def insert_glossary(
+    file_path: str,
+    heading: str = "Glossary",
+    heading_level: int = 1,
+    after_index: int | None = None,
+    at_end: bool = True,
+    definition_patterns: list | None = None,
+    backup: bool = True,
+) -> dict:
+    """Build a glossary section from the document's defined terms (same
+    detection as check_defined_terms): a heading plus one alphabetized
+    paragraph per term, term in bold, definition harvested from the
+    defining sentence. Terms whose definition cannot be extracted cleanly
+    get a [DEFINITION NEEDED] marker instead of a mangled fragment; the
+    result lists them for manual completion. Placed at the body end by
+    default, or after body paragraph after_index. Auto-backup: prev/anchor
+    slots in .ks4w-backups (backup=False skips rotation only); atomic
+    validated save. Refuses documents open in Word.
+    """
+    return _edit(
+        file_path,
+        lambda pkg: _dt.insert_glossary(
+            pkg,
+            heading=heading,
+            heading_level=heading_level,
+            after_index=after_index,
+            at_end=at_end,
+            definition_patterns=definition_patterns,
+        ),
+        backup=backup,
+    )
+
+
+# ---------------------------------------------------------- document assembly
+
+
+@mcp.tool
+def insert_document(
+    target_path: str,
+    source_path: str,
+    after_index: int | None = None,
+    after_anchor: str | None = None,
+    at_end: bool = False,
+    formatting: str = "source",
+    backup: bool = True,
+) -> dict:
+    """Insert the ENTIRE body of source_path into target_path at one position,
+    with full resource reconciliation: the document-assembly tool for
+    merging chapter files into one manuscript. com_merge_documents only
+    concatenates whole files into a new one; copy_table transplants a
+    single table.
+
+    Position (exactly one): after_index is a body ITEM index, counting
+    paragraphs AND tables together in document order (unlike the
+    paragraph-only indices elsewhere); insertion lands after that item.
+    after_anchor matches a paragraph whose FULL plain text equals the
+    anchor; several matches refuse and list every location, so recurring
+    heading text cannot land content at the wrong spot (prefer after_index
+    for structural work). at_end appends after the last body item.
+
+    Carried: tables, images, charts, hyperlinks, lists (fresh numbering),
+    footnotes/endnotes (new ids), bookmarks (remapped, collisions renamed
+    and reported), tracked changes, equations. Styles reconcile BY NAME
+    (the target's formatting wins on a match; unmatched styles are cloned
+    in with dependency chains). The source's section setup is never
+    carried; mid-content section breaks and comment references are stripped
+    and reported. OLE objects, ActiveX, subdocuments, and altChunks refuse
+    the whole insertion, naming the blocker; nothing is half-applied.
+
+    formatting mirrors Word's paste modes on the carried copies: 'source'
+    (default) keeps direct formatting; 'merge' keeps bold/italic/emphasis
+    but strips direct font/size/color/spacing/indent overrides;
+    'destination' strips all direct formatting except structural
+    properties. Returns per-resource counts, style remaps, bookmark
+    renames, and the occupied body-item range. The source file is never
+    modified. Auto-backup: prev/anchor slots in .ks4w-backups (backup=False
+    skips rotation only); atomic validated save. Refuses documents open in
+    Word.
+    """
+    return _edit(
+        target_path,
+        lambda pkg: _asm.insert_document(
+            pkg,
+            source_path,
+            after_index=after_index,
+            after_anchor=after_anchor,
+            at_end=at_end,
+            formatting=formatting,
+        ),
+        backup=backup,
+    )
+
+
+# ------------------------------------------------------- style-aware replace
+
+
+@mcp.tool
+def replace_formatted(
+    file_path: str,
+    formatting: dict,
+    replace: str,
+    find: str | None = None,
+    scope: str = "body",
+    max_replacements: int | None = None,
+    backup: bool = True,
+) -> dict:
+    """Replace text ONLY where it carries specific EFFECTIVE formatting: the
+    mutation twin of find_formatted, same criteria keys
+    (bold/italic/underline/strike, font, size_pt, color, highlight, style),
+    all required together, resolved the way Word resolves them. find=None
+    replaces each entire matching stretch; with find (literal,
+    case-sensitive), only occurrences wholly inside a matching stretch.
+    Safe across fragmented runs; the replacement keeps the matched
+    formatting. Result mirrors search_and_replace ({replaced, total}) plus
+    per-replacement matched_via. No regex here (search_and_replace covers
+    that); text boxes are never touched (set_textbox_text edits those).
+    max_replacements aborts, changing nothing, past the cap. Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
+    """
+    return _edit(
+        file_path,
+        lambda pkg: _sf.replace_formatted(
+            pkg,
+            formatting=formatting,
+            replace=replace,
+            find=find,
+            scope=scope,
+            max_replacements=max_replacements,
+        ),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def copy_table(
+    target_path: str,
+    source_path: str,
+    table_index: int,
+    after_index: int | None = None,
+    after_anchor: str | None = None,
+    at_end: bool = False,
+    backup: bool = True,
+) -> dict:
+    """Transplant ONE table from source_path into target_path: the
+    single-element sibling of insert_document, reusing its resource
+    reconciliation scoped to the table (styles matched BY NAME, target
+    wins, unmatched cloned; fresh numbering; images/hyperlinks
+    re-registered; footnote/endnote definitions under new ids; bookmarks
+    remapped, collisions renamed).
+
+    table_index counts the SOURCE's top-level body tables (0-based,
+    list_tables order; nested tables travel with their parent). Target
+    position (exactly one): after_index is a body ITEM index counting
+    paragraphs AND tables together (not the paragraph-only index other
+    tools use); after_anchor matches a paragraph's FULL plain text,
+    refusing with every location when it recurs; at_end appends.
+    OLE/ActiveX/altChunks inside the table refuse the whole copy; nothing
+    is half-applied. Returns row/column counts, the occupied body-item
+    position, and per-resource counts. The source file is never modified.
+    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
+    rotation only); atomic validated save. Refuses documents open in Word.
+    """
+    return _edit(
+        target_path,
+        lambda pkg: _asm.copy_table(
+            pkg,
+            source_path,
+            table_index,
+            after_index=after_index,
+            after_anchor=after_anchor,
+            at_end=at_end,
+        ),
+        backup=backup,
+    )
 
 
 def main() -> None:

@@ -30,6 +30,7 @@ from ..core.errors import (
     WordMcpError,
 )
 from ..core.package import DocxPackage, qn
+from ..core.sandbox import check_path
 from . import media as _media
 from . import notes as _notes
 from . import tables as _tables
@@ -152,6 +153,8 @@ def export_table(
     exist (refused before anything is written)."""
     if format not in ("csv", "json"):
         raise WordMcpError("format must be csv or json")
+    if output_path:
+        check_path(output_path, "export table output")
     out = Path(output_path) if output_path else None
     if out is not None and out.exists():
         raise WordMcpError(
@@ -206,6 +209,7 @@ def _load_rows(data) -> list[list[str]]:
     """Normalize the import payload (CSV path / JSON path / inline list of
     lists) into a list of string rows."""
     if isinstance(data, str):
+        check_path(data, "read table data file")
         p = Path(data)
         if not p.exists():
             raise TargetNotFound(f"data file not found: {data}")
@@ -380,6 +384,7 @@ def extract_images(
 
     Any name collision with an existing file is refused BEFORE anything is
     written — no partial extraction."""
+    check_path(output_dir, "extract images output")
     out_dir = Path(output_dir)
     if out_dir.exists() and not out_dir.is_dir():
         raise WordMcpError(
@@ -642,6 +647,7 @@ def split_document(
             }
         )
 
+    check_path(output_dir, "split document output")
     out_dir = Path(output_dir)
     targets = [out_dir / s["filename"] for s in sections]
     existing = [str(t) for t in targets if t.exists()]

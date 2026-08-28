@@ -146,7 +146,7 @@ def test_live_delete_of_citation_paragraph_removes_field_cleanly(zotero_doc):
     path, _ = zotero_doc
     # deleting the WHOLE citation-bearing paragraph is a legitimate edit; the
     # field must go with it (no orphaned half-field), other codes untouched
-    paras = srv.get_text(path)["paragraphs"]
+    paras = srv.get_text(path)
     idx = next(
         p["index"] for p in paras if "alliance argument" in p["text"]
     )

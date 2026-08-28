@@ -22,6 +22,7 @@ from lxml import etree
 
 from ..core.errors import WordMcpError
 from ..core.package import DocxPackage, qn
+from ..core.sandbox import check_path
 from . import _runmap
 from .text import _replace_parts
 
@@ -283,6 +284,7 @@ def _load_rows(data_rows: list[dict] | str) -> list[dict]:
         if not all(isinstance(r, dict) for r in data_rows):
             raise WordMcpError("data_rows list items must all be dicts")
         return data_rows
+    check_path(data_rows, "read merge data file")
     path = Path(data_rows)
     if not path.is_file():
         raise WordMcpError(f"data file not found: {path}")
@@ -388,6 +390,7 @@ def mail_merge(
                 + " — fix the data or call with missing='skip' or 'empty'"
             )
 
+    check_path(output_dir, "mail merge output")
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     names = _cap_names(

@@ -5,7 +5,9 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 
-# Backups created by the server
+# Backups created by the server (slot folders since v1.6; the *.bak-* pattern
+# stays for straggler files from the pre-v1.6 scheme)
+.ks4w-backups/
 *.bak-*.docx
 
 # PRIVATE — never publish:
@@ -20,8 +22,14 @@ dist/
 build/
 BUILD_LOG.md
 V2_KICKOFF.md
+V2_DESIGN.md
 V1.5_KICKOFF.md
+V1.6_KICKOFF.md
+V1.6_SHIP_RUNBOOK.md
+research/20260828_demand_mining.md
 KitchenSink4Word-Community-Feedback.md
+kitchensink4word-feedback.md
+Developer Feedback/
 integration/
 
 # packed bundles ship as release assets, not commits

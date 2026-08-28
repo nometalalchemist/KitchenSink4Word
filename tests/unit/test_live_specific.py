@@ -53,8 +53,8 @@ def test_insert_at_cursor(cursor_doc):
     r = srv.live_insert_at_cursor(cursor_doc, "CURSOR-INSERTED ")
     assert r["live"] is True and r["chars"] == len("CURSOR-INSERTED ")
     text = srv.get_text(cursor_doc, contains="CURSOR-INSERTED")
-    assert len(text["paragraphs"]) == 1
-    assert text["paragraphs"][0]["text"].startswith(
+    assert len(text) == 1
+    assert text[0]["text"].startswith(
         "CURSOR-INSERTED Paragraph number 10"
     )
 

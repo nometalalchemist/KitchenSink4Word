@@ -640,6 +640,27 @@ def remove_watermark(pkg: DocxPackage) -> dict:
     return {"watermarks_removed": removed}
 
 
+def _section_state(sp: etree._Element) -> dict:
+    """Everything set_section_properties can set, as currently stored:
+    page size, orientation, and all margin sides. Keys are omitted when the
+    underlying element is absent (Word then applies its own defaults)."""
+    state: dict = {}
+    pgsz = sp.find(qn("w:pgSz"))
+    if pgsz is not None:
+        state["page_width_pt"] = int(pgsz.get(qn("w:w"), "0")) / 20
+        state["page_height_pt"] = int(pgsz.get(qn("w:h"), "0")) / 20
+        state["orientation"] = pgsz.get(qn("w:orient"), "portrait")
+    pgmar = sp.find(qn("w:pgMar"))
+    if pgmar is not None:
+        state["margins_pt"] = {
+            side: int(pgmar.get(qn(f"w:{side}"), "0")) / 20
+            for side in (
+                "top", "bottom", "left", "right", "header", "footer", "gutter",
+            )
+        }
+    return state
+
+
 def set_section_properties(
     pkg: DocxPackage,
     *,
@@ -651,7 +672,10 @@ def set_section_properties(
 ) -> dict:
     sects = _sect_prs(pkg)
     if not 0 <= section < len(sects):
-        raise TargetNotFound(f"section {section} out of range")
+        raise TargetNotFound(
+            f"section {section} out of range "
+            f"({len(sects)} section(s), valid indices 0-{len(sects) - 1})"
+        )
     sp = sects[section]
     changed = []
     if orientation or page_width_pt or page_height_pt:
@@ -695,8 +719,11 @@ def set_section_properties(
                 raise WordMcpError(f"unknown margin side: {side}")
             pgmar.set(qn(f"w:{side}"), str(int(val * 20)))
         changed.append("margins")
-    pkg.mark_dirty()
-    return {"section": section, "changed": changed}
+    if changed:
+        pkg.mark_dirty()
+    # Full state in every response: current state on a no-change call (safe
+    # way to READ a section), post-change state otherwise.
+    return {"section": section, "changed": changed, "state": _section_state(sp)}
 
 
 def add_section_break(pkg: DocxPackage, *, after_index: int, break_type: str = "nextPage") -> dict:

@@ -76,12 +76,12 @@ def test_live_off_still_refuses(routed_doc):
 def test_get_text_routes_live_and_matches_file_read(routed_doc):
     path, file_read, _ = routed_doc
     result = srv.get_text(path)          # auto → live
-    assert result["live"] is True
-    live_paras = result["paragraphs"]
+    # L9 parity: live returns the FILE-mode flat list shape
+    assert isinstance(result, list)
     # empty doc starts with one empty paragraph; both layers must agree on
     # indexing, text, and heading levels for every non-empty paragraph
     file_by_idx = {p["index"]: p for p in file_read}
-    for lp in live_paras:
+    for lp in result:
         fp = file_by_idx.get(lp["index"])
         assert fp is not None, f"live index {lp['index']} missing file-side"
         assert lp["text"] == fp["text"]
@@ -92,11 +92,14 @@ def test_get_text_routes_live_and_matches_file_read(routed_doc):
 def test_get_outline_parity(routed_doc):
     path, _, file_outline = routed_doc
     result = srv.get_outline(path)
+    # L9 parity: live returns the FILE-mode flat list shape
+    assert isinstance(result, list)
     live_heads = [(h["paragraph_index"], h["level"], h["text"])
-                  for h in result["outline"]]
+                  for h in result]
     file_heads = [(h["paragraph_index"], h["level"], h["text"])
                   for h in file_outline]
     assert live_heads == file_heads
+    assert all(h["detected_via"] == "heading_style" for h in result)
 
 
 @live_mark
@@ -106,10 +109,11 @@ def test_search_and_replace_routes_live(routed_doc):
     r = srv.search_and_replace(
         path, [{"find": "framework", "replace": "structure"}]
     )
-    assert r["live"] is True and r["total_replacements"] == 1
+    # L7 parity: canonical file shape {replaced, total} + live key
+    assert r["live"] is True and r["total"] == 1
+    assert r["replaced"] == {"framework": 1}
     text = srv.get_text(path, contains="structure")
-    assert any("alliance structure matters" in p["text"]
-               for p in text["paragraphs"])
+    assert any("alliance structure matters" in p["text"] for p in text)
     srv.search_and_replace(path, [{"find": "structure", "replace": "framework"}])
 
 
@@ -120,11 +124,11 @@ def test_self_referencing_replacement_terminates(routed_doc):
     r = srv.search_and_replace(
         path, [{"find": "alliance", "replace": "alliance-x"}]
     )
-    assert r["total_replacements"] == 2
+    assert r["total"] == 2
     back = srv.search_and_replace(
         path, [{"find": "alliance-x", "replace": "alliance"}]
     )
-    assert back["total_replacements"] == 2
+    assert back["total"] == 2
 
 
 @live_mark
@@ -135,9 +139,9 @@ def test_regex_replacement_with_groups(routed_doc):
         path,
         [{"find": r"(Second) (paragraph)", "replace": r"\2 \1", "regex": True}],
     )
-    assert r["total_replacements"] == 1
+    assert r["total"] == 1
     text = srv.get_text(path, contains="paragraph Second")
-    assert text["paragraphs"]
+    assert text
     srv.search_and_replace(
         path,
         [{"find": r"(paragraph) (Second)", "replace": r"\2 \1", "regex": True}],
@@ -154,27 +158,27 @@ def test_max_replacements_aborts_atomically(routed_doc):
             [{"find": "paragraph", "replace": "XXX"}],
             max_replacements=1,
         )
-    assert not srv.get_text(path, contains="XXX")["paragraphs"]
+    assert not srv.get_text(path, contains="XXX")
 
 
 @live_mark
 @needs_word
 def test_insert_and_delete_paragraphs_live(routed_doc):
     path, _, _ = routed_doc
-    before = len(srv.get_text(path)["paragraphs"])
+    before = len(srv.get_text(path))
     r = srv.insert_paragraphs(
         path, [{"text": "LIVE INSERTED A"}, {"text": "LIVE INSERTED B"}],
         after_anchor="Closing paragraph",
     )
     assert r["live"] is True and r["inserted"] == 2
     now = srv.get_text(path)
-    assert len(now["paragraphs"]) == before + 2
-    idxs = [p["index"] for p in now["paragraphs"]
+    assert len(now) == before + 2
+    idxs = [p["index"] for p in now
             if p["text"].startswith("LIVE INSERTED")]
     assert len(idxs) == 2
     d = srv.delete_paragraphs(path, idxs[0], idxs[1])
     assert d["live"] is True and d["deleted"] == 2
-    assert len(srv.get_text(path)["paragraphs"]) == before
+    assert len(srv.get_text(path)) == before
 
 
 @live_mark
@@ -186,9 +190,15 @@ def test_set_cells_live(routed_doc):
         [{"row": 0, "cell": 0, "text": "H1"}, {"row": 0, "cell": 1, "text": "H2"},
          {"row": 1, "cell": 0, "text": "v1"}, {"row": 1, "cell": 1, "text": "v2"}],
     )
-    assert r["live"] is True and r["cells_set"] == 4
+    # L7 parity: file-mode key name
+    assert r["live"] is True and r["cells_written"] == 4
     found = srv.find_text(path, "v2")
-    assert any(m["location"] == "table cell" for m in found["matches"])
+    # L9 parity: flat list; table matches carry table/row/cell addressing
+    assert isinstance(found, list)
+    assert any(
+        m.get("table_index") == 0 and m.get("row") == 1 and m.get("cell") == 1
+        for m in found
+    )
 
 
 @live_mark
@@ -229,7 +239,8 @@ def test_tracked_live_replace_creates_revisions(routed_doc):
         path, [{"find": "Closing", "replace": "Final"}],
         track=True, author="Live Tester",
     )
-    assert r["total_replacements"] == 1
+    assert r["total"] == 1
+    assert r["tracked_as"] == "Live Tester"  # file-mode parity key
 
     def check(s):
         authors = {rev.Author for rev in s.doc.Revisions}
@@ -261,8 +272,8 @@ def test_delete_spanning_table_refused(routed_doc):
     from word_mcp.core.errors import UnsupportedStructure
 
     path, _, _ = routed_doc
-    paras = srv.get_text(path)["paragraphs"]
-    n = len(paras)
+    paras = srv.get_text(path)
+    n = len([p for p in paras if p["index"] is not None])
     # paragraph 5 is before the table, the trailing paragraph is after it
     with pytest.raises(UnsupportedStructure, match="table"):
         srv.delete_paragraphs(path, 5, n - 1)

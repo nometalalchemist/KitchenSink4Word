@@ -119,16 +119,26 @@ def test_negative_column_widths_rejected(doc):
         tb.create_table(pkg, [["a"]], at_end=True, width_pt=0)
 
 
-# MEDIUM: backup collisions within one second
+# MEDIUM: rapid edits must not flood the directory (v1.6 slot redesign:
+# stable prev/anchor slots under .ks4w-backups/ replaced per-edit .bak files)
 
 
-def test_rapid_edits_produce_distinct_backups(doc):
+def test_rapid_edits_keep_bounded_slot_backups(doc):
+    from word_mcp.core import safesave
+
     for i in range(5):
         pkg = DocxPackage(doc)
         tx.insert_paragraphs(pkg, [{"text": f"edit {i}"}], at_end=True)
         pkg.save()  # backup on
-    baks = sorted(doc.parent.glob("t.bak-*.docx"))
-    assert len(baks) == 5, f"expected 5 distinct backups, got {len(baks)}"
+    # No per-edit .bak accumulation any more...
+    assert not list(doc.parent.glob("t.bak-*.docx"))
+    # ...just the two stable slots, prev holding the pre-last-edit state.
+    d = safesave.slot_dir(doc)
+    slots = sorted(p.name for p in d.iterdir() if p.suffix == ".docx")
+    assert slots == sorted(safesave.SLOT_POLICY)
+    prev_pkg = DocxPackage(d / safesave.PREV_SLOT)
+    prev_xml = prev_pkg.raw_part("word/document.xml").decode("utf-8")
+    assert "edit 3" in prev_xml and "edit 4" not in prev_xml
 
 
 # LOW: negative start rejected consistently

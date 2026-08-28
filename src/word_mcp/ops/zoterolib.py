@@ -52,6 +52,7 @@ from lxml import etree
 
 from ..core.errors import TargetNotFound, WordMcpError
 from ..core.package import DocxPackage, qn
+from ..core.sandbox import check_path
 from . import _runmap
 from .fields import _find_anchor_span
 
@@ -81,6 +82,11 @@ def _open_db(db_path: str | None):
     fails. Missing/invalid databases raise WordMcpError with the searched
     path so the caller can point at a nonstandard location via db_path.
     """
+    # An explicitly supplied db_path is caller-controlled and sandbox-gated;
+    # the auto-discovered default is a fixed well-known location and exempt
+    # (otherwise enabling KS4W_ALLOWED_ROOTS would break Zotero search).
+    if db_path:
+        check_path(db_path, "read Zotero database")
     path = Path(db_path) if db_path else _default_db_path()
     if not path.exists():
         raise WordMcpError(

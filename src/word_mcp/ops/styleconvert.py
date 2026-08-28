@@ -1590,36 +1590,109 @@ _NOTE_SHORT = re.compile(
     r"^(?P<fam>[A-Z][\w'’\-]+),\s*[“\"](?P<st>.+?)[,.]?[”\"]"
     r"(?:,?\s*(?P<pp>[\d\-–]+))?\.?\s*$"
 )
+# Real-format extensions (narrative-harvest upgrade): Chicago notes very often
+# wrap the citation in a signal word, cite narratively ("Hurd (1999, 384)."),
+# use the SHORT BOOK form (no quotation marks — book short titles are italic,
+# invisible in plain text), the author-only short form, or "Ibid.". Each new
+# form still resolves against the parsed reference entries, or the note is
+# left alone.
+_NOTE_SIGNAL = re.compile(
+    r"^(?P<sig>(?:see(?:,?\s+e\.g\.,?)?(?:\s+also)?|cf\.|compare|"
+    r"e\.g\.,?|for\s+example,?|also)\s+)",
+    re.I,
+)
+_NOTE_NARRATIVE = re.compile(  # Hurd (1999) / Hurd et al. (1999, pp. 24-28)
+    rf"^(?P<auth>{_AUTHOR_SEQ})(?P<etal>,?\s+et al\.?)?\s*"
+    rf"\((?P<year>{_YEAR})(?:,\s*(?:pp?\.\s*)?(?P<pp>\d[\d\s,\-–—]*))?\)\.?\s*$"
+)
+_NOTE_SHORT_BOOK = re.compile(  # Lake, Hierarchy in International Relations, 62.
+    r"^(?P<fam>[A-Z][\w'’\-]+),\s*(?P<st>[A-Z][^,“”\"]{2,80}?)"
+    r"(?:,\s*(?P<pp>[\d\-–]+))?\.?\s*$"
+)
+_NOTE_AUTHOR_ONLY = re.compile(  # Hurd, 384.
+    r"^(?P<fam>[A-Z][\w'’\-]+),\s*(?P<pp>\d{1,4}(?:[\-–]\d{1,4})?)\.?\s*$"
+)
+_NOTE_IBID = re.compile(
+    r"^ibid\.?(?:,\s*(?:pp?\.\s*)?(?P<pp>[\d\-–]+))?\.?\s*$", re.I
+)
+_IBID_LEAD = re.compile(r"^\s*ibid\b", re.I)
 
 
-def _match_note_part(part, by_key, by_fam):
-    """(entry index, locator) for ONE citation inside a footnote, or
-    (None, None) when it is not recognizably a citation."""
+def _match_note_part(part, entries, by_key, by_fam):
+    """(entry index, locator, signal prefix) for ONE citation inside a
+    footnote, or (None, None, None) when it is not recognizably a citation.
+    The signal prefix ("See ", "Cf. ", ...) is stripped before matching and
+    returned so the caller can carry it into the in-text replacement."""
     part = part.strip()
+    sig = None
+    m = _NOTE_SIGNAL.match(part)
+    if m:
+        sig = m.group("sig").strip()
+        part = part[m.end():].lstrip()
     for pat in (_NOTE_ARTICLE, _NOTE_BOOK):
         m = pat.match(part)
         if m:
             fam_guess = m.group("auth").split()[-1].lower().strip(",.")
             hits = by_key.get((fam_guess, m.group("year").lower()), [])
             if len(hits) == 1:
-                return hits[0], m.groupdict().get("pp")
-            return None, None
+                return hits[0], m.groupdict().get("pp"), sig
+            return None, None, None
     m = _NOTE_SHORT.match(part)
     if m:
         hits = by_fam.get(m.group("fam").lower(), [])
         if len(hits) == 1:
-            return hits[0], m.group("pp")
-    return None, None
+            return hits[0], m.group("pp"), sig
+        return None, None, None
+    m = _NOTE_NARRATIVE.match(part)
+    if m:
+        # Author-date narrative inside a note: extract author/year/pages and
+        # resolve exactly like an in-text author-date citation.
+        first = _split_names(m.group("auth"))[0]
+        fam_guess = first.split()[-1].lower().strip(",.")
+        hits = by_key.get((fam_guess, m.group("year").lower()), [])
+        if len(hits) == 1:
+            pp = (m.group("pp") or "").strip() or None
+            return hits[0], pp, sig
+        return None, None, None
+    m = _NOTE_SHORT_BOOK.match(part)
+    if m:
+        # No quotation marks, so demand the short title actually occurs in
+        # the resolved entry's title — otherwise this pattern would swallow
+        # arbitrary "Name, prose..." notes.
+        hits = by_fam.get(m.group("fam").lower(), [])
+        if len(hits) == 1:
+            title = (entries[hits[0]].get("title") or "").casefold()
+            st = m.group("st").strip().rstrip(".,").casefold()
+            if title and st and st in title:
+                return hits[0], m.group("pp"), sig
+        return None, None, None
+    m = _NOTE_AUTHOR_ONLY.match(part)
+    if m:
+        # Chicago's author-only short form; safe only when the family name
+        # maps to exactly one reference entry.
+        hits = by_fam.get(m.group("fam").lower(), [])
+        if len(hits) == 1:
+            return hits[0], m.group("pp"), sig
+    return None, None, None
 
 
 def _plan_note_harvest(pkg, entries, by_key, by_fam, target, numbers):
     """Footnotes that are recognizably pure citations -> conversion ops.
-    Multi-work notes ("A; B.") convert only when EVERY part resolves;
-    mixed-content or unrecognized notes are flagged, never touched."""
+    Recognized real-note forms: full article/book notes, quoted short notes,
+    signal-prefixed notes ("See ...", "Cf. ..."), author-date narrative
+    notes ("Hurd (1999, 384)."), unquoted short BOOK notes (title verified
+    against the entry), author-only short notes, and "Ibid." resolving to
+    the immediately preceding harvestable single-work note. Multi-work notes
+    ("A; B.") convert only when EVERY part resolves; mixed-content or
+    unrecognized notes are flagged, never touched — and a note followed by
+    an unresolvable Ibid. is ALSO left alone, so the Ibid keeps its
+    antecedent."""
     ops, flags = [], []
     if not pkg.has_part("word/footnotes.xml"):
         return ops, flags
     root = pkg.root("word/footnotes.xml")
+    prev_items = None  # previous real note's resolved items (else None)
+    prev_op = None     # the op appended for the previous note, if any
     for note in root.findall(qn("w:footnote")):
         if note.get(qn("w:type")) is not None:
             continue
@@ -1627,23 +1700,73 @@ def _plan_note_harvest(pkg, entries, by_key, by_fam, target, numbers):
         text = "\n".join(
             paragraph_text(p) for p in note.findall(qn("w:p"))
         ).strip()
-        parts = re.split(r";\s+(?=[A-Z])", text) if "; " in text else [text]
         items = []
-        for part in parts:
-            idx, loc = _match_note_part(part, by_key, by_fam)
-            if idx is None:
+        sigs = []
+        problem = None
+        m_ibid = _NOTE_IBID.match(text)
+        if m_ibid:
+            if prev_items is not None and len(prev_items) == 1:
+                pidx, ploc = prev_items[0]
+                items = [(pidx, (m_ibid.group("pp") or ploc))]
+                sigs = [None]
+            else:
                 items = None
-                break
-            items.append((idx, loc))
+                problem = (
+                    "Ibid. could not be resolved (the previous footnote was "
+                    "not harvestable, or cites multiple works); left alone"
+                )
+        else:
+            parts = re.split(r";\s+(?=[A-Z])", text) if "; " in text else [text]
+            for part in parts:
+                idx, loc, sig = _match_note_part(part, entries, by_key, by_fam)
+                if idx is None:
+                    items = None
+                    break
+                items.append((idx, loc))
+                sigs.append(sig)
+        if items and any(sigs[1:]):
+            # A signal on a NON-first part ("A; see also B.") changes the
+            # meaning of that part alone; do not flatten it into one citation.
+            items = None
+            problem = (
+                "a later part of the footnote carries its own signal word "
+                "(see/cf./...); left alone"
+            )
+        note_sig = sigs[0] if items and sigs else None
+        if items and note_sig and target in ("ieee", "vancouver"):
+            items = None
+            problem = (
+                "signal word (see/cf./...) cannot be carried into a bare "
+                "citation number; left alone"
+            )
         if not items:
             flags.append({
                 "citation": f"footnote {nid}: {text[:80]}",
                 "paragraph_index": None,
-                "problem": (
+                "problem": problem or (
                     "footnote is not recognizably a pure citation (or a part "
                     "of it is ambiguous/mixed content); left alone"
                 ),
             })
+            # Dangling-Ibid guard: this note stays, and if it OPENS with Ibid
+            # while the previous note was planned for harvest, removing that
+            # note would silently re-point the Ibid — cancel the harvest.
+            if (
+                _IBID_LEAD.match(text)
+                and prev_op is not None
+                and prev_op in ops
+            ):
+                ops.remove(prev_op)
+                flags.append({
+                    "citation": f"footnote {prev_op['note_id']}: "
+                                f"{prev_op['before'][:80]}",
+                    "paragraph_index": None,
+                    "problem": (
+                        "left alone: the following footnote is an "
+                        "unresolvable Ibid. that would lose its antecedent"
+                    ),
+                })
+            prev_items, prev_op = None, None
             continue
         if any(entries[idx]["parse_confidence"] != "full" for idx, _ in items):
             flags.append({
@@ -1651,7 +1774,9 @@ def _plan_note_harvest(pkg, entries, by_key, by_fam, target, numbers):
                 "paragraph_index": None,
                 "problem": "matches an entry that did not fully parse; left alone",
             })
+            prev_items, prev_op = None, None
             continue
+        sig_text = (note_sig.lower().rstrip() + " ") if note_sig else ""
         if target == "ieee":
             replacement = ", ".join(
                 emit_intext_item("ieee", entries[idx], loc, numbers.get(idx))
@@ -1660,21 +1785,23 @@ def _plan_note_harvest(pkg, entries, by_key, by_fam, target, numbers):
         elif target == "vancouver":
             replacement = None  # handled as a superscript number run
         else:
-            replacement = "(" + "; ".join(
+            replacement = "(" + sig_text + "; ".join(
                 emit_intext_item(target, entries[idx], loc, None)
                 for idx, loc in items
             ) + ")"
         number_text = ",".join(
             str(numbers.get(idx)) for idx, _ in items if numbers.get(idx)
         )
-        ops.append({
+        op = {
             "note_id": nid,
             "before": text[:120],
             "after": replacement or f"^{number_text}",
             "entry_indexes": [idx for idx, _ in items],
             "replacement": replacement,
             "number": number_text,
-        })
+        }
+        ops.append(op)
+        prev_items, prev_op = items, op
     return ops, flags
 
 

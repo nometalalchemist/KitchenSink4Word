@@ -36,6 +36,7 @@ from lxml import etree
 
 from ..core.errors import WordMcpError
 from ..core.package import DocxPackage, qn
+from ..core.sandbox import check_path
 from . import _runmap
 from .citecheck import _REF_HEADINGS, _REF_YEAR, _YEAR
 from .cleanup import _CP, _DC, _EP, _empty_text
@@ -226,6 +227,7 @@ def anonymize_for_review(
     map_path = (
         Path(mapping_path) if mapping_path else _default_mapping_path(pkg)
     )
+    check_path(map_path, "write anonymization mapping")
     if map_path.exists():
         raise WordMcpError(
             f"mapping file already exists: {map_path} — refusing to "
@@ -427,6 +429,7 @@ def deanonymize(pkg: DocxPackage, mapping_path: str | None = None) -> dict:
     map_path = (
         Path(mapping_path) if mapping_path else _default_mapping_path(pkg)
     )
+    check_path(map_path, "read anonymization mapping")
     if not map_path.exists():
         raise WordMcpError(f"no mapping file at {map_path}")
     try:

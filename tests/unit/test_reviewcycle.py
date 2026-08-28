@@ -379,3 +379,9 @@ def test_report_tools_never_mutate(tmp_path):
 
     assert p.read_bytes() == before
     assert not list(tmp_path.glob("*.bak-*")), "no backups: nothing was saved"
+    from word_mcp.core import safesave
+
+    d = safesave.slot_dir(p)
+    assert not (d.exists() and any(d.glob("*.docx"))), (
+        "no slot rotation: nothing was saved"
+    )

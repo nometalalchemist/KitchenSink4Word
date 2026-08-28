@@ -73,11 +73,11 @@ def test_f1_replace_inside_field_result_terminates(tmp_path):
         r = srv.search_and_replace(
             str(path), [{"find": "Hurd", "replace": "HURDX"}], live="force"
         )
-        item = r["items"][0]
-        assert item.get("skipped_inside_fields", 0) >= 1
+        # L7 parity shape: skip counters are top-level dicts keyed by find
+        assert r.get("skipped_inside_fields", {}).get("Hurd", 0) >= 1
         assert "HURDX" not in str(
-            srv.get_text(str(path))["paragraphs"]
-        ) or item["replacements"] == 0
+            srv.get_text(str(path))
+        ) or r["replaced"]["Hurd"] == 0
     finally:
         import pythoncom
 
@@ -109,7 +109,7 @@ def test_f2_paragraph_index_parity_with_sdt_toc(tmp_path):
     try:
         live_read = srv.get_text(str(path), live="force")
         live_idx = {
-            p["text"]: p["index"] for p in live_read["paragraphs"]
+            p["text"]: p["index"] for p in live_read
             if p.get("index") is not None
         }
         for text, idx in file_idx.items():
@@ -150,7 +150,7 @@ def test_f3_f4_protected_doc_typed_refusal(tmp_path):
             srv.live_set_track_changes(str(path), True)
         read = srv.get_text(str(path), live="force")
         assert any(
-            "protected charlie" in p["text"] for p in read["paragraphs"]
+            "protected charlie" in p["text"] for p in read
         )
     finally:
         import pythoncom
@@ -316,7 +316,7 @@ def test_f10_deleted_text_and_section_break_excluded(tmp_path):
         # default view (Simple Markup): deletion text absent from Range.Text
         # — nothing may be wrongly subtracted
         live_read = srv.get_text(str(path), live="force")
-        texts = [p["text"] for p in live_read["paragraphs"]]
+        texts = [p["text"] for p in live_read]
         assert any("ordinary tracked prose" in t for t in texts), texts
 
         # All-Markup view: deletion text IS in Range.Text and must be
@@ -324,7 +324,7 @@ def test_f10_deleted_text_and_section_break_excluded(tmp_path):
         doc = app.Documents(1)
         doc.ActiveWindow.View.RevisionsFilter.Markup = 2  # wdRevisionsMarkupAll
         live_read = srv.get_text(str(path), live="force")
-        texts = [p["text"] for p in live_read["paragraphs"]]
+        texts = [p["text"] for p in live_read]
         assert any("ordinary tracked prose" in t for t in texts), texts
         assert not any("ordinaryordinary" in t for t in texts)
         assert not any("\x0c" in t for t in texts)

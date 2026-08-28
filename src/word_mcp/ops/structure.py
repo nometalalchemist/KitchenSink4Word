@@ -159,6 +159,155 @@ def list_section_blocks(pkg: DocxPackage) -> list[dict]:
     return out
 
 
+# ------------------------------------------------------- heading level change
+
+
+def _heading_inventory(pkg: DocxPackage) -> list[dict]:
+    """All heading paragraphs in body order: index, level, element, text."""
+    style_outline = _style_outline_map(pkg)
+    out = []
+    for kind, idx, el in body_items(pkg):
+        if kind != "paragraph":
+            continue
+        level = _outline_level(el, style_outline)
+        if level is not None:
+            out.append(
+                {
+                    "paragraph_index": idx,
+                    "level": level,
+                    "el": el,
+                    "text": paragraph_text(el).strip(),
+                }
+            )
+    return out
+
+
+def _refuse_unstylable(pkg: DocxPackage, h: dict) -> None:
+    """Refuse headings whose level does not come from a built-in Heading
+    style: a direct outlineLvl override, or a custom style's outlineLvl.
+    Rewriting those safely needs the outlineLvl-aware writer workstream."""
+    from .read import _HEADING_STYLES, _style_id, _style_outline_map
+
+    el = h["el"]
+    label = f"paragraph {h['paragraph_index']} ({h['text'][:50]!r})"
+    if el.find(f"{qn('w:pPr')}/{qn('w:outlineLvl')}") is not None:
+        raise WordMcpError(
+            f"{label} takes its heading level from a direct outlineLvl "
+            "override on the paragraph, not a Heading style. "
+            "change_heading_level only rewrites Heading-style paragraphs "
+            "for now (outlineLvl-aware handling is a separate workstream); "
+            "nothing was changed"
+        )
+    sid = _style_id(el)
+    if sid in _HEADING_STYLES:
+        return
+    if sid and sid in _style_outline_map(pkg):
+        raise WordMcpError(
+            f"{label} takes its heading level from custom style {sid!r} "
+            "(outlineLvl on the style). Changing the paragraph's style would "
+            "silently drop that template's formatting; restyle it to a "
+            "built-in Heading style first, or edit the style itself. "
+            "Nothing was changed"
+        )
+    raise WordMcpError(
+        f"{label} is not a Heading-style paragraph "
+        f"(style: {sid!r}); nothing was changed"
+    )
+
+
+def change_heading_level(
+    pkg: DocxPackage,
+    *,
+    delta: int,
+    heading_text: str | None = None,
+    paragraph_index: int | None = None,
+    subtree: bool = False,
+) -> dict:
+    """Promote (delta < 0) or demote (delta > 0) a heading. subtree=True also
+    shifts every subordinate heading under it (until the next heading of the
+    same or higher level) by the same delta. Refuses if any affected heading
+    would land outside levels 1-9, naming the blocker; only built-in
+    Heading-style paragraphs are handled (outlineLvl-based headings are
+    detected and refused)."""
+    if not isinstance(delta, int) or delta == 0:
+        raise WordMcpError("delta must be a non-zero integer (e.g. -1 or 1)")
+    if (heading_text is None) == (paragraph_index is None):
+        raise WordMcpError(
+            "give exactly one of heading_text or paragraph_index"
+        )
+
+    headings = _heading_inventory(pkg)
+    if heading_text is not None:
+        matches = [
+            h for h in headings if h["text"] == heading_text.strip()
+        ]
+        if not matches:
+            raise TargetNotFound(f"no heading with text {heading_text!r}")
+        if len(matches) > 1:
+            raise AmbiguousTarget(
+                f"{len(matches)} headings match {heading_text!r} (paragraph "
+                f"indices {[h['paragraph_index'] for h in matches]}); "
+                "target one by paragraph_index instead"
+            )
+        target = matches[0]
+    else:
+        target = next(
+            (h for h in headings if h["paragraph_index"] == paragraph_index),
+            None,
+        )
+        if target is None:
+            raise TargetNotFound(
+                f"paragraph {paragraph_index} is not a heading (heading "
+                f"indices: {[h['paragraph_index'] for h in headings][:30]})"
+            )
+
+    affected = [target]
+    if subtree:
+        pos = headings.index(target)
+        for h in headings[pos + 1 :]:
+            if h["level"] <= target["level"]:
+                break
+            affected.append(h)
+
+    # Validate EVERYTHING before changing anything.
+    for h in affected:
+        _refuse_unstylable(pkg, h)
+        new_level = h["level"] + delta
+        if not 1 <= new_level <= 9:
+            direction = "above level 1" if new_level < 1 else "below level 9"
+            raise WordMcpError(
+                f"delta {delta:+d} would push paragraph "
+                f"{h['paragraph_index']} ({h['text'][:50]!r}, level "
+                f"{h['level']}) {direction}; nothing was changed"
+            )
+
+    from .text import ensure_heading_style
+
+    changed = []
+    for h in affected:
+        new_level = h["level"] + delta
+        style_id = ensure_heading_style(pkg, new_level)
+        ppr = h["el"].find(qn("w:pPr"))
+        if ppr is None:
+            ppr = etree.Element(qn("w:pPr"))
+            h["el"].insert(0, ppr)
+        pstyle = ppr.find(qn("w:pStyle"))
+        if pstyle is None:
+            pstyle = etree.Element(qn("w:pStyle"))
+            ppr.insert(0, pstyle)
+        pstyle.set(qn("w:val"), style_id)
+        changed.append(
+            {
+                "paragraph_index": h["paragraph_index"],
+                "text": h["text"][:80],
+                "from_level": h["level"],
+                "to_level": new_level,
+            }
+        )
+    pkg.mark_dirty()
+    return {"changed": changed, "delta": delta, "subtree": subtree}
+
+
 # -------------------------------------------------------- document properties
 
 _DC = "http://purl.org/dc/elements/1.1/"
@@ -277,6 +426,18 @@ def define_style(
         _check_keys(paragraph_formatting, allowed, "paragraph-formatting")
         ppr = etree.SubElement(s, qn("w:pPr"))
         pf = paragraph_formatting
+        # CT_PPr child order: keepNext/keepLines/pageBreakBefore/widowControl
+        # come before spacing/ind/jc, so write the toggles first.
+        for key, tag in (
+            ("keep_with_next", "w:keepNext"),
+            ("keep_lines_together", "w:keepLines"),
+            ("page_break_before", "w:pageBreakBefore"),
+            ("widow_control", "w:widowControl"),
+        ):
+            if key in pf:
+                el = etree.SubElement(ppr, qn(tag))
+                if not pf[key]:
+                    el.set(qn("w:val"), "0")
         if "alignment" in pf:
             from .text import _ALIGN
 

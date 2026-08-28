@@ -189,7 +189,11 @@ def validate_opens_clean(path: str) -> dict:
             return {"opens_clean": False, "error": str(exc)}
         try:
             paragraphs = doc.Paragraphs.Count
-            words = doc.Words.Count
+            # NEVER doc.Words.Count: it counts punctuation runs and paragraph
+            # marks as "words" (~18% high on real prose — L1, 2026-08-28).
+            # ComputeStatistics(wdStatisticWords) is the number Word's own
+            # status bar shows.
+            words = int(doc.ComputeStatistics(0))  # wdStatisticWords
         finally:
             doc.Close(SaveChanges=_WD_DO_NOT_SAVE)
     return {"opens_clean": True, "paragraphs": paragraphs, "words": words}
@@ -324,23 +328,53 @@ def combine_documents(
 
 
 def _find_open_document(path: str):
-    """(app, doc) for a document open in the USER's running Word, else raise."""
+    """(pythoncom, app, doc) for a document open in ANY running interactive
+    Word instance, else raise.
+
+    Multi-instance aware (WS-L, 2026-08-28): GetActiveObject returns only
+    whichever instance registered first — and that instance can be busy
+    (modal dialog) or simply not the one holding the document. Open
+    documents register their full path as a ROT file moniker, so the
+    fallback binds the document directly, exactly like the live layer's
+    _find_doc_via_rot."""
     import pythoncom
     import win32com.client
 
     pythoncom.CoInitialize()
+    target = str(Path(path).resolve()).lower()
+    word_seen = False
     try:
         app = win32com.client.GetActiveObject("Word.Application")
-    except Exception as exc:
-        pythoncom.CoUninitialize()
-        raise WordMcpError("Word is not running") from exc
-    target = str(Path(path).resolve()).lower()
-    for doc in app.Documents:
-        if doc.FullName.lower() == target:
-            return pythoncom, app, doc
+        word_seen = True
+        for doc in app.Documents:
+            if doc.FullName.lower() == target:
+                return pythoncom, app, doc
+    except Exception:
+        # not running, busy, or dying — the ROT scan below still works for
+        # documents held by OTHER instances
+        pass
+    with contextlib.suppress(Exception):
+        rot = pythoncom.GetRunningObjectTable()
+        for moniker in rot.EnumRunning():
+            ctx = pythoncom.CreateBindCtx(0)
+            try:
+                name = moniker.GetDisplayName(ctx, None)
+            except Exception:
+                continue
+            if name.lower() != target:
+                continue
+            with contextlib.suppress(Exception):
+                obj = rot.GetObject(moniker)
+                doc = win32com.client.Dispatch(
+                    obj.QueryInterface(pythoncom.IID_IDispatch)
+                )
+                return pythoncom, doc.Application, doc
+            word_seen = True  # moniker exists but binding failed
     pythoncom.CoUninitialize()
+    if not word_seen:
+        raise WordMcpError("Word is not running")
     raise DocumentNotFound(
-        f"{Path(path).name} is not open in the running Word instance"
+        f"{Path(path).name} is not open in any running Word instance"
     )
 
 

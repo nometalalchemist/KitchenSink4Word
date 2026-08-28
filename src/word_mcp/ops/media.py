@@ -9,6 +9,7 @@ from lxml import etree
 
 from ..core.errors import TargetNotFound, WordMcpError
 from ..core.package import DocxPackage, qn
+from ..core.sandbox import check_path
 
 _CT_NS = "http://schemas.openxmlformats.org/package/2006/content-types"
 _REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
@@ -78,6 +79,7 @@ def add_image(
 ) -> dict:
     """Insert an inline image in its own centered paragraph. Width defaults to
     the native size capped at 6.5in; height keeps aspect ratio."""
+    check_path(image_path, "read image file")
     src = Path(image_path)
     if not src.exists():
         raise TargetNotFound(f"image file not found: {image_path}")
@@ -272,6 +274,7 @@ def resize_image(pkg: DocxPackage, image_index: int, *, width_pt: float) -> dict
 
 def replace_image(pkg: DocxPackage, image_index: int, new_image_path: str) -> dict:
     """Swap an image's bytes, keeping placement and display size."""
+    check_path(new_image_path, "read image file")
     src = Path(new_image_path)
     if not src.exists():
         raise TargetNotFound(f"image file not found: {new_image_path}")

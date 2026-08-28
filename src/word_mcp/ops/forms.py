@@ -465,6 +465,249 @@ def fill_form_fields(pkg: DocxPackage, values: dict, *, missing: str = "error") 
     return result
 
 
+# ------------------------------------------- content controls: full inventory
+
+# sdtPr child -> reported type, in detection priority order. Anything with no
+# marker element is a rich-text control.
+_SDT_TYPE_MAP = (
+    ("w14:checkbox", "checkbox"),
+    ("w:dropDownList", "dropdown"),
+    ("w:comboBox", "combo"),
+    ("w:date", "date"),
+    ("w:text", "text"),
+    ("w:picture", "picture"),
+    ("w:group", "group"),
+    ("w:citation", "citation"),
+    ("w:bibliography", "bibliography"),
+    ("w:equation", "equation"),
+    ("w:docPartObj", "gallery"),
+    ("w:docPartList", "gallery_list"),
+    ("w15:repeatingSection", "repeating_section"),
+    ("w15:repeatingSectionItem", "repeating_section_item"),
+)
+
+# Types set_content_control_value can write without risking the control's
+# bound machinery. Everything else is refused.
+_SDT_WRITABLE = ("text", "richtext", "combo", "date", "dropdown", "checkbox")
+
+
+def _sdt_type(pr: etree._Element) -> str:
+    for tag, name in _SDT_TYPE_MAP:
+        if pr.find(qn(tag)) is not None:
+            return name
+    return "richtext"
+
+
+def _sdt_lock(pr: etree._Element) -> dict:
+    val = _sval(pr, "w:lock")
+    return {
+        "lock": val,
+        "content_locked": val in ("contentLocked", "sdtContentLocked"),
+        "control_locked": val in ("sdtLocked", "sdtContentLocked"),
+    }
+
+
+def _all_sdts(pkg: DocxPackage) -> list[dict]:
+    """EVERY well-formed content control in document order (including the
+    gallery/citation/picture types the form inventory skips), with a stable
+    per-scan index."""
+    out = []
+    for i, sdt in enumerate(pkg.root().iter(qn("w:sdt"))):
+        pr = sdt.find(qn("w:sdtPr"))
+        content = sdt.find(qn("w:sdtContent"))
+        if pr is None or content is None:
+            continue
+        kind = _sdt_type(pr)
+        text_value = "".join(run_text(r) for r in content.iter(qn("w:r")))
+        placeholder = pr.find(qn("w:showingPlcHdr")) is not None
+        entry = {
+            "index": i,
+            "tag": _sval(pr, "w:tag"),
+            "alias": _sval(pr, "w:alias"),
+            "type": kind,
+            "value": text_value if not placeholder else "",
+            "placeholder_showing": placeholder,
+            "block": content.find(qn("w:p")) is not None
+            or content.find(qn("w:tbl")) is not None,
+            "context": _context(_containing_paragraph(sdt)) or text_value[:80],
+            **_sdt_lock(pr),
+            "_sdt": sdt,
+            "_pr": pr,
+        }
+        if kind == "checkbox":
+            checkbox = pr.find(qn("w14:checkbox"))
+            checked_el = checkbox.find(qn("w14:checked"))
+            checked = (
+                checked_el.get(qn("w14:val")) if checked_el is not None else None
+            )
+            entry["value"] = checked in ("1", "true")
+        elif kind in ("dropdown", "combo"):
+            src = pr.find(qn("w:dropDownList"))
+            if src is None:
+                src = pr.find(qn("w:comboBox"))
+            entry["_items"] = [
+                {
+                    "display": li.get(qn("w:displayText"), ""),
+                    "value": li.get(qn("w:value"), ""),
+                }
+                for li in src.findall(qn("w:listItem"))
+            ]
+            entry["options"] = [it["display"] for it in entry["_items"]]
+        out.append(entry)
+    return out
+
+
+def list_content_controls(pkg: DocxPackage) -> dict:
+    """Every content control (SDT) in the document body, including the types
+    fill_form_fields cannot fill: tag, alias, type (text / richtext /
+    checkbox / dropdown / combo / date / picture / group / citation /
+    bibliography / equation / gallery / repeating_section), current value,
+    lock state, placeholder flag, and whether it is block-level. The index is
+    the addressing handle for set_content_control_value."""
+    entries = _all_sdts(pkg)
+    return {"count": len(entries), "controls": [_public(e) for e in entries]}
+
+
+def set_content_control_value(
+    pkg: DocxPackage,
+    value,
+    *,
+    tag: str | None = None,
+    index: int | None = None,
+) -> dict:
+    """Set one content control's value, addressed by tag or by
+    list_content_controls index. Text/rich-text/combo/date controls take a
+    string, checkboxes a boolean, dropdowns one of their options. Refuses
+    locked controls (contentLocked / sdtContentLocked) and types that cannot
+    be safely written (gallery, repeating section, citation, bibliography,
+    picture, group, equation); nothing is changed on refusal."""
+    if (tag is None) == (index is None):
+        raise WordMcpError("give exactly one of tag or index")
+    entries = _all_sdts(pkg)
+    if tag is not None:
+        matches = [e for e in entries if e["tag"] == tag]
+        if not matches:
+            raise WordMcpError(
+                f"no content control with tag {tag!r}; "
+                "see list_content_controls"
+            )
+        if len(matches) > 1:
+            raise AmbiguousTarget(
+                f"{len(matches)} content controls share tag {tag!r} (indices "
+                f"{[e['index'] for e in matches]}); address one by index"
+            )
+        entry = matches[0]
+    else:
+        entry = next((e for e in entries if e["index"] == index), None)
+        if entry is None:
+            raise WordMcpError(
+                f"no content control with index {index} "
+                f"({len(entries)} controls); see list_content_controls"
+            )
+
+    label = entry["tag"] or entry["alias"] or f"index {entry['index']}"
+    if entry["content_locked"]:
+        raise WordMcpError(
+            f"content control {label!r} is locked "
+            f"(w:lock={entry['lock']}); Word forbids editing its contents. "
+            "Remove the lock in Word (Developer > Properties) first; "
+            "nothing was changed"
+        )
+    kind = entry["type"]
+    if kind not in _SDT_WRITABLE:
+        raise UnsupportedStructure(
+            f"content control {label!r} has type {kind!r}, which cannot be "
+            "written safely (its content is bound to gallery/citation/"
+            "picture machinery that a text write would disconnect); "
+            "nothing was changed"
+        )
+
+    if kind == "checkbox":
+        _set_sdt_checkbox(entry["_sdt"], _as_bool(label, value))
+        stored = bool(value)
+    elif kind == "dropdown":
+        text = _check_text(label, value)
+        item = next(
+            (i for i in entry["_items"] if text in (i["display"], i["value"])),
+            None,
+        )
+        if item is None:
+            raise WordMcpError(
+                f"{text!r} is not an option of dropdown {label!r} "
+                f"(options: {entry['options']}); nothing was changed"
+            )
+        stored = item["display"] or item["value"]
+        _set_sdt_content(entry["_sdt"], stored)
+    else:
+        stored = _check_text(label, value)
+        _set_sdt_content(entry["_sdt"], stored)
+        if kind == "date":
+            full = _iso_full_date(stored)
+            if full is not None:
+                entry["_pr"].find(qn("w:date")).set(qn("w:fullDate"), full)
+    pkg.mark_dirty()
+    return {"set": label, "type": kind, "value": stored}
+
+
+def insert_content_control(
+    pkg: DocxPackage,
+    *,
+    tag: str,
+    after_anchor: str,
+    alias: str | None = None,
+    text: str = "",
+    occurrence: int = 1,
+) -> dict:
+    """Insert a new PLAIN-TEXT content control (inline SDT) immediately after
+    `after_anchor` text. This is the one control type whose XML can be built
+    verifiably safely; creating checkbox, dropdown, date, picture, gallery,
+    or repeating controls is refused (fill and list still cover them when a
+    template provides them). The tag must be unique in the document so the
+    control stays addressable; `text` is the initial content."""
+    import random
+
+    from . import _runmap as _rm
+    from .fields import _find_anchor_span
+
+    if not tag or not tag.strip():
+        raise WordMcpError("tag must be non-empty")
+    tag = tag.strip()
+    _check_text("tag", tag)
+    if any(e["tag"] == tag for e in _all_sdts(pkg)):
+        raise WordMcpError(
+            f"a content control with tag {tag!r} already exists; tags must "
+            "stay unique so controls remain addressable by tag"
+        )
+    if text:
+        _check_text(tag, text)
+
+    p, _, end = _find_anchor_span(pkg, after_anchor, occurrence)
+    covered = _rm.split_for_range(p, end - 1, end)
+    ref = covered[-1]
+
+    sdt = etree.Element(qn("w:sdt"))
+    pr = etree.SubElement(sdt, qn("w:sdtPr"))
+    # CT_SdtPr schema order: alias, tag, id, ... , then the type element.
+    if alias:
+        etree.SubElement(pr, qn("w:alias")).set(qn("w:val"), alias)
+    etree.SubElement(pr, qn("w:tag")).set(qn("w:val"), tag)
+    etree.SubElement(pr, qn("w:id")).set(
+        qn("w:val"), str(random.randint(1, 2**31 - 1))
+    )
+    etree.SubElement(pr, qn("w:text"))
+    content = etree.SubElement(sdt, qn("w:sdtContent"))
+    if text:
+        content.append(_new_text_run(ref, text))
+    ref.addnext(sdt)
+    pkg.mark_dirty()
+    return {
+        "content_control_inserted": tag,
+        "type": "text",
+        "alias": alias,
+        "initial_text": text,
+    }
+
+
 # ---------------------------------------------------------------- validation
 
 

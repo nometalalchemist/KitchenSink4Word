@@ -150,21 +150,57 @@ def search_and_replace(
 # ------------------------------------------------------------ paragraph CRUD
 
 
+def _materialize_implicit_paragraph(pkg: DocxPackage) -> etree._Element | None:
+    """A body with no direct w:p children (python-docx fresh documents hold
+    only the trailing sectPr) still DISPLAYS one empty paragraph in Word.
+    Materialize that paragraph so index 0 addresses what the user sees.
+    Returns the new element, or None when the body already has paragraphs."""
+    body = pkg.body()
+    if body.find(qn("w:p")) is not None:
+        return None
+    p = etree.Element(qn("w:p"))
+    sectpr = body.find(qn("w:sectPr"))
+    if sectpr is not None:
+        sectpr.addprevious(p)
+    else:
+        body.append(p)
+    return p
+
+
 def _body_paragraph(pkg: DocxPackage, index: int) -> etree._Element:
-    for kind, idx, el in body_items(pkg):
-        if kind == "paragraph" and idx == index:
-            return el
-    raise TargetNotFound(f"no body paragraph with index {index}")
+    paras = [el for kind, idx, el in body_items(pkg) if kind == "paragraph"]
+    if not paras and index == 0:
+        # Empty-body document: index 0 is the implicit paragraph Word shows.
+        made = _materialize_implicit_paragraph(pkg)
+        if made is not None:
+            return made
+    if 0 <= index < len(paras):
+        return paras[index]
+    raise TargetNotFound(
+        f"no body paragraph with index {index}; the document has "
+        f"{len(paras)} body paragraph(s)"
+        + (f" (valid indices 0-{len(paras) - 1})" if paras else "")
+    )
 
 
 def _resolve_anchor(pkg: DocxPackage, anchor_text: str) -> etree._Element:
+    """Unique body paragraph whose PLAIN text contains anchor_text. Matching
+    is against visible text, never the XML representation — write '&', '<',
+    '>' as the literal characters, not as XML entities."""
     matches = [
         el
         for kind, _, el in body_items(pkg)
         if kind == "paragraph" and anchor_text in paragraph_text(el)
     ]
     if not matches:
-        raise TargetNotFound(f"anchor text not found: {anchor_text!r}")
+        msg = f"anchor text not found: {anchor_text!r}"
+        if re.search(r"&amp;|&lt;|&gt;", anchor_text):
+            msg += (
+                " — note: anchors match the paragraph's PLAIN text, not its "
+                "XML; write XML entities as the literal character "
+                "('&' not '&amp;', '<' not '&lt;', '>' not '&gt;')"
+            )
+        raise TargetNotFound(msg)
     if len(matches) > 1:
         raise AmbiguousTarget(
             f"anchor text appears in {len(matches)} paragraphs; "
@@ -194,6 +230,54 @@ def _make_paragraph(
     return p
 
 
+def _paragraph_format_clone(
+    p: etree._Element,
+) -> tuple[etree._Element | None, etree._Element | None]:
+    """Clonable formatting of a body paragraph for inherit_format /
+    copy_format_from: (deep copy of its direct pPr minus numPr/sectPr, deep
+    copy of its terminal run's rPr). Revision markers (w:ins/w:del/
+    w:rPrChange/w:pPrChange) are never cloned — copying the anchor's tracked
+    state onto brand-new paragraphs would mark them inserted/deleted by
+    someone else. Either element may be None when the paragraph carries no
+    direct formatting at that level."""
+    ppr = p.find(qn("w:pPr"))
+    ppr_clone = copy.deepcopy(ppr) if ppr is not None else None
+    if ppr_clone is not None:
+        for tag in ("w:numPr", "w:sectPr", "w:pPrChange"):
+            for node in ppr_clone.findall(qn(tag)):
+                ppr_clone.remove(node)
+        mark_rpr = ppr_clone.find(qn("w:rPr"))
+        if mark_rpr is not None:
+            for tag in ("w:ins", "w:del", "w:moveFrom", "w:moveTo",
+                        "w:rPrChange"):
+                for node in mark_rpr.findall(qn(tag)):
+                    mark_rpr.remove(node)
+            if len(mark_rpr) == 0:
+                ppr_clone.remove(mark_rpr)
+        if len(ppr_clone) == 0:
+            ppr_clone = None
+    # Terminal run = the LAST visible run (tracked-deleted and text-box runs
+    # excluded), so a reference entry inherits the font its neighbor ends in.
+    last_run = None
+    for r in p.iter(qn("w:r")):
+        if _runmap._in_deleted(r) or _runmap._in_textbox(r, p):
+            continue
+        last_run = r
+    rpr = last_run.find(qn("w:rPr")) if last_run is not None else None
+    if rpr is None and ppr is not None:
+        # Runless (empty) paragraph: the paragraph-mark rPr is the only
+        # record of its character formatting.
+        rpr = ppr.find(qn("w:rPr"))
+    rpr_clone = copy.deepcopy(rpr) if rpr is not None else None
+    if rpr_clone is not None:
+        for tag in ("w:ins", "w:del", "w:rPrChange"):
+            for node in rpr_clone.findall(qn(tag)):
+                rpr_clone.remove(node)
+        if len(rpr_clone) == 0:
+            rpr_clone = None
+    return ppr_clone, rpr_clone
+
+
 def insert_paragraphs(
     pkg: DocxPackage,
     paragraphs: list[dict],
@@ -202,11 +286,22 @@ def insert_paragraphs(
     before_index: int | None = None,
     after_anchor: str | None = None,
     at_end: bool = False,
+    inherit_format: bool = False,
+    copy_format_from: int | None = None,
     track: bool = False,
     author: str = "Claude",
 ) -> dict:
     """Insert paragraphs. Each item: {text, style?, formatting?}. With track,
-    content and paragraph marks are recorded as insertions by `author`."""
+    content and paragraph marks are recorded as insertions by `author`.
+
+    inherit_format=True clones the ANCHOR paragraph's direct formatting (its
+    pPr minus numPr/sectPr, plus its terminal run's rPr) onto every inserted
+    paragraph, so e.g. a new reference entry picks up its neighbors' hanging
+    indent, spacing, and font in one call. The anchor is the paragraph named
+    by after_index/after_anchor; with before_index or at_end use
+    copy_format_from=<body paragraph index> instead (same clone, explicit
+    source; mutually exclusive with inherit_format). Explicit per-item
+    style/formatting values still win over the clone."""
     specified = sum(
         x is not None for x in (after_index, before_index, after_anchor)
     ) + bool(at_end)
@@ -214,6 +309,32 @@ def insert_paragraphs(
         raise WordMcpError(
             "specify exactly one of after_index, before_index, after_anchor, at_end"
         )
+    if inherit_format and copy_format_from is not None:
+        raise WordMcpError(
+            "inherit_format and copy_format_from are mutually exclusive; "
+            "pass one (both name a paragraph to clone formatting from)"
+        )
+    fmt_source = None
+    fmt_source_index: int | None = None
+    if copy_format_from is not None:
+        fmt_source = _body_paragraph(pkg, copy_format_from)
+        fmt_source_index = copy_format_from
+    elif inherit_format:
+        if after_index is not None:
+            fmt_source = _body_paragraph(pkg, after_index)
+            fmt_source_index = after_index
+        elif after_anchor is not None:
+            fmt_source = _resolve_anchor(pkg, after_anchor)
+            for kind, idx, el in body_items(pkg):
+                if kind == "paragraph" and el is fmt_source:
+                    fmt_source_index = idx
+                    break
+        else:
+            raise WordMcpError(
+                "inherit_format clones the after_index/after_anchor anchor "
+                "paragraph; with before_index or at_end use "
+                "copy_format_from=<body paragraph index> instead"
+            )
     new_els = [
         _make_paragraph(
             item["text"],
@@ -222,6 +343,32 @@ def insert_paragraphs(
         )
         for item in paragraphs
     ]
+    if fmt_source is not None:
+        ppr_clone, rpr_clone = _paragraph_format_clone(fmt_source)
+        for item, el in zip(paragraphs, new_els):
+            if ppr_clone is not None:
+                new_ppr = copy.deepcopy(ppr_clone)
+                if item.get("style"):
+                    # Explicit per-item style wins over the cloned pStyle.
+                    ps = new_ppr.find(qn("w:pStyle"))
+                    if ps is None:
+                        ps = etree.Element(qn("w:pStyle"))
+                        new_ppr.insert(0, ps)  # pStyle leads pPr (schema)
+                    ps.set(qn("w:val"), item["style"])
+                old_ppr = el.find(qn("w:pPr"))
+                if old_ppr is not None:
+                    el.remove(old_ppr)
+                el.insert(0, new_ppr)
+            if rpr_clone is not None:
+                for run in el.findall(qn("w:r")):
+                    new_rpr = copy.deepcopy(rpr_clone)
+                    if item.get("formatting"):
+                        # Explicit per-item keys overlay the cloned rPr.
+                        _apply_fmt(new_rpr, item["formatting"])
+                    old_rpr = run.find(qn("w:rPr"))
+                    if old_rpr is not None:
+                        run.remove(old_rpr)
+                    run.insert(0, new_rpr)
     body = pkg.body()
     if at_end:
         # Before the trailing sectPr if present.
@@ -258,6 +405,8 @@ def insert_paragraphs(
             )
     pkg.mark_dirty()
     result = {"inserted": len(new_els)}
+    if fmt_source is not None:
+        result["format_cloned_from"] = fmt_source_index
     if track:
         result["tracked_as"] = author
     return result
@@ -277,6 +426,9 @@ def delete_paragraphs(
     end = start if end is None else end
     if end < start:
         raise WordMcpError("end must be >= start")
+    # Empty-body document (fresh create_document): index 0 addresses the
+    # implicit paragraph Word displays, so materialize it before ranging.
+    _materialize_implicit_paragraph(pkg)
     targets = [
         el
         for kind, idx, el in body_items(pkg)
@@ -310,8 +462,10 @@ def delete_paragraphs(
 
     body = pkg.body()
     remaining = sum(1 for k, _, _ in body_items(pkg) if k == "paragraph")
-    if remaining - len(targets) < 1:
-        raise WordMcpError("refusing to delete every paragraph in the document")
+    # Word semantics: a document always keeps at least one paragraph. When
+    # the range covers every paragraph, delete them and leave one fresh empty
+    # paragraph behind (what Ctrl+A + Delete does in Word).
+    deletes_all = remaining - len(targets) < 1
     # Field-balance guard: deleting a range that cuts through a complex field
     # (unbalanced w:fldChar begin/end) corrupts the document.
     depth = 0
@@ -336,19 +490,44 @@ def delete_paragraphs(
                 "delete_paragraphs refuses it — remove the section first"
             )
         body.remove(el)
+    if deletes_all:
+        _materialize_implicit_paragraph(pkg)
     pkg.mark_dirty()
     from .notes import purge_orphans
 
     purged = purge_orphans(pkg)["purged"]
     result = {"deleted": len(targets)}
+    if deletes_all:
+        result["note"] = (
+            "the range covered every body paragraph; one empty paragraph "
+            "was left behind (a document always keeps at least one)"
+        )
     if purged:
         result["note_definitions_purged"] = purged
     return result
 
 
-def replace_paragraph_text(pkg: DocxPackage, index: int, new_text: str) -> dict:
-    """Swap a paragraph's entire text, keeping its style and first run's format."""
+def replace_paragraph_text(
+    pkg: DocxPackage, index: int, new_text: str, *, expect: str | None = None
+) -> dict:
+    """Swap a paragraph's entire text, keeping its style and first run's format.
+
+    expect guards against stale indices (indices shift after insert/delete
+    operations): when given, the paragraph's CURRENT text must contain it or
+    the call refuses with nothing changed. The old text is always returned
+    as replaced_text so callers can verify the right paragraph was hit."""
     p = _body_paragraph(pkg, index)
+    from .read import paragraph_text
+
+    current = paragraph_text(p)
+    if expect is not None and expect not in current:
+        raise WordMcpError(
+            f"paragraph {index} does not contain the expected text "
+            f"{expect[:80]!r}; its current text begins: {current[:120]!r}. "
+            "Paragraph indices shift after insert/delete operations - "
+            "re-read with get_text, or use search_and_replace for "
+            "text-anchored replacement. Nothing was changed."
+        )
     first_rpr = None
     first_run = p.find(qn("w:r"))
     if first_run is not None:
@@ -369,7 +548,7 @@ def replace_paragraph_text(pkg: DocxPackage, index: int, new_text: str) -> dict:
     from .notes import purge_orphans
 
     purged = purge_orphans(pkg)["purged"]
-    result = {"replaced_paragraph": index}
+    result = {"replaced_paragraph": index, "replaced_text": current}
     if purged:
         result["note_definitions_purged"] = purged
     return result
@@ -420,7 +599,7 @@ _PARA_FMT_KEYS = {
     "alignment", "space_before_pt", "space_after_pt", "line_spacing",
     "indent_left_pt", "indent_right_pt", "first_line_indent_pt",
     "keep_with_next", "keep_lines_together", "page_break_before",
-    "widow_control", "shading", "borders", "tab_stops",
+    "widow_control", "shading", "borders", "tab_stops", "outline_level",
 }
 
 # CT_PPr child sequence (python-docx _tag_seq, abridged to what we write).
@@ -574,13 +753,18 @@ def format_text(
         ]
     else:
         # Document order, INCLUDING paragraphs inside table cells (and any
-        # other nested containers in document.xml).
-        body_idx = {
-            id(el): idx for kind, idx, el in body_items(pkg) if kind == "paragraph"
-        }
+        # other nested containers in document.xml). The body elements MUST
+        # stay referenced while their id()s are looked up: lxml proxies are
+        # ephemeral, and without the keepalive a recycled proxy address maps
+        # a body paragraph to the wrong index (or to "table cell").
+        _keepalive = [
+            (el, idx) for kind, idx, el in body_items(pkg) if kind == "paragraph"
+        ]
+        body_idx = {id(el): idx for el, idx in _keepalive}
         candidates = [
             (p, body_idx.get(id(p))) for p in pkg.root().iter(qn("w:p"))
         ]
+        del _keepalive
 
     seen = 0
     for p, idx in candidates:
@@ -627,8 +811,27 @@ def set_paragraph_format(
 ) -> dict:
     """Paragraph-level formatting for a batch of paragraphs. Keys: alignment,
     space_before_pt, space_after_pt, line_spacing, indent_left_pt,
-    indent_right_pt, first_line_indent_pt, keep_with_next."""
+    indent_right_pt, first_line_indent_pt, keep_with_next, outline_level.
+
+    outline_level (0-8, or None to REMOVE the direct override) writes
+    w:outlineLvl WITHOUT touching the paragraph's style or visual
+    formatting. This is how academic templates express heading hierarchy on
+    Normal-styled paragraphs with direct formatting — Word's navigation pane
+    and TOC field harvesting (the \\o switch) honor outlineLvl, so setting it
+    here is what puts such headings into the outline and the TOC, where
+    apply_style('Heading N') would wreck the template's look. 0 is the top
+    level (Heading 1 equivalent); body text simply has no outlineLvl."""
     _check_keys(formatting, _PARA_FMT_KEYS, "paragraph-formatting")
+    if "outline_level" in formatting:
+        lvl = formatting["outline_level"]
+        if lvl is not None and (
+            isinstance(lvl, bool) or not isinstance(lvl, int)
+            or not 0 <= lvl <= 8
+        ):
+            raise WordMcpError(
+                "outline_level must be an integer 0-8 (0 = top level, as in "
+                "Heading 1) or null to remove the direct outlineLvl override"
+            )
     for index in indices:
         p = _body_paragraph(pkg, index)
         ppr = p.find(qn("w:pPr"))
@@ -653,6 +856,14 @@ def set_paragraph_format(
         if "widow_control" in formatting:
             el = _ppr_get_or_add(ppr, "widowControl")
             el.set(qn("w:val"), "1" if formatting["widow_control"] else "0")
+        if "outline_level" in formatting:
+            lvl = formatting["outline_level"]
+            if lvl is None:
+                existing = ppr.find(qn("w:outlineLvl"))
+                if existing is not None:
+                    ppr.remove(existing)
+            else:
+                _ppr_get_or_add(ppr, "outlineLvl").set(qn("w:val"), str(lvl))
         if "shading" in formatting:
             shd = _ppr_get_or_add(ppr, "shd")
             shd.set(qn("w:val"), "clear")

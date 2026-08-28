@@ -13,6 +13,7 @@ from pathlib import Path
 
 from ..core.errors import WordMcpError
 from ..core.package import DocxPackage
+from ..core.safesave import write_lock
 from . import furniture as _fu, structure as _sx, tables as _tb, text as _tx
 
 
@@ -83,6 +84,11 @@ def batch_apply(
     if not file_paths:
         raise WordMcpError("file_paths is empty")
     _validate_operations(operations)
+    # sandbox check BEFORE the existence probe: a blocked path must refuse
+    # identically whether or not the file exists (no existence oracle)
+    from ..core.sandbox import check_path
+
+    file_paths = [check_path(f, "batch edit") for f in file_paths]
     absent = [f for f in file_paths if not Path(f).is_file()]
     if absent:
         raise WordMcpError(
@@ -99,51 +105,59 @@ def batch_apply(
             break
         entry: dict = {"path": file_path, "ok": False, "operations": []}
         files.append(entry)
-        try:
-            pkg = DocxPackage(file_path)
-        except Exception as exc:
-            entry["error"] = f"{type(exc).__name__}: {exc}"
-            failed.append(file_path)
-            if stop_on_error:
-                aborted = True
-            continue
-        ops_ok = True
-        for op in operations:
-            tool = op["tool"]
+        # Per-file write lock across the full read-modify-save cycle, same as
+        # the single-file _edit path: a concurrent mutation of the same file
+        # must not interleave with this one.
+        with write_lock(file_path):
             try:
-                result = _ALLOWED[tool](pkg, dict(op.get("params", {})))
-                entry["operations"].append({"tool": tool, "ok": True, "result": result})
-            except TypeError as exc:
-                entry["operations"].append(
-                    {"tool": tool, "ok": False,
-                     "error": f"bad params for {tool}: {exc}"}
-                )
-                ops_ok = False
-                break
+                pkg = DocxPackage(file_path)
             except Exception as exc:
-                entry["operations"].append(
-                    {"tool": tool, "ok": False,
-                     "error": f"{type(exc).__name__}: {exc}"}
+                entry["error"] = f"{type(exc).__name__}: {exc}"
+                failed.append(file_path)
+                if stop_on_error:
+                    aborted = True
+                continue
+            ops_ok = True
+            for op in operations:
+                tool = op["tool"]
+                try:
+                    result = _ALLOWED[tool](pkg, dict(op.get("params", {})))
+                    entry["operations"].append(
+                        {"tool": tool, "ok": True, "result": result}
+                    )
+                except TypeError as exc:
+                    entry["operations"].append(
+                        {"tool": tool, "ok": False,
+                         "error": f"bad params for {tool}: {exc}"}
+                    )
+                    ops_ok = False
+                    break
+                except Exception as exc:
+                    entry["operations"].append(
+                        {"tool": tool, "ok": False,
+                         "error": f"{type(exc).__name__}: {exc}"}
+                    )
+                    ops_ok = False
+                    break
+            if not ops_ok:
+                entry["error"] = (
+                    "an operation failed; this file was NOT saved and is unchanged"
                 )
-                ops_ok = False
-                break
-        if not ops_ok:
-            entry["error"] = (
-                "an operation failed; this file was NOT saved and is unchanged"
-            )
-            failed.append(file_path)
-            if stop_on_error:
-                aborted = True
-            continue
-        try:
-            entry["saved"] = str(pkg.save(do_backup=backup))
-            entry["ok"] = True
-            saved.append(file_path)
-        except Exception as exc:
-            entry["error"] = f"save failed, file unchanged — {type(exc).__name__}: {exc}"
-            failed.append(file_path)
-            if stop_on_error:
-                aborted = True
+                failed.append(file_path)
+                if stop_on_error:
+                    aborted = True
+                continue
+            try:
+                entry["saved"] = str(pkg.save(do_backup=backup))
+                entry["ok"] = True
+                saved.append(file_path)
+            except Exception as exc:
+                entry["error"] = (
+                    f"save failed, file unchanged — {type(exc).__name__}: {exc}"
+                )
+                failed.append(file_path)
+                if stop_on_error:
+                    aborted = True
 
     not_attempted = file_paths[len(files):]
     result = {

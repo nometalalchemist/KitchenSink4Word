@@ -6,8 +6,10 @@
 [![PyPI](https://img.shields.io/pypi/v/kitchensink4word)](https://pypi.org/project/kitchensink4word/)
 [![License: PolyForm NC](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE)
 
+[Landing page](https://nometalalchemist.github.io/KitchenSink4Word/) · [llms.txt](https://nometalalchemist.github.io/KitchenSink4Word/llms.txt) (machine-readable capability manifest for agents and LLM crawlers)
+
 **Everything plus the kitchen sink for Microsoft Word.** The most complete
-Word (.docx) MCP server available: 170 tools, engineered not to corrupt, stress-tested against long, heavily formatted real-world documents. Now with live editing: documents open in Word are edited in place, visibly, with each tool call landing as a single Ctrl+Z step.
+Word (.docx) MCP server available: 189 tools, engineered not to corrupt, stress-tested against long, heavily formatted real-world documents. Now with live editing: documents open in Word are edited in place, visibly, with each tool call landing as a single Ctrl+Z step.
 
 > **The origin story:** an AI agent once needed *fifteen minutes* to edit
 > twenty table cells in a Word document, because no existing Word MCP could
@@ -37,13 +39,69 @@ Every public Word MCP server was surveyed before building this (August 2026):
 | Section moving / template transfer | ✅ | ❌ | ❌ | ❌ |
 | Atomic saves + auto-backup | ✅ | ❌ | ❌ | ❌ |
 
-**170 tools** across: equations (LaTeX → Word math), Zotero library citations, publication style conversion (8 styles, beta), review-cycle analytics, workflow suites (mail merge, batch operations, redaction, compliance/accessibility audits, submission prep, front matter, diagnostics), text and formatting, tables (including merge-aware column
+**189 tools** across: equations (LaTeX → Word math), native charts, document
+assembly (chapter files into one manuscript), Zotero library citations, publication style conversion (8 styles, beta), review-cycle analytics, workflow suites (mail merge, batch operations, redaction, compliance/accessibility audits and fixes, submission prep, front matter, diagnostics), text and formatting, tables (including merge-aware column
 insert/delete and one-call bulk cell edits), footnotes/endnotes (full CRUD +
 footnote↔endnote conversion), TOC and caption lists, headers/footers/sections,
-images, bulleted/numbered lists, threaded comments, tracked changes (read,
+images, bulleted/numbered lists, content controls and fields, threaded comments, tracked changes (read,
 accept/reject by author, AND write edits as tracked changes), plus
-Word-COM-backed document compare, field refresh, PDF export, and open-clean
+Word-COM-backed document compare, field refresh, PDF export/import, and open-clean
 validation on Windows.
+
+## What's new in v1.6 (2026-08-28)
+
+**19 new tools plus live-mode expansion**, built while the server edited a
+real dissertation in production:
+
+- **Native charts**: `add_chart` (bar/column/line/pie/scatter from inline
+  data or CSV/JSON; the chart part carries literal data caches AND a
+  matching embedded workbook, so right-click > Edit Data works in Word),
+  `update_chart_data`, `list_charts`.
+- **Document assembly**: `insert_document` inserts the entire body of one
+  document into another at a chosen position with full reconciliation
+  (styles by name, numbering, footnotes/endnotes, bookmarks, images,
+  charts) and Word-style paste modes (source/merge/destination);
+  `copy_table` transplants a single table with the same machinery.
+- **Backup redesign**: bounded two-slot scheme in a hidden `.ks4w-backups/`
+  folder (`prev` = before the last mutation, `anchor` = session start)
+  replaces per-edit .bak proliferation; `manage_backups` lists, restores
+  (undoably), and purges, including legacy .bak sweep; `create_snapshot`
+  makes DTG-stamped permanent keepers. Same-file writes are serialized
+  in-process and across server processes.
+- **Path sandboxing** (opt-in, `KS4W_ALLOWED_ROOTS`): see Sandboxing below.
+- **Accessibility fixes**: `fix_accessibility` repairs audit findings one
+  opted-in category at a time (alt-text placeholders flagged for human
+  review, heading-skip repair, table header rows, document title), paired
+  with `audit_accessibility`.
+- **Style forensics and repair**: `replace_formatted` (the mutation twin of
+  `find_formatted`), `get_paragraph_format` (effective formatting with the
+  inheritance source per property), `outline_level` on
+  `set_paragraph_format` plus outlineLvl-aware `get_outline` (academic
+  templates that build headings from Normal + outline overrides), and
+  `change_heading_level` (promote/demote with subtree).
+- **Fields, controls, glossary**: generic `insert_field`/`list_fields`
+  (allowlisted safe codes), `insert_content_control` /
+  `list_content_controls` / `set_content_control_value`,
+  `insert_glossary` built from detected defined terms.
+- **Workflow guidance**: `get_workflows` maps common tasks to recommended
+  tool sequences; `detect_citation_system` warns before mixed
+  Word-native/Zotero/Mendeley/EndNote citation split-brains.
+- **Live-mode expansion**: `word_count` (Word's own statistics engine),
+  `get_comments`, `replace_paragraph_text`, `format_text` (with CJK
+  language tagging) gained live routes; live and file responses now share
+  one shape; live finds beyond Word's ~255-char limit are handled;
+  empty-document indexing and the parallel same-file race are fixed.
+
+## Recommended heavy-editing workflow
+
+The pattern that testing settled on for long sessions: keep your copy of
+the document open in Word for reading, point the agent at a fresh
+DTG-stamped copy (`copy_document` or `create_snapshot`) where it has the
+full file-mode toolset, and open the result when it is done. You read
+uninterrupted, the agent edits at full speed with every tool available,
+and every intermediate state stays recoverable (slot backups plus your
+untouched original). Live mode shines for interactive watch-it-happen
+edits; bulk restructuring belongs on a copy.
 
 ## What's new in v1.4 (2026-08-28)
 
@@ -150,7 +208,7 @@ refusal):
 - **Document compare.** `com_compare_documents` produces a Word-native redline
   between two versions of a document.
 - **Never corrupts.** Atomic saves (temp file → structural validation →
-  replace), automatic timestamped backups before every mutation, byte-identical
+  replace), automatic slot backups before every mutation, byte-identical
   passthrough of anything not being edited (equations, textboxes, content
   controls survive untouched), and clean typed errors: a file open in Word is
   refused with a message, not a hang.
@@ -197,8 +255,24 @@ claude mcp add word -s user -- <absolute-path>\.venv\Scripts\word-mcp.exe
 
 ## Safety model
 
-- Every mutating tool takes `file_path` and writes a `<name>.bak-<timestamp>.docx`
-  beside it before the first change (`backup=False` to skip).
+- Every mutating tool takes `file_path` and rotates the current content into
+  stable backup slots before the change (`backup=False` to skip the rotation;
+  the atomic validated save always applies). Backups live in a hidden
+  `.ks4w-backups/` folder next to the document, one subfolder per document,
+  with exactly two slots: `prev.docx` (state before the most recent mutation)
+  and `anchor.docx` (session start, rotating after 60+ minutes of idle).
+  Storage stays bounded at roughly two copies per document no matter how many
+  edits a session makes. `manage_backups` lists, restores (undoably: the
+  pre-restore state rotates into `prev` first), and purges them, including
+  leftover `*.bak-*` files from the pre-v1.6 scheme.
+- Exclude `.ks4w-backups/` from cloud sync tools (OneDrive, Dropbox, Google
+  Drive): the slots churn on every edit and sync clients can hold locks that
+  slow saves down.
+- Mutations of the same file are serialized (in-process and across server
+  processes via an advisory lockfile), so parallel calls cannot clobber each
+  other and response metadata reflects settled document state.
+- COM/live mutations (documents open in Word) remain outside this backup
+  system; Word's own AutoRecover covers the open document.
 - Saves are atomic and validated; a failed operation leaves the original
   byte-identical.
 - Deleting content that carries footnote references automatically removes the
@@ -207,9 +281,27 @@ claude mcp add word -s user -- <absolute-path>\.venv\Scripts\word-mcp.exe
 - Paragraph deletion refuses ranges that would cut a field (TOC, PAGEREF) in
   half or silently swallow a section break.
 
+### Sandboxing (opt-in)
+
+Off by default: with nothing configured, the server behaves exactly as it
+always has. Set the `KS4W_ALLOWED_ROOTS` environment variable to a list of
+directories separated by the OS path separator (`;` on Windows, `:`
+elsewhere), for example `C:\Users\me\Documents;D:\Work`, and every path the
+server touches must resolve inside one of those directories. Reads are gated
+as well as writes, since a read outside the sandbox exfiltrates content just
+as surely as a write plants it. The containment check runs on canonicalized
+paths, so `..\` traversal, symlink and junction escapes, 8.3 short names,
+extended-length prefixes, case tricks, and lookalike sibling directories
+(`Documents2` against an allowed `Documents`) are all caught, and UNC network
+paths are refused unless an allowed root is itself a UNC path that contains
+them. A blocked call refuses with a typed error naming the offending path and
+the allowed roots before any file is opened. Recommended whenever the server
+runs against untrusted or semi-trusted agent traffic.
+
 ## Testing
 
-344 tests, running everywhere: the suite was developed against a private
+910 tests (852 run everywhere; 58 live-marked tests drive a real Word
+instance on Windows): the suite was developed against a private
 corpus of real-world documents (book-length chapters, a document with 171
 footnotes, a manuscript with 126 tracked changes and reviewer comments), and
 CI auto-generates **structurally equivalent synthetic stand-ins**
@@ -232,14 +324,14 @@ the MIT-licensed reference implementations studied.
 ## Maturity: what the version number does and does not claim
 
 This project moves fast and is honest about what backs it. What the test
-record covers: every release passes the full suite (626 tests) plus
+record covers: every release passes the full suite (910 tests) plus
 dedicated adversarial rounds through the raw MCP transport (~2,500 calls
 to date), against a corpus of long, heavily formatted real-world documents
 with zero corruption across all of it. What it does not yet cover: other
 machines, Word builds older than current Microsoft 365, non-English Word
 installs (some tools reference styles by localized display name), RTL
 scripts, and the diversity of documents only real users bring. The safety
-net while the tool earns that mileage is structural: automatic timestamped
+net while the tool earns that mileage is structural: automatic slot
 backups before every mutation and atomic validated saves, so a bad outcome
 is a restore, not a loss. If something misbehaves on your documents,
 [an issue](https://github.com/nometalalchemist/KitchenSink4Word/issues)

@@ -1,6 +1,12 @@
 """Live implementations of the high-value tools, mirroring the file-based
 parameter shapes and result schemas (plus the standard live fields).
 
+SCHEMA PARITY RULING (L7+L9, 2026-08-28): the canonical result shape for
+every dual-mode tool is the FILE-mode shape; dict results additionally carry
+"live": true (+ undo/dirty metadata), list results stay flat lists (a list
+cannot carry the live key). Live-only information is ADDITIVE keys only —
+never a different top-level shape. One parsing path for callers.
+
 Addressing conventions match the file-based layer:
 - paragraph indices are 0-based over BODY-LEVEL paragraphs (paragraphs inside
   tables are excluded from the index, same as ops/read.py's body_items);
@@ -26,8 +32,8 @@ from ..core.errors import (
     WordMcpError,
 )
 from ..ops import _regex as _rx
-from ..ops.localization import style_name_matches
-from .live import check_text_safe, insert_text_chunked, run_live
+from ..ops.localization import canonical_for_name, style_name_matches
+from .live import check_text_safe, insert_text_chunked, live_session, run_live
 
 # story types
 _MAIN_STORY = 1
@@ -40,6 +46,23 @@ _WD_FIND_STOP = 0
 _WD_WITH_IN_TABLE = 12  # wdWithInTable
 _WD_UNDERLINE_SINGLE = 1
 _WD_UNDERLINE_NONE = 0
+
+# ComputeStatistics codes. NEVER count words via doc.Words.Count — it counts
+# punctuation runs and paragraph marks as "words" (~18% high on real prose;
+# L1, 2026-08-28). ComputeStatistics(wdStatisticWords) matches Word's own
+# status-bar number.
+_WD_STAT_WORDS = 0
+_WD_STAT_CHARS_WITH_SPACES = 5
+
+# Word's Find.Text COM property rejects strings beyond ~255 characters
+# ('String parameter too long'). Longer finds are located via a prefix
+# search + range extension + full verification (L5).
+_FIND_TEXT_LIMIT = 255
+_FIND_PREFIX_CHARS = 250
+
+# Range.Text single-call assignment limit mirror (live.TEXT_CHUNK); longer
+# replacements go through delete + chunked insert.
+_ASSIGN_CHUNK = 30000
 
 _SCOPE_STORIES = {
     "body": {_MAIN_STORY},
@@ -67,9 +90,54 @@ _CHAR_KEYS = {
     "char_spacing_pt",
     "kerning_pt",
     "position_pt",
+    "language",
+    "east_asian_language",
 }
-# accepted by the file layer but not implementable through Font live
-_CHAR_KEYS_FILE_ONLY = {"language", "east_asian"}
+# BCP-47 language tag -> Word LCID, for Font.LanguageID /
+# Font.LanguageIDFarEast (the live twin of the file layer's w:lang keys).
+# Values are the documented WdLanguageID constants.
+_LANGUAGE_LCIDS = {
+    "en-us": 1033, "en-gb": 2057, "en-au": 3081, "en-ca": 4105,
+    "ko-kr": 1042,
+    "ja-jp": 1041,
+    "zh-cn": 2052, "zh-tw": 1028, "zh-hk": 3076,
+    "de-de": 1031, "de-at": 3079, "de-ch": 2055,
+    "fr-fr": 1036, "fr-ca": 3084, "fr-ch": 4108,
+    "es-es": 3082, "es-mx": 2058,
+    "it-it": 1040,
+    "pt-br": 1046, "pt-pt": 2070,
+    "ru-ru": 1049,
+    "nl-nl": 1043,
+    "pl-pl": 1045,
+    "tr-tr": 1055,
+    "ar-sa": 1025,
+    "he-il": 1037,
+    "hi-in": 1081,
+    "th-th": 1054,
+    "vi-vn": 1066,
+    "id-id": 1057,
+    "sv-se": 1053, "da-dk": 1030, "nb-no": 1044, "fi-fi": 1035,
+    "cs-cz": 1029, "el-gr": 1032, "hu-hu": 1038, "ro-ro": 1048,
+    "uk-ua": 1058,
+}
+
+
+# languages Word stores ONLY in the East-Asian slot: writing their LCID to
+# Range.LanguageID is silently IGNORED by Word (verified 2026-08-28 — the
+# Latin slot keeps its old value), so honesty demands routing them through
+# east_asian_language instead of reporting a success that did nothing.
+_EAST_ASIAN_PRIMARY = {"ko", "ja", "zh"}
+
+
+def _lcid(tag: str) -> int:
+    lcid = _LANGUAGE_LCIDS.get(str(tag).lower())
+    if lcid is None:
+        raise WordMcpError(
+            f"language tag {tag!r} has no live LCID mapping; supported live: "
+            f"{sorted(_LANGUAGE_LCIDS)} — for other tags close the document "
+            "and use the file-based tool (it writes the tag verbatim)"
+        )
+    return lcid
 
 # OOXML highlight name -> wdColorIndex
 _HIGHLIGHT_INDEX = {
@@ -94,6 +162,18 @@ _HIGHLIGHT_INDEX = {
 
 
 # ------------------------------------------------------------------ helpers
+
+
+def _run_live_list(path: str, tool_name: str, body) -> list:
+    """Run a READ-ONLY body whose result is a LIST, returned unchanged.
+
+    Live/file schema parity (L7+L9 ruling, 2026-08-28): the canonical result
+    shape is the FILE-mode shape. File-mode list results therefore stay flat
+    lists in live mode too — a list cannot carry the "live": true key, so
+    list-shaped reads return without live metadata (nothing was mutated, so
+    no undo/restore report is lost)."""
+    with live_session(path, tool_name, mutating=False) as session:
+        return body(session)
 
 
 def _stories(doc, scope: str):
@@ -255,6 +335,7 @@ def _tracked_result(session, track: bool, author: str, payload: dict) -> dict:
     if not track:
         return payload
     payload["tracked"] = True
+    payload["tracked_as"] = author       # file-mode parity key
     payload["author_requested"] = author
     try:
         doc = session.doc
@@ -324,14 +405,37 @@ def _protected_span_end(story, rng):
     return None
 
 
+def _assign_text(rng, text: str):
+    """Range text assignment respecting COM's single-string size limit.
+    Short strings assign directly; long ones clear the range then insert in
+    chunks (InsertAfter extends the range to cover everything inserted, so
+    rng covers the full replacement afterwards either way)."""
+    if len(text) <= _ASSIGN_CHUNK:
+        rng.Text = text
+        return
+    rng.Text = ""                    # collapse the match away first
+    insert_text_chunked(rng, text)   # rng grows to cover the inserted text
+
+
 def _replace_literal(story, find: str, replace: str) -> tuple:
     """Find-only then manual text assignment, one match at a time, forward
     only. Matches inside fields/content controls are SKIPPED (see
     _protected_span_end). Self-referencing replacements can't loop because
     the search resumes after each replacement, and the iteration budget is
     tied to the PRE-EDIT match count so no regeneration pathology can spin.
+
+    Finds longer than Word's ~255-char Find.Text limit (L5) are located via
+    the first ~250 chars, the range is extended to the full find length, and
+    the extended range's text is VERIFIED against the whole find before
+    anything is touched; a prefix hit that is not a full match is skipped.
+    The replacement side never goes through Find.Replacement (same 255
+    limit) — text assignment has no such limit.
     Returns (replaced, skipped_in_fields, skipped_in_deletions)."""
-    budget = _count_matches(story, find) + 50
+    long_find = len(find) > _FIND_TEXT_LIMIT
+    probe = find[:_FIND_PREFIX_CHARS] if long_find else find
+    # budget on PROBE occurrences: >= full-string occurrences, so prefix
+    # hits that fail full verification can never starve real matches
+    budget = _count_matches(story, probe) + 50
     rng = story.Duplicate
     done = 0
     skipped = 0
@@ -339,13 +443,29 @@ def _replace_literal(story, find: str, replace: str) -> tuple:
     for _ in range(budget):
         f = rng.Find
         f.ClearFormatting()
-        f.Text = find
+        f.Text = probe
         f.Forward = True
         f.Wrap = _WD_FIND_STOP
         f.MatchWildcards = False
         f.MatchCase = True
         if not f.Execute():          # find only — rng now covers the match
             break
+        if long_find:
+            # extend over the full find length and verify the whole string;
+            # offsets are per-character within one story, and the explicit
+            # Text comparison catches any field-machinery drift
+            full_end = rng.Start + len(find)
+            if full_end > story.End:
+                break                # too close to the story end to match
+            candidate = story.Duplicate
+            candidate.SetRange(rng.Start, full_end)
+            if candidate.Text != find:
+                resume = rng.End     # prefix-only hit: not a real match
+                rng.SetRange(resume, max(story.End, resume))
+                if rng.Start >= rng.End:
+                    break
+                continue
+            rng.SetRange(candidate.Start, candidate.End)
         past_protected = _protected_span_end(story, rng)
         deleted_rev_end = None
         if past_protected is None:
@@ -365,7 +485,7 @@ def _replace_literal(story, find: str, replace: str) -> tuple:
             resume = deleted_rev_end
         else:
             check_text_safe(replace)
-            rng.Text = replace       # rng covers the replacement afterwards
+            _assign_text(rng, replace)  # rng covers the replacement after
             done += 1
             resume = rng.End
         rng.SetRange(resume, max(story.End, resume))
@@ -401,7 +521,7 @@ def _replace_regex(story, find: str, replace: str) -> tuple:
             continue
         replacement = m.expand(replace)
         check_text_safe(replacement)
-        sub.Text = replacement
+        _assign_text(sub, replacement)
         done += 1
     return done, skipped
 
@@ -436,7 +556,15 @@ def search_and_replace(
                     f"{max_replacements}; nothing was changed"
                 )
 
-        per_item = []
+        # RESULT SHAPE (L7 parity ruling): canonical file-mode shape —
+        # {"replaced": {find: n}, "total": n} — plus live-only additive keys
+        # (skip counters, notes). The old items[]/total_replacements live
+        # shape is retired.
+        replaced: dict = {}
+        skipped_fields: dict = {}
+        skipped_deletions: dict = {}
+        skipped_drift: dict = {}
+        notes: list = []
         total = 0
         for item in replacements:
             find, replace = item["find"], item.get("replace", "")
@@ -455,28 +583,37 @@ def search_and_replace(
                     n += done
                     in_fields += skipped
                     in_deletions += skipped_del
-            entry = {"find": find, "replacements": n}
+            replaced[find] = replaced.get(find, 0) + n
             if in_fields:
-                entry["skipped_inside_fields"] = in_fields
-                entry["note"] = (
+                skipped_fields[find] = in_fields
+                note = (
                     "matches inside field results are skipped — Word "
                     "regenerates field results, so edits there do not stick"
                 )
+                if note not in notes:
+                    notes.append(note)
             if in_deletions:
-                entry["skipped_inside_tracked_deletions"] = in_deletions
+                skipped_deletions[find] = in_deletions
             if drift:
-                entry["skipped_offset_drift"] = drift
-                entry["note"] = (
+                skipped_drift[find] = drift
+                note = (
                     "matches positioned after complex fields were skipped "
                     "(COM offsets drift there); use a literal find for "
                     "those, or edit the closed file"
                 )
-            per_item.append(entry)
+                if note not in notes:
+                    notes.append(note)
             total += n
-        return _tracked_result(
-            session, track, author,
-            {"total_replacements": total, "items": per_item, "scope": scope},
-        )
+        result = {"replaced": replaced, "total": total, "scope": scope}
+        if skipped_fields:
+            result["skipped_inside_fields"] = skipped_fields
+        if skipped_deletions:
+            result["skipped_inside_tracked_deletions"] = skipped_deletions
+        if skipped_drift:
+            result["skipped_offset_drift"] = skipped_drift
+        if notes:
+            result["notes"] = notes
+        return _tracked_result(session, track, author, result)
 
     return run_live(path, "search and replace", body)
 
@@ -489,26 +626,35 @@ def get_text(
     start: int = 0,
     end: int | None = None,
     contains: str | None = None,
-) -> dict:
+) -> list:
+    """FILE-MODE SHAPE (L9 parity): a flat list of paragraph entries
+    {index, text, style, heading_level?}, SDT paragraphs appended with
+    index None + in_sdt true. Live styles are Word's LOCALIZED display
+    names (Style.NameLocal); file mode reports style IDs."""
+
     def body(session):
         doc = session.doc
         deleted = _deleted_spans(doc)
         paras = _body_paragraphs(doc)
         out = []
-        # end is EXCLUSIVE, matching the file layer's slice semantics
-        stop = len(paras) if end is None else min(end, len(paras))
-        for i in range(max(0, start), stop):
-            p = paras[i]
+
+        def _entry(p, index):
             text = _para_text(p, deleted)
-            if contains is not None and contains not in text:
-                continue
-            entry = {"index": i, "text": text}
+            entry = {"index": index, "text": text}
             try:
                 entry["style"] = p.Style.NameLocal
             except Exception:
                 entry["style"] = None
+            return entry
+
+        # end is EXCLUSIVE, matching the file layer's slice semantics
+        stop = len(paras) if end is None else min(end, len(paras))
+        for i in range(max(0, start), stop):
+            entry = _entry(paras[i], i)
+            if contains is not None and contains not in entry["text"]:
+                continue
             try:
-                lvl = p.OutlineLevel
+                lvl = paras[i].OutlineLevel
                 if 1 <= lvl <= 9:
                     entry["heading_level"] = lvl
             except Exception:
@@ -526,17 +672,22 @@ def get_text(
                     s <= p.Range.Start < e for s, e in regions
                 )
                 if in_sdt:
-                    text = _para_text(p, deleted)
-                    if text:
-                        out.append(
-                            {"index": None, "in_sdt": True, "text": text}
-                        )
-        return {"paragraphs": out, "total_body_paragraphs": len(paras)}
+                    entry = _entry(p, None)
+                    if entry["text"]:
+                        entry["in_sdt"] = True
+                        out.append(entry)
+        return out
 
-    return run_live(path, "read text", body, mutating=False)
+    return _run_live_list(path, "read text", body)
 
 
-def get_outline(path: str) -> dict:
+def get_outline(path: str) -> list:
+    """FILE-MODE SHAPE (L9 parity): flat list of
+    {paragraph_index, level, text, detected_via}. Word's OutlineLevel is the
+    EFFECTIVE value, so outlineLvl-based template headings (L8) are seen
+    live for free; detected_via distinguishes built-in Heading styles from
+    outline-level overrides via the paragraph's style name."""
+
     def body(session):
         paras = _body_paragraphs(session.doc)
         out = []
@@ -547,36 +698,79 @@ def get_outline(path: str) -> dict:
                 continue
             text = _para_text(p).strip()
             if 1 <= lvl <= 9 and text:
+                via = "outline_level"
+                with contextlib.suppress(Exception):
+                    canonical = canonical_for_name(p.Style.NameLocal)
+                    if canonical and canonical.startswith("heading"):
+                        via = "heading_style"
                 out.append(
-                    {"paragraph_index": i, "level": lvl, "text": text}
+                    {
+                        "paragraph_index": i,
+                        "level": lvl,
+                        "text": text,
+                        "detected_via": via,
+                    }
                 )
-        return {"outline": out}
+        return out
 
-    return run_live(path, "read outline", body, mutating=False)
+    return _run_live_list(path, "read outline", body)
 
 
 def get_document_info(path: str) -> dict:
     def body(session):
         doc = session.doc
         info = {
+            "path": doc.FullName,
             "paragraphs": len(_body_paragraphs(doc)),
             "tables": doc.Tables.Count,
+            "sections": doc.Sections.Count,
             "footnotes": doc.Footnotes.Count,
             "endnotes": doc.Endnotes.Count,
             "comments": doc.Comments.Count,
             "revisions": doc.Revisions.Count,
-            "sections": doc.Sections.Count,
-            "words": doc.Words.Count,
+            # L1 fix: ComputeStatistics matches Word's status bar; Words.Count
+            # counted punctuation and paragraph marks (~18% high).
+            "words": int(doc.ComputeStatistics(_WD_STAT_WORDS)),
             "track_revisions": bool(doc.TrackRevisions),
         }
+        with contextlib.suppress(Exception):
+            info["images"] = int(doc.InlineShapes.Count) + int(
+                doc.Shapes.Count
+            )
+        with contextlib.suppress(Exception):
+            props = doc.BuiltInDocumentProperties
+            for com_name, key in (("Title", "title"), ("Author", "author")):
+                val = str(props(com_name).Value or "")
+                if val:
+                    info[key] = val
+        # file-mode's "parts" (package part list) has no live equivalent;
+        # "words"/"track_revisions" are live extras (file word counts live in
+        # the word_count tool)
         return info
 
     return run_live(path, "document info", body, mutating=False)
 
 
+def _table_spans(doc) -> list:
+    """[(start, end, table_index)] for body tables, for match attribution."""
+    spans = []
+    with contextlib.suppress(Exception):
+        for i in range(1, doc.Tables.Count + 1):
+            rng = doc.Tables(i).Range
+            spans.append((rng.Start, rng.End, i - 1))
+    return spans
+
+
 def find_text(
     path: str, query: str, regex: bool = False, context_chars: int = 60
-) -> dict:
+) -> list:
+    """FILE-MODE SHAPE (L9 parity): flat list of match entries —
+    {paragraph_index, match, context} for body paragraphs,
+    {table_index, row, cell, match, context} for table cells, plus
+    live-only labeled extras {in_sdt: true, match, context} for content
+    controls/TOC galleries (file mode does not search SDT blocks). Capped
+    at 500 matches; a trailing {truncated: true} sentinel entry marks the
+    cut."""
     if not query:
         raise WordMcpError("query must be non-empty")
     if regex and _rx.finditer(query, ""):
@@ -589,7 +783,12 @@ def find_text(
         doc = session.doc
         deleted = _deleted_spans(doc)
         regions = _sdt_regions(doc)
+        tables = _table_spans(doc)
         matches = []
+        truncated_note = {
+            "truncated": True,
+            "note": "500-match cap reached; narrow the query",
+        }
         body_idx = -1
         for p in doc.Paragraphs:
             in_table = bool(p.Range.Information(_WD_WITH_IN_TABLE))
@@ -604,26 +803,292 @@ def find_text(
                 if regex
                 else list(re.finditer(re.escape(query), text))
             )
+            if not found:
+                continue
+            # cell attribution once per paragraph, not per match
+            location: dict = {}
+            if in_sdt:
+                location["in_sdt"] = True
+            elif in_table:
+                p_start = p.Range.Start
+                t_idx = next(
+                    (t for s, e, t in tables if s <= p_start < e), None
+                )
+                if t_idx is not None:
+                    location["table_index"] = t_idx
+                with contextlib.suppress(Exception):
+                    cell = p.Range.Cells(1)
+                    location["row"] = cell.RowIndex - 1
+                    location["cell"] = cell.ColumnIndex - 1
+            else:
+                location["paragraph_index"] = body_idx
             for m in found:
                 lo = max(0, m.start() - context_chars)
                 hi = min(len(text), m.end() + context_chars)
-                entry = {
-                    "match": m.group(0),
-                    "context": text[lo:hi],
-                    "location": (
-                        "table cell" if in_table
-                        else "content control" if in_sdt
-                        else "body"
-                    ),
-                }
-                if not in_table and not in_sdt:
-                    entry["paragraph"] = body_idx
+                entry = dict(location)
+                entry["match"] = m.group(0)
+                entry["context"] = text[lo:hi]
                 matches.append(entry)
                 if len(matches) >= 500:
-                    return {"matches": matches, "truncated": True}
-        return {"matches": matches, "truncated": False}
+                    matches.append(truncated_note)
+                    return matches
+        return matches
 
-    return run_live(path, "find text", body, mutating=False)
+    return _run_live_list(path, "find text", body)
+
+
+def word_count(path: str, by_section: bool = True) -> dict:
+    """Live word count via Word's own statistics engine (L2).
+
+    FILE-MODE SHAPE: {totals: {words, characters, paragraphs, tables,
+    cjk_chars}, counting, sections?} plus live keys. totals.words is
+    ComputeStatistics(wdStatisticWords) — the number Word's status bar
+    shows — which counts slightly differently from file mode's
+    whitespace-token count, so the two modes can differ by a few words on
+    the same content. Per-section counts are best-effort mirrors of the
+    file logic (a section runs from a heading to the next heading of the
+    same or higher level; nested headings' own text is excluded), computed
+    with Range.ComputeStatistics."""
+
+    def body(session):
+        doc = session.doc
+        paras = _body_paragraphs(doc)
+
+        # headings: (list position, body index, level, text, paragraph)
+        headings = []
+        non_heading_paragraphs = 0
+        for i, p in enumerate(paras):
+            lvl = None
+            with contextlib.suppress(Exception):
+                v = p.OutlineLevel
+                if 1 <= v <= 9:
+                    lvl = v
+            text = _para_text(p).strip()
+            if lvl is not None and text:
+                headings.append((i, lvl, text, p))
+            else:
+                non_heading_paragraphs += 1
+
+        def _range_words(start, end) -> int:
+            if start >= end:
+                return 0
+            try:
+                return int(
+                    doc.Range(start, end).ComputeStatistics(_WD_STAT_WORDS)
+                )
+            except Exception:
+                return 0
+
+        totals = {
+            "words": int(doc.ComputeStatistics(_WD_STAT_WORDS)),
+            "characters": int(
+                doc.ComputeStatistics(_WD_STAT_CHARS_WITH_SPACES)
+            ),
+            "paragraphs": non_heading_paragraphs,
+            "tables": int(doc.Tables.Count),
+        }
+        # CJK character count (the zh/ja academic unit) from the body text —
+        # best-effort live mirror of the file layer's cjk counting
+        from ..ops.localization import cjk_aware_word_count
+
+        body_text = ""
+        with contextlib.suppress(Exception):
+            body_text = doc.Content.Text
+        cjk = cjk_aware_word_count(body_text)
+        totals["cjk_chars"] = cjk["cjk_chars"]
+        non_cjk = cjk["words"] - cjk["cjk_chars"]
+        result = {
+            "totals": totals,
+            "counting": (
+                "spaces"
+                if not totals["cjk_chars"]
+                else ("cjk" if not non_cjk else "mixed")
+            ),
+            "note": (
+                "counted live by Word (ComputeStatistics — matches Word's "
+                "status bar); file mode counts whitespace tokens, so the "
+                "modes can differ by a few words on identical content"
+            ),
+        }
+        if by_section:
+            sections = []
+            doc_end = doc.Content.End
+            for pos, (i, lvl, text, p) in enumerate(headings):
+                # section body: from the end of this heading's paragraph to
+                # the start of the next heading of the same-or-higher level
+                sec_start = p.Range.End
+                sec_end = doc_end
+                for j, jlvl, _, jp in headings[pos + 1:]:
+                    if jlvl <= lvl:
+                        sec_end = jp.Range.Start
+                        break
+                words = _range_words(sec_start, sec_end)
+                # exclude nested sub-headings' own text, like the file layer
+                for j, jlvl, _, jp in headings[pos + 1:]:
+                    js, je = jp.Range.Start, jp.Range.End
+                    if js >= sec_end:
+                        break
+                    if js >= sec_start:
+                        words -= _range_words(js, je)
+                sections.append(
+                    {
+                        "heading": text,
+                        "level": lvl,
+                        "paragraph_index": i,
+                        "words": max(0, words),
+                    }
+                )
+            result["sections"] = sections
+        return result
+
+    return run_live(path, "word count", body, mutating=False)
+
+
+def get_comments(path: str, author: str | None = None) -> list:
+    """Live comments read (L3). FILE-MODE SHAPE: flat list of {id, author,
+    initials, date, text, anchored_text, resolved, reply_to}. Live ids are
+    the comment's POSITION (Word's 1-based Comment.Index as a string) —
+    COM does not expose the XML w:id — so ids are stable within one read
+    but are not the file layer's XML ids."""
+
+    def body(session):
+        doc = session.doc
+        out = []
+        index_ids = {}
+        for i in range(1, doc.Comments.Count + 1):
+            c = doc.Comments(i)
+            cid = str(c.Index)
+            index_ids[c.Index] = cid
+            entry = {"id": cid}
+            with contextlib.suppress(Exception):
+                entry["author"] = c.Author or ""
+            with contextlib.suppress(Exception):
+                entry["initials"] = c.Initial or ""
+            entry.setdefault("author", "")
+            entry.setdefault("initials", "")
+            try:
+                entry["date"] = c.Date.isoformat()
+            except Exception:
+                try:
+                    entry["date"] = str(c.Date)
+                except Exception:
+                    entry["date"] = ""
+            try:
+                entry["text"] = (
+                    c.Range.Text.replace("\r", "\n").replace("\x07", "")
+                ).strip()
+            except Exception:
+                entry["text"] = ""
+            try:
+                entry["anchored_text"] = (
+                    c.Scope.Text.replace("\r", "").replace("\x07", "")
+                )
+            except Exception:
+                entry["anchored_text"] = ""
+            try:
+                entry["resolved"] = bool(c.Done)
+            except Exception:
+                entry["resolved"] = False
+            reply_to = None
+            with contextlib.suppress(Exception):
+                anc = c.Ancestor
+                if anc is not None:
+                    reply_to = str(anc.Index)
+            entry["reply_to"] = reply_to
+            out.append(entry)
+        if author is not None:
+            out = [e for e in out if e["author"] == author]
+        return out
+
+    return _run_live_list(path, "read comments", body)
+
+
+def replace_paragraph_text(
+    path: str, index: int, new_text: str, expect: str | None = None
+) -> dict:
+    """Live full-paragraph text replacement (L4). FILE-MODE SHAPE:
+    {replaced_paragraph: index, replaced_text: old}. expect guards stale
+    indices: when given, the paragraph's current text must contain it or
+    the call refuses with nothing changed (Bug 11: index-addressed
+    replacement after insert/delete shifts silently hits the wrong
+    paragraph). The paragraph MARK is never touched, so
+    the style and any section break riding the mark survive; the first
+    character's formatting carries into the replacement (Word's assignment
+    semantics, matching the file layer's keep-first-run-format).
+    Paragraphs carrying tracked revisions are refused (accept/reject first,
+    or edit the closed file) — replacing part-deleted/part-inserted text
+    live has no faithful semantics. Bare fields and content controls inside
+    the paragraph are deleted explicitly first (Range.Text assignment
+    silently leaves both behind)."""
+    check_text_safe(new_text)
+
+    def body(session):
+        doc = session.doc
+        paras = _body_paragraphs(doc)
+        if not 0 <= index < len(paras):
+            raise TargetNotFound(
+                f"no body paragraph with index {index}; the document has "
+                f"{len(paras)} body paragraphs"
+            )
+        p = paras[index]
+        rng = doc.Range(p.Range.Start, max(p.Range.Start, p.Range.End - 1))
+        current = rng.Text or ""
+        if expect is not None and expect not in current:
+            raise TargetNotFound(
+                f"paragraph {index} does not contain the expected text "
+                f"{expect[:80]!r}; its current text begins: "
+                f"{current[:120]!r}. Paragraph indices shift after "
+                "insert/delete operations - re-read with get_text, or use "
+                "search_and_replace for text-anchored replacement. "
+                "Nothing was changed."
+            )
+        try:
+            has_revisions = bool(rng.Revisions.Count)
+        except Exception:
+            has_revisions = False
+        if has_revisions:
+            raise UnsupportedStructure(
+                f"paragraph {index} carries tracked revisions; accept or "
+                "reject them first (accept_revisions/reject_revisions on "
+                "the closed file, or in Word), then retry"
+            )
+        # content controls: refuse any that extend beyond the paragraph,
+        # then delete contained ones WITH contents (text assignment leaves
+        # them behind otherwise)
+        ccs = []
+        with contextlib.suppress(Exception):
+            ccs = list(rng.ContentControls)
+        for cc in ccs:
+            if cc.Range.Start < rng.Start or cc.Range.End > rng.End:
+                raise UnsupportedStructure(
+                    "a content control extends beyond this paragraph; "
+                    "replacing would destroy content outside it"
+                )
+        removed = False
+        for cc in ccs:
+            cc.Delete(True)
+            removed = True
+        # bare fields survive Range.Text writes — delete explicitly
+        with contextlib.suppress(Exception):
+            for fld in list(rng.Fields):
+                fld.Delete()
+                removed = True
+        if removed:  # boundaries shifted; re-resolve the paragraph
+            p = _body_paragraphs(doc)[index]
+            rng = doc.Range(
+                p.Range.Start, max(p.Range.Start, p.Range.End - 1)
+            )
+        _assign_text(rng, new_text)
+        result = {"replaced_paragraph": index, "replaced_text": current}
+        with contextlib.suppress(Exception):
+            if doc.TrackRevisions:
+                result["note"] = (
+                    "the document's track-changes is ON, so the replacement "
+                    "was recorded as tracked changes"
+                )
+        return result
+
+    return run_live(path, "replace paragraph text", body)
 
 
 def insert_paragraphs(
@@ -783,7 +1248,12 @@ def delete_paragraphs(
         # following table and leaves a stray empty paragraph; assigning ""
         # removes the same span cleanly (verified empirically, 2026-08-28).
         rng.Text = ""
-        return _tracked_result(session, track, author, {"deleted": deleted})
+        # file-mode parity: tracked deletes report deleted_tracked (nothing
+        # is removed until the revision is accepted), untracked report deleted
+        payload = (
+            {"deleted_tracked": deleted} if track else {"deleted": deleted}
+        )
+        return _tracked_result(session, track, author, payload)
 
     return run_live(path, "delete paragraphs", body)
 
@@ -840,7 +1310,9 @@ def set_cells(
             applied += 1
         return _tracked_result(
             session, track, author,
-            {"cells_set": applied, "table": table_index},
+            # "cells_written" is the file-mode key (L7 parity); "table" is a
+            # live-only additive echo of the target
+            {"cells_written": applied, "table": table_index},
         )
 
     return run_live(path, "set cells", body)
@@ -856,12 +1328,6 @@ def format_text(
     find: str | None = None,
     occurrence: int = 1,
 ) -> dict:
-    file_only = set(formatting) & _CHAR_KEYS_FILE_ONLY
-    if file_only:
-        raise UnsupportedStructure(
-            f"formatting key(s) {sorted(file_only)} are not supported on "
-            "open documents; close the file and use the file-based tool"
-        )
     unknown = set(formatting) - _CHAR_KEYS
     if unknown:
         raise WordMcpError(
@@ -870,6 +1336,18 @@ def format_text(
         )
     if formatting.get("superscript") and formatting.get("subscript"):
         raise WordMcpError("superscript and subscript are mutually exclusive")
+    for key in ("language", "east_asian_language"):
+        if key in formatting:
+            _lcid(formatting[key])  # validate the tag BEFORE touching Word
+    if "language" in formatting:
+        primary = str(formatting["language"]).lower().split("-")[0]
+        if primary in _EAST_ASIAN_PRIMARY:
+            raise WordMcpError(
+                f"language {formatting['language']!r} is an East-Asian "
+                "proofing language, which Word stores in the east-asian "
+                "slot and silently IGNORES in the latin slot — pass it as "
+                "east_asian_language instead (matches Word's own behavior)"
+            )
     if find is None and paragraph_index is None:
         raise WordMcpError("need paragraph_index, find, or both")
 
@@ -980,6 +1458,11 @@ def scroll_to(
     window WITHOUT selecting it or moving the cursor."""
     if (find is None) == (paragraph_index is None):
         raise WordMcpError("give exactly one of find, paragraph_index")
+    if find is not None and len(find) > _FIND_TEXT_LIMIT:
+        raise WordMcpError(
+            f"find string is {len(find)} characters; Word's Find accepts at "
+            f"most ~{_FIND_TEXT_LIMIT} — scroll with a shorter unique prefix"
+        )
 
     def body(session):
         doc = session.doc
@@ -1067,3 +1550,67 @@ def _apply_char_formatting(rng, fmt: dict):
         font.Kerning = float(fmt["kerning_pt"])
     if "position_pt" in fmt:
         font.Position = int(fmt["position_pt"])
+    # proofing language (the live twin of the file layer's w:lang keys);
+    # ko-KR and friends map through the LCID table. NOTE: the language
+    # properties live on the RANGE, not the Font — Word's Font object has
+    # no LanguageID, and assigning one onto a gen_py Font proxy silently
+    # sets a phantom Python attribute (verified 2026-08-28).
+    if "language" in fmt:
+        rng.LanguageID = _lcid(fmt["language"])
+    if "east_asian_language" in fmt:
+        rng.LanguageIDFarEast = _lcid(fmt["east_asian_language"])
+
+
+# ---------------------------------------------------------------------------
+# LIVE-PARITY AUDIT (WS-L, 2026-08-28) — source material for the docstring
+# pass. Status of every file-mode tool family against the live pathway.
+#
+# HAS A LIVE ROUTE (dual-mode via server._route_live; result = file-mode
+# shape + "live": true, list-shaped reads stay flat lists):
+#   get_document_info, get_text, get_outline, find_text, word_count,
+#   get_comments, search_and_replace, insert_paragraphs, delete_paragraphs,
+#   replace_paragraph_text, format_text, set_cells
+# LIVE-ONLY: live_insert_at_cursor, live_scroll_to, live_set_track_changes,
+#   word_live_repair (+ the com_* bridge tools, which run their own
+#   invisible instance or message the user's).
+#
+# COULD GAIN A LIVE ROUTE (COM exposes the data; not yet built — candidates
+# for a later slice, roughly in order of value):
+#   read-only: get_styles (doc.Styles), list_tables/get_table (doc.Tables),
+#     list_footnotes/list_endnotes (doc.Footnotes/Endnotes),
+#     get_tracked_changes/revision_summary/revision_analytics
+#     (doc.Revisions), list_bookmarks (doc.Bookmarks), get_headers_footers
+#     (section.Headers/Footers), list_images (InlineShapes/Shapes),
+#     get_protection (doc.ProtectionType), list_sections
+#     (doc.Sections), read_toc (TablesOfContents), get_textbox_text
+#     (Shapes.TextFrame), list_form_fields (FormFields/ContentControls),
+#     word_count_with_exclusions (Range arithmetic, laborious but possible)
+#   mutating: apply_style/set_paragraph_format (Paragraph.Style/Format),
+#     add_comment/reply/resolve/delete (Comments), accept/reject_revisions
+#     (Revisions), insert/delete_rows/columns (Table.Rows/Columns),
+#     add_heading/add_page_break (insert + style), change_case
+#     (Range.Case), format_cells (Cell.Range.Font)
+#
+# MUST REFUSE LIVE, AND WHY (structural XML surgery or whole-package
+# operations with no faithful COM equivalent on an OPEN document):
+#   diagnose_document (reads the saved package's XML — stale + locked while
+#     Word holds unsaved changes; com_validate_opens_clean / live
+#     get_document_info are the open-document checks),
+#   split_document / copy_document / apply_template / fill_template /
+#     mail_merge (whole-file operations on the package),
+#   redact_text / verify_redaction / anonymize_for_review / prepare_for_
+#     submission (guarantee depends on rewriting the saved XML incl. rsids
+#     and metadata),
+#   convert_notes / cleanup_orphan_notes / notes CRUD (note-part XML
+#     rewrites; COM note objects exist but the file layer's id-integrity
+#     guarantees do not translate),
+#   insert_toc/delete_toc/insert_index & friends, insert_citation/
+#     bibliography tools (field+SDT machinery Word regenerates; gallery
+#     SDTs are invisible to COM — see _sdt_regions),
+#   structured_diff / compare tools (com_compare_documents is the live-ish
+#     equivalent via a dedicated invisible instance),
+#   backup/manage_backups (the open file's bytes are stale by definition;
+#     Word AutoRecover owns the open document),
+#   protection set/remove (Word ignores or dialogs on programmatic
+#     protection changes to the active document; password flows especially).
+# ---------------------------------------------------------------------------

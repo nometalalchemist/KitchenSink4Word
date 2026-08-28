@@ -438,6 +438,145 @@ def add_hyperlink(
     return {"hyperlink": url, "text": anchor_text}
 
 
+# --------------------------------------------------------- generic field codes
+
+# Known-safe field codes for insert_field. Deliberately excludes anything that
+# executes, links out, or rewrites content on update (INCLUDETEXT, LINK, DDE,
+# AUTOTEXT, MACROBUTTON, IMPORT, GOTOBUTTON...): those are how field codes
+# become an attack surface, and the reference/TOC/index field families already
+# have dedicated tools with proper target validation.
+FIELD_ALLOWLIST = frozenset(
+    {
+        "DATE", "TIME", "CREATEDATE", "SAVEDATE", "PRINTDATE", "EDITTIME",
+        "FILENAME", "FILESIZE",
+        "PAGE", "NUMPAGES", "NUMWORDS", "NUMCHARS", "SECTION", "SECTIONPAGES",
+        "AUTHOR", "TITLE", "SUBJECT", "KEYWORDS", "COMMENTS", "LASTSAVEDBY",
+        "USERNAME", "USERINITIALS",
+        "SEQ",
+    }
+)
+
+# Instruction text after validation may only contain these characters: word
+# chars, whitespace, and the switch/format punctuation Word field syntax uses.
+_FIELD_SAFE_RE = re.compile(r"""[^\w\s\\*@#"'.,:;/()\-%]""")
+
+
+def _validate_field_code(field_code: str) -> str:
+    code = " ".join(field_code.split())
+    if not code:
+        raise WordMcpError("field_code must be non-empty")
+    keyword = code.split()[0].upper()
+    if keyword not in FIELD_ALLOWLIST:
+        raise WordMcpError(
+            f"field code {keyword!r} is not on the allowlist of known-safe "
+            f"codes: {sorted(FIELD_ALLOWLIST)}. Reference fields (REF/"
+            "PAGEREF/SEQ captions), TOC, and INDEX have dedicated tools; "
+            "codes that link out or execute are refused by design"
+        )
+    bad = _FIELD_SAFE_RE.search(code)
+    if bad:
+        raise WordMcpError(
+            f"field code contains unsupported character {bad.group()!r}; "
+            "only field keywords, arguments, and standard switches "
+            '(\\* \\@ \\# formats, quoted strings) are accepted'
+        )
+    if code.count('"') % 2:
+        raise WordMcpError("field code has an unbalanced quote")
+    if keyword == "SEQ":
+        if not re.match(r"(?i)SEQ\s+[A-Za-z_][A-Za-z0-9_]*(\s|$)", code):
+            raise WordMcpError(
+                "SEQ needs an identifier name, e.g. 'SEQ Exhibit \\* Arabic'"
+            )
+    return code
+
+
+def insert_field(
+    pkg: DocxPackage,
+    *,
+    field_code: str,
+    after_anchor: str,
+    occurrence: int = 1,
+    placeholder: str = "",
+) -> dict:
+    """Insert a generic field (DATE, TIME, FILENAME, NUMPAGES, PAGE,
+    SEQ <name>..., etc.) immediately after `after_anchor` text. The code is
+    validated against FIELD_ALLOWLIST; anything else is refused naming the
+    allowlist. The field is written dirty, so Word recomputes the result the
+    next time fields refresh; `placeholder` is what shows until then."""
+    code = _validate_field_code(field_code)
+    p, _, end = _find_anchor_span(pkg, after_anchor, occurrence)
+    covered = _runmap.split_for_range(p, end - 1, end)
+    ref = covered[-1]
+    for el in reversed(_field_run(code, placeholder=placeholder)):
+        ref.addnext(el)
+    pkg.mark_dirty()
+    return {"field_inserted": code, "after": after_anchor}
+
+
+def _story_parts_for_fields(pkg: DocxPackage) -> list[str]:
+    parts = ["word/document.xml"]
+    for name in sorted(pkg.part_names()):
+        if re.fullmatch(r"word/(header|footer)\d+\.xml", name):
+            parts.append(name)
+    for name in ("word/footnotes.xml", "word/endnotes.xml"):
+        if pkg.has_part(name):
+            parts.append(name)
+    return parts
+
+
+def list_fields(pkg: DocxPackage) -> dict:
+    """Every field in the body, headers, footers, footnotes, and endnotes:
+    instruction code, field type (first keyword), current cached result, and
+    location (part + body paragraph index where applicable). Covers complex
+    (fldChar) and simple (fldSimple) fields; unclosed complex fields are
+    flagged per entry."""
+    from .reffields import (
+        _body_paragraph_index_map,
+        _containing_paragraph,
+        _locate,
+        scan_complex_fields,
+    )
+
+    index_map, _keepalive = _body_paragraph_index_map(pkg)
+    out: list[dict] = []
+    parts_scanned: list[str] = []
+    for part in _story_parts_for_fields(pkg):
+        if not pkg.has_part(part):
+            continue
+        parts_scanned.append(part)
+        root = pkg.root(part)
+        fields, _orphans = scan_complex_fields(root)
+        for rec in fields:
+            instr = rec["instr"]
+            entry = {
+                "code": instr,
+                "type": instr.split()[0].upper() if instr.split() else "",
+                "kind": "complex",
+                "cached_result": rec["cached"],
+                **_locate(rec["begin_el"], part, index_map),
+            }
+            if not rec["closed"]:
+                entry["unclosed"] = True
+            out.append(entry)
+        for fs in root.iter(qn("w:fldSimple")):
+            instr = " ".join((fs.get(qn("w:instr")) or "").split())
+            cached = "".join(t.text or "" for t in fs.iter(qn("w:t")))
+            p = _containing_paragraph(fs)
+            loc = _locate(
+                p if p is not None else fs, part, index_map
+            )
+            out.append(
+                {
+                    "code": instr,
+                    "type": instr.split()[0].upper() if instr.split() else "",
+                    "kind": "simple",
+                    "cached_result": cached,
+                    **loc,
+                }
+            )
+    return {"fields": out, "total": len(out), "parts_scanned": parts_scanned}
+
+
 def _ensure_hyperlink_style(pkg: DocxPackage) -> None:
     root = pkg.root("word/styles.xml")
     have = {s.get(qn("w:styleId")) for s in root.findall(qn("w:style"))}

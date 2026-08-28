@@ -66,30 +66,89 @@ def _style_id(p: etree._Element) -> str | None:
     return pstyle.get(qn("w:val")) if pstyle is not None else None
 
 
-def _outline_level(p: etree._Element, style_outline: dict[str, int]) -> int | None:
-    """Heading level 1-9, from direct outlineLvl, style name, or style's outlineLvl."""
+def default_paragraph_style(pkg: DocxPackage) -> str:
+    """The document's default paragraph style id (the style Word applies to
+    paragraphs with no explicit pStyle) — the w:default paragraph style in
+    styles.xml, 'Normal' when none is marked."""
+    if pkg.has_part("word/styles.xml"):
+        for style in pkg.root("word/styles.xml").findall(qn("w:style")):
+            if (
+                style.get(qn("w:default")) in ("1", "true")
+                and style.get(qn("w:type")) == "paragraph"
+            ):
+                sid = style.get(qn("w:styleId"))
+                if sid:
+                    return sid
+    return "Normal"
+
+
+def _outline_level_detected(
+    p: etree._Element, style_outline: dict[str, int]
+) -> tuple[int | None, str | None]:
+    """(heading level 1-9 | None, how it was detected).
+
+    Detection order mirrors Word's effective-value resolution:
+    1. direct w:outlineLvl in the paragraph's own pPr ("outline_level") —
+       OOXML val 0-8 maps to level 1-9; val 9 is the EXPLICIT body-text
+       value and OVERRIDES any style-supplied level (returns None);
+    2. a built-in Heading style ("heading_style");
+    3. w:outlineLvl carried by the paragraph's style or inherited through
+       its basedOn chain ("outline_level") — the academic-template pattern
+       (e.g. Normal-styled/Normal-based paragraphs with outlineLvl
+       overrides), which Word's own navigation pane honors.
+    """
     lvl = p.find(f"{qn('w:pPr')}/{qn('w:outlineLvl')}")
     if lvl is not None:
-        return int(lvl.get(qn("w:val"))) + 1
+        val = int(lvl.get(qn("w:val")))
+        if 0 <= val <= 8:
+            return val + 1, "outline_level"
+        return None, None  # val 9 = explicit body text
     sid = _style_id(p)
     if sid:
         if sid in _HEADING_STYLES:
-            return _HEADING_STYLES[sid]
+            return _HEADING_STYLES[sid], "heading_style"
         if sid in style_outline:
-            return style_outline[sid]
-    return None
+            return style_outline[sid], "outline_level"
+    return None, None
+
+
+def _outline_level(p: etree._Element, style_outline: dict[str, int]) -> int | None:
+    """Heading level 1-9, from direct outlineLvl, style name, or style's outlineLvl."""
+    return _outline_level_detected(p, style_outline)[0]
 
 
 def _style_outline_map(pkg: DocxPackage) -> dict[str, int]:
-    """styleId -> heading level, from styles.xml outlineLvl definitions."""
-    out: dict[str, int] = {}
+    """styleId -> heading level (1-9), from styles.xml outlineLvl definitions,
+    resolved through each style's basedOn chain (a style whose ancestor
+    carries outlineLvl inherits it, exactly as Word resolves the effective
+    value). outlineLvl val 9 (explicit body text) yields no entry."""
     if not pkg.has_part("word/styles.xml"):
-        return out
+        return {}
+    direct: dict[str, int] = {}
+    based_on: dict[str, str] = {}
     for style in pkg.root("word/styles.xml").findall(qn("w:style")):
+        if style.get(qn("w:type")) not in (None, "paragraph"):
+            continue
         sid = style.get(qn("w:styleId"))
+        if not sid:
+            continue
         lvl = style.find(f"{qn('w:pPr')}/{qn('w:outlineLvl')}")
-        if sid and lvl is not None:
-            out[sid] = int(lvl.get(qn("w:val"))) + 1
+        if lvl is not None:
+            direct[sid] = int(lvl.get(qn("w:val")))
+        base = style.find(qn("w:basedOn"))
+        if base is not None and base.get(qn("w:val")):
+            based_on[sid] = base.get(qn("w:val"))
+    out: dict[str, int] = {}
+    for sid in set(direct) | set(based_on):
+        cur: str | None = sid
+        seen: set[str] = set()
+        while cur is not None and cur not in seen:
+            seen.add(cur)
+            if cur in direct:
+                if 0 <= direct[cur] <= 8:
+                    out[sid] = direct[cur] + 1
+                break  # val 9 = explicit body text: stops inheritance too
+            cur = based_on.get(cur)
     return out
 
 
@@ -148,16 +207,50 @@ def get_document_info(pkg: DocxPackage) -> dict:
 
 
 def get_outline(pkg: DocxPackage) -> list[dict]:
+    """Headings in document order. Detects BOTH heading systems: built-in
+    Heading styles AND w:outlineLvl overrides (direct pPr or inherited
+    through the style's basedOn chain — the pattern academic templates use
+    on Normal-styled paragraphs, which Word's navigation pane honors).
+    detected_via per entry: "heading_style" | "outline_level"."""
     style_outline = _style_outline_map(pkg)
     out = []
     for kind, idx, el in body_items(pkg):
         if kind != "paragraph":
             continue
-        level = _outline_level(el, style_outline)
+        level, via = _outline_level_detected(el, style_outline)
         if level is not None:
             text = paragraph_text(el).strip()
             if text:
-                out.append({"paragraph_index": idx, "level": level, "text": text})
+                out.append(
+                    {
+                        "paragraph_index": idx,
+                        "level": level,
+                        "text": text,
+                        "detected_via": via,
+                    }
+                )
+    return out
+
+
+def _textbox_entries(pkg: DocxPackage) -> list[dict]:
+    """Per-box read entries via ops/textboxes.py, the one sanctioned reader.
+    NEVER re-include w:txbxContent in the body walk instead: Word stores each
+    modern box twice (mc:Choice + mc:Fallback) and the body walk would smear
+    the text into the host paragraph doubled (the v1.5 doubled-text bug)."""
+    from .textboxes import _enumerate_boxes
+
+    out = []
+    for i, b in enumerate(_enumerate_boxes(pkg)):
+        paras = [paragraph_text(p) for p in b["element"].findall(qn("w:p"))]
+        out.append(
+            {
+                "box_index": i,
+                "part": b["part"],
+                "shape_name": b["shape_name"],
+                "anchor_paragraph_index": b["anchor_paragraph_index"],
+                "text": "\n".join(paras),
+            }
+        )
     return out
 
 
@@ -168,12 +261,14 @@ def get_paragraphs(
     *,
     contains: str | None = None,
     include_sdt: bool = True,
+    include_textboxes: bool = False,
 ) -> list[dict]:
     if start < 0:
         from ..core.errors import WordMcpError
 
         raise WordMcpError("start must be >= 0")
     style_outline = _style_outline_map(pkg)
+    default_style = default_paragraph_style(pkg)
     out = []
     for kind, idx, el in body_items(pkg):
         if kind != "paragraph" or idx < start or (end is not None and idx >= end):
@@ -182,9 +277,10 @@ def get_paragraphs(
         if contains is not None and contains not in text:
             continue
         entry = {"index": idx, "text": text}
-        sid = _style_id(el)
-        if sid:
-            entry["style"] = sid
+        # Always report the EFFECTIVE style: an absent pStyle means the
+        # document's default paragraph style (usually Normal), and omitting
+        # it made "explicitly Normal" and "no style info" indistinguishable.
+        entry["style"] = _style_id(el) or default_style
         lvl = _outline_level(el, style_outline)
         if lvl is not None:
             entry["heading_level"] = lvl
@@ -205,10 +301,29 @@ def get_paragraphs(
                 if not text.strip():
                     continue
                 entry = {"index": None, "in_sdt": True, "text": text}
-                sid = _style_id(p)
-                if sid:
-                    entry["style"] = sid
+                entry["style"] = _style_id(p) or default_style
                 out.append(entry)
+    # Text-box content: clearly-labeled ADDITIONAL entries (source "textbox",
+    # index None) read via ops/textboxes.py. Body paragraph indices are
+    # unaffected by this flag; box_index is the address for set_textbox_text.
+    if include_textboxes:
+        for box in _textbox_entries(pkg):
+            text = box["text"]
+            if not text.strip():
+                continue
+            if contains is not None and contains not in text:
+                continue
+            out.append(
+                {
+                    "index": None,
+                    "source": "textbox",
+                    "box_index": box["box_index"],
+                    "part": box["part"],
+                    "shape_name": box["shape_name"],
+                    "anchor_paragraph_index": box["anchor_paragraph_index"],
+                    "text": text,
+                }
+            )
     return out
 
 
@@ -462,6 +577,138 @@ def revision_summary(pkg: DocxPackage) -> dict:
 # --------------------------------------------------------------- styles (read)
 
 
+def _pt(twips: str | None, per_pt: int = 20) -> float | int | None:
+    """Twips (or half-points etc.) -> points, integers kept integral."""
+    if twips is None:
+        return None
+    v = int(twips) / per_pt
+    return int(v) if v == int(v) else v
+
+
+def _on_off(el: etree._Element | None) -> bool | None:
+    """OOXML on/off element: absent -> None, val absent -> True, else by val."""
+    if el is None:
+        return None
+    val = el.get(qn("w:val"))
+    if val is None:
+        return True
+    return val not in ("0", "false", "none")
+
+
+_JC_TO_ALIGNMENT = {
+    "left": "left", "start": "left", "center": "center",
+    "right": "right", "end": "right", "both": "justify",
+}
+
+
+def _style_paragraph_formatting(ppr: etree._Element | None) -> dict:
+    """A style's EXPLICIT paragraph formatting, in the exact shape
+    define_style's paragraph_formatting parameter accepts (inherited values
+    are not synthesized — based_on carries the chain). Line spacing with an
+    exact/atLeast rule has no define_style representation and is omitted."""
+    if ppr is None:
+        return {}
+    fmt: dict = {}
+    jc = ppr.find(qn("w:jc"))
+    if jc is not None:
+        alignment = _JC_TO_ALIGNMENT.get(jc.get(qn("w:val")))
+        if alignment:
+            fmt["alignment"] = alignment
+    sp = ppr.find(qn("w:spacing"))
+    if sp is not None:
+        before = _pt(sp.get(qn("w:before")))
+        if before is not None:
+            fmt["space_before_pt"] = before
+        after = _pt(sp.get(qn("w:after")))
+        if after is not None:
+            fmt["space_after_pt"] = after
+        line = sp.get(qn("w:line"))
+        if line is not None and sp.get(qn("w:lineRule"), "auto") == "auto":
+            fmt["line_spacing"] = _pt(line, 240)
+    ind = ppr.find(qn("w:ind"))
+    if ind is not None:
+        left = _pt(ind.get(qn("w:left")) or ind.get(qn("w:start")))
+        if left is not None:
+            fmt["indent_left_pt"] = left
+        right = _pt(ind.get(qn("w:right")) or ind.get(qn("w:end")))
+        if right is not None:
+            fmt["indent_right_pt"] = right
+        first = _pt(ind.get(qn("w:firstLine")))
+        hanging = _pt(ind.get(qn("w:hanging")))
+        if hanging is not None:
+            fmt["first_line_indent_pt"] = -hanging
+        elif first is not None:
+            fmt["first_line_indent_pt"] = first
+    for key, tag in (
+        ("keep_with_next", "w:keepNext"),
+        ("keep_lines_together", "w:keepLines"),
+        ("page_break_before", "w:pageBreakBefore"),
+        ("widow_control", "w:widowControl"),
+    ):
+        v = _on_off(ppr.find(qn(tag)))
+        if v is not None:
+            fmt[key] = v
+    return fmt
+
+
+def _style_character_formatting(rpr: etree._Element | None) -> dict:
+    """A style's EXPLICIT run formatting, in the exact shape define_style's
+    character_formatting parameter accepts. Theme font/color references have
+    no concrete file-local value and are omitted rather than guessed."""
+    if rpr is None:
+        return {}
+    fmt: dict = {}
+    for key, tag in (
+        ("bold", "w:b"), ("italic", "w:i"), ("strike", "w:strike"),
+        ("small_caps", "w:smallCaps"), ("all_caps", "w:caps"),
+        ("hidden", "w:vanish"), ("double_strike", "w:dstrike"),
+    ):
+        v = _on_off(rpr.find(qn(tag)))
+        if v is not None:
+            fmt[key] = v
+    u = rpr.find(qn("w:u"))
+    if u is not None:
+        fmt["underline"] = u.get(qn("w:val")) != "none"
+    rfonts = rpr.find(qn("w:rFonts"))
+    if rfonts is not None:
+        name = rfonts.get(qn("w:ascii"))
+        if name:
+            fmt["font"] = name
+    sz = rpr.find(qn("w:sz"))
+    if sz is not None and sz.get(qn("w:val")):
+        fmt["size_pt"] = _pt(sz.get(qn("w:val")), 2)
+    color = rpr.find(qn("w:color"))
+    if color is not None:
+        val = color.get(qn("w:val"))
+        if val and val.lower() != "auto":
+            fmt["color"] = val.upper()
+    highlight = rpr.find(qn("w:highlight"))
+    if highlight is not None and highlight.get(qn("w:val")):
+        fmt["highlight"] = highlight.get(qn("w:val"))
+    va = rpr.find(qn("w:vertAlign"))
+    if va is not None:
+        if va.get(qn("w:val")) == "superscript":
+            fmt["superscript"] = True
+        elif va.get(qn("w:val")) == "subscript":
+            fmt["subscript"] = True
+    csp = rpr.find(qn("w:spacing"))
+    if csp is not None and csp.get(qn("w:val")):
+        fmt["char_spacing_pt"] = _pt(csp.get(qn("w:val")))
+    kern = rpr.find(qn("w:kern"))
+    if kern is not None and kern.get(qn("w:val")):
+        fmt["kerning_pt"] = _pt(kern.get(qn("w:val")), 2)
+    pos = rpr.find(qn("w:position"))
+    if pos is not None and pos.get(qn("w:val")):
+        fmt["position_pt"] = _pt(pos.get(qn("w:val")), 2)
+    lang = rpr.find(qn("w:lang"))
+    if lang is not None:
+        if lang.get(qn("w:val")):
+            fmt["language"] = lang.get(qn("w:val"))
+        if lang.get(qn("w:eastAsia")):
+            fmt["east_asian_language"] = lang.get(qn("w:eastAsia"))
+    return fmt
+
+
 def list_styles(pkg: DocxPackage) -> list[dict]:
     if not pkg.has_part("word/styles.xml"):
         return []
@@ -469,19 +716,29 @@ def list_styles(pkg: DocxPackage) -> list[dict]:
     for style in pkg.root("word/styles.xml").findall(qn("w:style")):
         name_el = style.find(qn("w:name"))
         based_el = style.find(qn("w:basedOn"))
-        out.append(
-            {
-                "id": style.get(qn("w:styleId")),
-                "type": style.get(qn("w:type")),
-                "name": name_el.get(qn("w:val")) if name_el is not None else None,
-                "based_on": based_el.get(qn("w:val")) if based_el is not None else None,
-            }
-        )
+        entry = {
+            "id": style.get(qn("w:styleId")),
+            "type": style.get(qn("w:type")),
+            "name": name_el.get(qn("w:val")) if name_el is not None else None,
+            "based_on": based_el.get(qn("w:val")) if based_el is not None else None,
+        }
+        pf = _style_paragraph_formatting(style.find(qn("w:pPr")))
+        if pf:
+            entry["paragraph_formatting"] = pf
+        cf = _style_character_formatting(style.find(qn("w:rPr")))
+        if cf:
+            entry["character_formatting"] = cf
+        out.append(entry)
     return out
 
 
 def find_text(
-    pkg: DocxPackage, query: str, *, regex: bool = False, context_chars: int = 60
+    pkg: DocxPackage,
+    query: str,
+    *,
+    regex: bool = False,
+    context_chars: int = 60,
+    include_textboxes: bool = False,
 ) -> list[dict]:
     from . import _regex
     from ..core.errors import WordMcpError
@@ -539,6 +796,32 @@ def find_text(
                                 ],
                             }
                         )
+    # Text-box content: clearly-labeled ADDITIONAL matches (source "textbox")
+    # read via ops/textboxes.py — never by re-including w:txbxContent in the
+    # body walk (that doubled box text in v1.5). Body/table match entries and
+    # their paragraph indices are unaffected by the flag.
+    if include_textboxes:
+        for box in _textbox_entries(pkg):
+            box_text = box["text"]
+            spans = (
+                [(m.start(), m.end()) for m in _regex.finditer(query, box_text)]
+                if pattern
+                else _literal_spans(box_text, query)
+            )
+            for start, end in spans:
+                matches.append(
+                    {
+                        "source": "textbox",
+                        "box_index": box["box_index"],
+                        "part": box["part"],
+                        "shape_name": box["shape_name"],
+                        "anchor_paragraph_index": box["anchor_paragraph_index"],
+                        "match": box_text[start:end],
+                        "context": box_text[
+                            max(0, start - context_chars) : end + context_chars
+                        ],
+                    }
+                )
     return matches
 
 

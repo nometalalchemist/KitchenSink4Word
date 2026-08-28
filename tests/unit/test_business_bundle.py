@@ -308,10 +308,16 @@ def test_batch_apply_continue_on_error(batch_files):
 
 
 def test_batch_apply_one_save_one_backup_per_file(batch_files, tmp_path):
+    from word_mcp.core import safesave
+
     a, _, c = batch_files
     bt.batch_apply([a, c], BATCH_OPS, backup=True)
-    assert len(list(tmp_path.glob("a.bak-*.docx"))) == 1
-    assert len(list(tmp_path.glob("c.bak-*.docx"))) == 1
+    # v1.6 slot scheme: no .bak files; each file gets its prev/anchor slots.
+    assert not list(tmp_path.glob("*.bak-*.docx"))
+    for f in (a, c):
+        d = safesave.slot_dir(f)
+        slots = sorted(p.name for p in d.iterdir() if p.suffix == ".docx")
+        assert slots == sorted(safesave.SLOT_POLICY)
 
 
 def test_batch_apply_rejects_unknown_tool_before_work(batch_files):
