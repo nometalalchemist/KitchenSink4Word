@@ -433,6 +433,9 @@ def _check_line_spacing(pkg, ctx, rule, report) -> None:
 
 
 def _check_headings(pkg, ctx, rule, report) -> None:
+    # Locale note: heading detection here resolves via styleId ("Heading1",
+    # identical in every language version) and outlineLvl — never via the
+    # localized display name — so no localization routing is needed.
     _check_subkeys(rule, {"max_skip", "required_first_level"}, "headings rule")
     outline = ctx.outline
     if not outline:

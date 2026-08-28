@@ -45,11 +45,18 @@ def run_text(r: etree._Element, *, include_deleted: bool = False) -> str:
 
 
 def paragraph_text(p: etree._Element, *, include_deleted: bool = False) -> str:
-    """Full visible text of a w:p, descending into w:ins/hyperlinks/smartTags."""
+    """Full visible text of a w:p, descending into w:ins/hyperlinks/smartTags.
+    Text-box content is excluded — it is a separate story that Word stores
+    TWICE (mc:Choice + mc:Fallback), so counting it here doubles it; use
+    ops/textboxes.py for box text."""
+    from ._runmap import _in_textbox
+
     parts: list[str] = []
     for r in p.iter(qn("w:r")):
         # Runs inside w:del hold w:delText only; run_text already skips those
         # unless include_deleted is set.
+        if _in_textbox(r, p):
+            continue
         parts.append(run_text(r, include_deleted=include_deleted))
     return "".join(parts)
 

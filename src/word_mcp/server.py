@@ -47,10 +47,20 @@ from .ops import (
     mailmerge as _mm,
     redaction as _rx,
     reffields as _rf,
+    anonymize as _an,
+    dataio as _dio,
+    equations as _eq,
+    journalcount as _jc,
+    preview as _pv,
+    reviewcycle as _rc,
+    styleconvert as _sc2,
+    stylefind as _sf,
+    textboxes as _tbx,
+    zoterolib as _zl,
 )
 
 mcp = FastMCP(
-    "word",
+    "kitchensink4word",
     instructions=(
         "Full-featured Word (.docx) editor: text, tables (including column "
         "insert/delete and bulk cell edits), footnotes/endnotes, TOC, "
@@ -2480,7 +2490,7 @@ def verify_redaction(file_path: str, targets: list[dict]) -> dict:
 def check_defined_terms(
     file_path: str, definition_patterns: list | None = None
 ) -> dict:
-    """Legal-document defined-terms audit. Finds definitions («"Term"
+    """BETA (heuristic) — review the flagged-items list in the result rather than trusting silently. Legal-document defined-terms audit. Finds definitions («"Term"
     means», «"Term" shall mean», «(the "Term")», «(each, a "Term")» —
     defaults overridable via definition_patterns, each regex capturing the
     term as group 1) and reports, with paragraph indices: defined_never_used,
@@ -2506,6 +2516,517 @@ def com_import_pdf(pdf_path: str, output_path: str | None = None) -> dict:
     from word_mcp.com import convert  # when pasted: from .com import convert
 
     return convert.import_pdf(pdf_path, output_path)
+
+
+
+
+@mcp.tool
+def add_equation(
+    file_path: str,
+    latex: str,
+    display: bool = True,
+    after_index: int | None = None,
+    after_anchor: str | None = None,
+    at_end: bool = False,
+    anchor_text: str | None = None,
+    occurrence: int = 1,
+    backup: bool = True,
+) -> dict:
+    """Insert a LaTeX equation as NATIVE Word math (editable in Word's
+    equation editor, not an image). display=True inserts a block equation in
+    its own paragraph — position with exactly one of after_index /
+    after_anchor / at_end. display=False inserts an inline equation
+    immediately after anchor_text inside that paragraph (occurrence picks
+    among repeated matches), leaving the surrounding text untouched.
+
+    Supports the standard academic LaTeX repertoire: fractions, roots, sums
+    and integrals with limits, matrices (pmatrix/bmatrix), cases, align*
+    (aligned is rewritten to align* automatically — upstream converter
+    quirk), Greek letters, operators, accents, sub/superscripts, \\text{}.
+    A LaTeX expression that will not convert raises a clear error carrying
+    the converter's message and the document is NOT modified.
+
+    Equations do not appear in get_text/find_text output (math runs live
+    outside the plain-text layer, which also makes search-and-replace
+    equation-safe); read them back with list_equations."""
+    return _edit(
+        file_path,
+        lambda pkg: _eq.add_equation(
+            pkg,
+            latex,
+            display=display,
+            after_index=after_index,
+            after_anchor=after_anchor,
+            at_end=at_end,
+            anchor_text=anchor_text,
+            occurrence=occurrence,
+        ),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def list_equations(file_path: str) -> dict:
+    """Every equation in the document (body, tables, footnotes, endnotes):
+    index, display vs inline, location (body paragraph index, in_table, or
+    note part), and a plain-text approximation of the math. THIS is how
+    equation content is read — equations are invisible to get_text and
+    find_text because math runs sit outside the plain-text layer. The index
+    is the handle delete_equation takes; equation_count summarizes.
+    Read-only."""
+    return _eq.list_equations(DocxPackage(file_path))
+
+
+@mcp.tool
+def delete_equation(file_path: str, index: int, backup: bool = True) -> dict:
+    """Delete an equation by its list_equations index. A display equation's
+    paragraph is removed with it when the paragraph holds nothing else
+    (the usual case); an inline equation is removed from within its
+    paragraph, surrounding text untouched."""
+    return _edit(
+        file_path,
+        lambda pkg: _eq.delete_equation(pkg, index),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def search_zotero_library(
+    query: str, db_path: str | None = None, limit: int = 20
+) -> dict:
+    """Search the user's LOCAL Zotero library (read-only; the database is
+    never modified). Every word in the query must match the item's title, a
+    creator's last name, the year, or the publication name. Returns each
+    match's Zotero item key — the handle insert_zotero_citation takes —
+    plus item type, title, creators, year, and publication. Attachments,
+    notes, and trashed items are excluded. The database defaults to
+    <home>/Zotero/zotero.sqlite; pass db_path for a nonstandard data
+    directory. Reads a point-in-time snapshot, so edits made in a running
+    Zotero in the last moments may not appear yet."""
+    return _zl.search_zotero_library(query, db_path=db_path, limit=limit)
+
+
+@mcp.tool
+def insert_zotero_citation(
+    file_path: str,
+    item_keys: list[str],
+    anchor_text: str,
+    occurrence: int = 1,
+    page: str | None = None,
+    prefix: str | None = None,
+    suffix: str | None = None,
+    db_path: str | None = None,
+    backup: bool = True,
+) -> dict:
+    """Insert a REAL Zotero citation field (ADDIN ZOTERO_ITEM CSL_CITATION)
+    after `anchor_text`, built from the user's local Zotero library exactly
+    the way the Zotero Word plugin builds it — so Zotero recognizes it,
+    refreshes it, and includes it in the bibliography. item_keys come from
+    search_zotero_library. page becomes the locator; prefix/suffix attach to
+    the cited item (single-item citations only — with several keys Zotero
+    applies them per item, so this tool refuses rather than guessing).
+
+    The visible text is a plain (Author, Year) PLACEHOLDER until the user
+    clicks Refresh in Zotero's Word plugin, which restyles it to the
+    document's citation style. The Zotero database is only ever read."""
+    return _edit(
+        file_path,
+        lambda pkg: _zl.insert_zotero_citation(
+            pkg,
+            item_keys,
+            anchor_text=anchor_text,
+            occurrence=occurrence,
+            page=page,
+            prefix=prefix,
+            suffix=suffix,
+            db_path=db_path,
+        ),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def find_formatted(
+    file_path: str,
+    formatting: dict,
+    query: str | None = None,
+    scope: str = "body",
+) -> dict:
+    """Find text by its EFFECTIVE formatting: bold/italic/underline/strike
+    (true/false), font, size_pt, color (hex), highlight, style (id or name).
+    All criteria must hold together. Formatting is resolved the way Word
+    resolves it — run properties, then character style, then paragraph
+    style chain, then document defaults — and every match reports which
+    level satisfied each criterion, so explicit bold and Heading-inherited
+    bold are distinguishable. query=None returns every stretch of text with
+    the formatting; a query (case-sensitive) returns only its occurrences
+    inside such stretches. scope: 'body' (tables included) or 'all' (adds
+    footnotes/endnotes). Theme font/color references cannot be resolved
+    from the file and are counted, never guessed. Read-only."""
+    return _sf.find_formatted(
+        DocxPackage(file_path), query, formatting=formatting, scope=scope
+    )
+
+
+@mcp.tool
+def comment_report(file_path: str, include_resolved: bool = True) -> dict:
+    """The full reviewer matrix in one call: every comment thread with author,
+    initials, date, the anchored text it targets, the comment text, replies
+    nested under their parents, resolved flag, and a locator (paragraph index
+    plus the heading path of the section it falls under). Summary gives
+    per-author, open/resolved, and per-section counts. Built for processing
+    committee feedback without re-reading comments piecemeal. Set
+    include_resolved=False to drop resolved threads (the excluded count is
+    reported). Read-only."""
+    return _rc.comment_report(
+        DocxPackage(file_path), include_resolved=include_resolved
+    )
+
+
+@mcp.tool
+def comment_report_multi(file_paths: list[str]) -> dict:
+    """Reviewer matrix merged across several documents — e.g., three committee
+    members' copies of the same draft. Entries are keyed by (author, anchored
+    text) with per-file provenance on every occurrence, and collisions (the
+    same span commented on by two or more different reviewers) are detected
+    and listed. Copies should share the draft text: merging matches anchored
+    spans verbatim. Read-only on every file."""
+    return _rc.comment_report_multi(file_paths)
+
+
+@mcp.tool
+def revision_analytics(file_path: str) -> dict:
+    """Tracked-change analytics per author: insertion/deletion counts, words
+    added and removed, move and format-change counts, the date range of each
+    author's edits, and a per-section (heading-path) breakdown of where their
+    changes concentrate. Includes the 10 heaviest body paragraphs by revision
+    churn. Footnote/endnote revisions count under "[footnotes]"/"[endnotes]".
+    Read-only."""
+    return _rc.revision_analytics(DocxPackage(file_path))
+
+
+@mcp.tool
+def structured_diff(old_path: str, new_path: str, detail_cap: int = 200) -> dict:
+    """Agent-readable diff between two saved drafts, computed without Word:
+    unchanged/modified/inserted/deleted paragraphs with indices in both
+    documents, moved paragraphs (identical text at a new position),
+    intra-paragraph change opcodes for modified pairs, per-section change
+    summary, table changes (dimension changes plus changed cells, compared
+    positionally), footnote/endnote count deltas, and heading structure
+    changes. Deliberately NOT a redline — use com_compare_documents for a
+    Word-rendered tracked-changes comparison. Per-change detail is capped at
+    detail_cap entries on huge diffs (counts stay complete; detail_capped
+    reports it). Read-only on both files."""
+    return _rc.structured_diff(old_path, new_path, detail_cap=detail_cap)
+
+
+@mcp.tool
+def get_textbox_text(file_path: str) -> dict:
+    """Text inside every text box / shape text frame, per box, across the
+    body, headers, and footers — modern drawings and legacy VML alike. Each
+    box reports its text, paragraphs, part, anchoring body paragraph index
+    (where determinable), and shape name. Use this instead of get_text for
+    box content: the generic tools smear box text into the host paragraph
+    (doubled by Word's mc:Fallback compatibility copy) with no boundary.
+    box_index in the result is the address set_textbox_text takes.
+    Read-only."""
+    return _tbx.get_textbox_text(DocxPackage(file_path))
+
+
+@mcp.tool
+def set_textbox_text(
+    file_path: str, box_index: int, text: str, backup: bool = True
+) -> dict:
+    """Replace the text of one text box (box_index from get_textbox_text).
+    Keeps the first paragraph's style and first run's formatting; '\\n'
+    splits into multiple paragraphs; the mc:Fallback compatibility copy is
+    rewritten to match. Boxes holding non-text content (nested tables,
+    images) are refused rather than flattened."""
+    return _edit(
+        file_path,
+        lambda pkg: _tbx.set_textbox_text(pkg, box_index, text),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def preview_replace(
+    file_path: str, replacements: list[dict], scope: str = "body"
+) -> dict:
+    """DRY RUN for search_and_replace — the file is NEVER modified. Same
+    items ({find, replace, regex?}) and scope (body | footnotes | headers |
+    all), same matching engine (fragmented-run map, guarded regex, chained
+    items), so the preview shows exactly what a real run would change:
+    per-item counts, each match with paragraph index and ~60 chars of
+    before/after context, the grand total, and a refusals list of problems
+    the real run would hit (control characters in replacements, zero-width
+    regexes, empty finds). Run this, review, then run search_and_replace
+    with confidence — and with max_replacements set to the previewed total
+    so any drift aborts instead of over-replacing."""
+    return _pv.preview_replace(
+        DocxPackage(file_path), replacements, scope=scope
+    )
+
+
+@mcp.tool
+def word_count_with_exclusions(
+    file_path: str,
+    exclude: list[str] = ["references", "captions", "footnotes"],
+) -> dict:
+    """Word count minus named zones — the number a journal actually wants.
+    exclude any of: references, captions, footnotes, endnotes, block_quotes,
+    tables, headings, front_matter, abstract (unknown names rejected with
+    the allowed list). Returns total, per-zone excluded breakdown, and the
+    included count; total = included + sum(excluded) always. Same
+    whitespace tokenization as get_word_count; detected zone locations are
+    reported for review. Read-only."""
+    return _jc.word_count_with_exclusions(
+        DocxPackage(file_path), exclude=tuple(exclude)
+    )
+
+
+@mcp.tool
+def anonymize_for_review(
+    file_path: str,
+    author_names: list[str],
+    replacement: str = "Author",
+    mapping_path: str | None = None,
+    backup: bool = True,
+) -> dict:
+    """BETA (heuristic) — review the flagged-items list in the result rather than trusting silently. Anonymize a manuscript for double-blind peer review, reversibly.
+    Masks self-citations by the named authors ("Hurd (1999)" -> "Author
+    (1999)", "(Hurd, 1999)" -> "(Author, 1999)") keeping years and pages,
+    rewrites their reference-list entries to "Author (Year). [Details
+    removed for peer review.]", and scrubs identifying metadata. Prose that
+    identifies the author ("my previous work", "this author", an
+    Acknowledgments section, surnames outside citation syntax) is FLAGGED
+    with locations, never auto-edited. Writes a reversal mapping JSON
+    (default <name>.anonymization.json beside the file; never overwritten)
+    for deanonymize_document. KEEP THE MAPPING PRIVATE — it re-identifies
+    the author."""
+    return _edit(
+        file_path,
+        lambda pkg: _an.anonymize_for_review(
+            pkg,
+            author_names,
+            replacement=replacement,
+            mapping_path=mapping_path,
+        ),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def deanonymize_document(
+    file_path: str, mapping_path: str | None = None, backup: bool = True
+) -> dict:
+    """Reverse anonymize_for_review using its mapping file (default
+    <name>.anonymization.json beside the document). Every recorded change
+    is verified to still sit where the mapping says before anything is
+    restored; if the document drifted since anonymization, NOTHING is
+    restored and the refusal lists every mismatch. The mapping file is left
+    on disk for you to delete once the restore is confirmed."""
+    return _edit(
+        file_path,
+        lambda pkg: _an.deanonymize(pkg, mapping_path=mapping_path),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def export_table(
+    file_path: str,
+    table_index: int,
+    format: str = "csv",
+    output_path: str | None = None,
+    include_merges: bool = True,
+) -> dict:
+    """Export a body-level table (list_tables index) to CSV or JSON as a
+    rows x grid-columns matrix. Merged cells keep their value in the anchor
+    (top-left) position with empty strings in the covered positions;
+    include_merges adds the merge topology as {row, col, rowspan, colspan}
+    entries (inside the JSON document; as a report field alongside CSV).
+    Nested tables are flattened into the host cell's text and flagged.
+    output_path=None returns the data inline ('csv' string / 'data' rows)
+    instead of writing a file; an existing output file is refused. The
+    document itself is never modified."""
+    return _dio.export_table(
+        DocxPackage(file_path),
+        table_index,
+        format=format,
+        output_path=output_path,
+        include_merges=include_merges,
+    )
+
+
+@mcp.tool
+def import_table(
+    file_path: str,
+    data: list | str,
+    table_index: int | None = None,
+    at_end: bool = False,
+    after_anchor: str | None = None,
+    has_header: bool = True,
+    backup: bool = True,
+) -> dict:
+    """Fill a table from data: a .csv path, a .json path (export_table's
+    JSON form or a bare list of rows), or an inline list of lists. Without
+    table_index a NEW table is created (positioned by at_end/after_anchor,
+    default document end; has_header bolds and repeats the first row). With
+    table_index the existing table's cell texts are OVERWRITTEN in place:
+    data must exactly match the table's rows x grid-columns shape (refused
+    otherwise, listing both shapes), merged cells take their value from the
+    anchor position, and values in merge-covered positions are refused
+    because Word would never display them."""
+    return _edit(
+        file_path,
+        lambda pkg: _dio.import_table(
+            pkg,
+            data,
+            table_index=table_index,
+            at_end=at_end,
+            after_anchor=after_anchor,
+            has_header=has_header,
+        ),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def extract_images(
+    file_path: str, output_dir: str, prefix: str | None = None
+) -> dict:
+    """Extract every image in the document to files in output_dir, named by
+    list_images index plus the original extension (image0.png, ...; prefix
+    replaces 'image'). Media referenced only from headers/footers/notes gets
+    the next indices with the referencing part reported. Each entry reports
+    the output file, native pixel dimensions, and where the image appears
+    (body paragraph/table index). Collisions with existing files are refused
+    before anything is written. Read-only against the document."""
+    return _dio.extract_images(
+        DocxPackage(file_path), output_dir, prefix=prefix
+    )
+
+
+@mcp.tool
+def split_document(
+    file_path: str,
+    output_dir: str,
+    level: int = 1,
+    filename_from: str = "heading",
+) -> dict:
+    """Split a document into one standalone .docx per heading section — the
+    inverse of com_merge_documents (no Word needed). Sections start at each
+    heading of `level` (or higher) and carry everything to the next one:
+    paragraphs, tables, images, footnotes. Content before the first heading
+    becomes 00_front_matter.docx when non-empty. Outputs carry the source's
+    styles, numbering, settings, fonts, and themes; footnote/endnote
+    definitions and image parts belonging to other sections are stripped;
+    every output is round-trip validated. filename_from: 'heading' gives
+    01_Heading Text.docx, 'index' gives 01.docx. The source file is never
+    modified; existing output files are refused before anything is
+    written."""
+    return _dio.split_document(
+        file_path, output_dir, level=level, filename_from=filename_from
+    )
+
+
+@mcp.tool
+def parse_references(file_path: str, style_hint: str | None = None) -> dict:
+    """Parse the manuscript's reference list (References / Bibliography /
+    Works Cited heading) and in-text citations into a structured model.
+    Read-only stage 1 of publication-style conversion.
+
+    Heuristic text parsing: every entry gets parse_confidence
+    (full/partial/failed); failed entries are returned verbatim and will
+    never be converted. Also reports in-text citations with positions
+    (parenthetical, narrative, [n] bracket, superscript), whether the
+    document uses Word-native or Zotero/Mendeley/EndNote citation FIELDS
+    (which text conversion refuses to touch), and the detected citation
+    system. style_hint (e.g. 'apa7', 'ieee', 'turabian') tightens parsing
+    when the source style is known."""
+    return _sc2.parse_references(DocxPackage(file_path), style_hint=style_hint)
+
+
+@mcp.tool
+def convert_citation_style(
+    file_path: str,
+    target_style: str,
+    source_style: str = "auto",
+    dry_run: bool = False,
+    backup: bool = True,
+) -> dict:
+    """BETA (heuristic) — review the flagged-items list in the result rather than trusting silently. Convert a manuscript's PLAIN-TEXT citations and reference list to a
+    target publication style: apa7, chicago17-author-date, chicago17-notes
+    (= Turabian), mla9, harvard, ieee, vancouver, asa (Sage).
+
+    This is HEURISTIC TEXT CONVERSION, not a citation processor: only
+    fully-parsed reference entries are rewritten (partial/failed entries are
+    left verbatim and flagged), only unambiguously-resolved citations are
+    converted, and the returned flagged list MUST be reviewed by a human.
+    Conversions between systems are supported: author-date <-> numbered
+    ([n] brackets or Vancouver superscripts, numbered by first appearance),
+    author-date -> Chicago notes (each citation becomes a REAL footnote:
+    first-use long note, then short notes), and notes -> author-date
+    (only footnotes that are recognizably pure citations are harvested;
+    mixed-content footnotes are flagged and left alone). Narrative
+    citations keep the author's name ('Hurd (1999) argues' -> 'Hurd [12]
+    argues'). Reference-list italics, ordering, and the section heading
+    are converted; hanging indents are preserved.
+
+    Documents using Word-native CITATION fields or Zotero/Mendeley/EndNote
+    fields are ROUTED (use set_bibliography_style, or restyle in the
+    manager) — their fields are never rewritten as text.
+
+    dry_run=True returns the complete change plan (per-entry and
+    per-citation before/after plus all flags) and leaves the file
+    byte-identical. Any error during a real run leaves the original file
+    untouched."""
+    if dry_run:
+        return _sc2.convert_citation_style(
+            DocxPackage(file_path), target_style,
+            source_style=source_style, dry_run=True,
+        )
+    return _edit(
+        file_path,
+        lambda pkg: _sc2.convert_citation_style(
+            pkg, target_style, source_style=source_style, dry_run=False
+        ),
+        backup=backup,
+    )
+
+
+@mcp.tool
+def apply_manuscript_format(
+    file_path: str,
+    style: str,
+    running_head: str | None = None,
+    author_last_name: str | None = None,
+    backup: bool = True,
+) -> dict:
+    """Apply a style's page-level manuscript conventions where they are
+    publicly well-defined: 'apa7' (= apa7-student: 1in margins, double
+    spacing, page number top right, APA heading-style formatting L1-L5),
+    'apa7-professional' (adds the running head: pass running_head or the
+    document title is used, flagged), 'mla9' (1in margins, double spacing,
+    surname + page header: pass author_last_name or the author metadata is
+    used, flagged), 'chicago17' (= turabian: 12pt base, double-spaced body,
+    single-spaced footnotes, page number bottom center). All three set a
+    hanging indent on the reference list when one is found.
+
+    Anything contested or requiring human judgment (run-in headings,
+    heading text casing, first-line indents around front matter) is NOT
+    applied and is itemized in the result's not_applied list. IEEE,
+    Vancouver, ASA, and Harvard page formats are journal-template-specific
+    and are refused with an explanation."""
+    return _edit(
+        file_path,
+        lambda pkg: _sc2.apply_manuscript_format(
+            pkg, style, running_head=running_head,
+            author_last_name=author_last_name,
+        ),
+        backup=backup,
+    )
 
 
 

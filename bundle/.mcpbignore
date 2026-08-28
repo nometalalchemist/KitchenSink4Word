@@ -1,0 +1,5 @@
+*.mcpb
+make_icon.py
+smoke_test.py
+README-bundle.md
+.mcpbignore

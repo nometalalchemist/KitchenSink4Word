@@ -19,23 +19,40 @@ from ..core.errors import TargetNotFound
 from ..core.package import DocxPackage
 from .read import get_outline, get_paragraphs
 
+# Reference-list heading, matched by TEXT (localized): English plus Korean
+# (참고문헌 / 참고 문헌), German (Literaturverzeichnis), French
+# (Bibliographie), Spanish (Bibliografía), Japanese+Chinese (参考文献),
+# Portuguese (Referências), Italian/Portuguese (Bibliografia). Shared by
+# journalcount, styleconvert, and anonymize — extending this extends them all.
 _REF_HEADINGS = re.compile(
-    r"^\s*(references|bibliography|works cited|reference list)\s*$", re.I
+    r"^\s*(references|bibliography|works cited|reference list"
+    r"|참고\s*문헌"          # ko
+    r"|literaturverzeichnis"  # de
+    r"|bibliographie"         # fr (also de alternative)
+    r"|bibliograf[íi]a"       # es / it+pt
+    r"|参考文献"              # ja + zh
+    r"|refer[êe]ncias"        # pt (accented and plain)
+    r")\s*$",
+    re.I,
 )
 
-_YEAR = r"(?:1[89]\d\d|20\d\d)[a-z]?"
+# "n.d." (no date) is a legal APA year; hangul surnames are legal authors —
+# both were invisible to the Latin-only patterns (v1.5 adversarial F4).
+_YEAR = r"(?:(?:1[89]\d\d|20\d\d)[a-z]?|n\.d\.)"
+# one author token: a Latin capitalized word OR a hangul word
+_AUT = r"(?:[A-Z][A-Za-z'\-]+|[가-힣]+)"
 # Narrative: Smith (2026) / Smith and Jones (2026) / Smith et al. (2026)
 _NARRATIVE = re.compile(
-    rf"\b([A-Z][A-Za-z'\-]+)"
-    rf"(?:\s+(?:and|&)\s+[A-Z][A-Za-z'\-]+)*"
+    rf"(?<![\w가-힣])({_AUT})"
+    rf"(?:\s+(?:and|&|와|과)\s+{_AUT})*"
     rf"(?:\s+et al\.?)?"
     rf"\s*\(({_YEAR})(?:,\s*(?:p{{1,2}}\.\s*[\d\-–, ]+))?\)"
 )
 # Parenthetical content chunk: Smith, 2026 / Smith & Jones, 2026, p. 4 /
 # Smith et al., 2026
 _PAREN_CHUNK = re.compile(
-    rf"([A-Z][A-Za-z'\-]+)"
-    rf"(?:,?\s+(?:and|&)\s+[A-Z][A-Za-z'\-]+)*"
+    rf"({_AUT})"
+    rf"(?:,?\s+(?:and|&|와|과)\s+{_AUT})*"
     rf"(?:,?\s+et al\.?)?"
     rf",\s*({_YEAR})"
 )
@@ -43,7 +60,7 @@ _PAREN_CHUNK = re.compile(
 # Congressional Record, 122(Pt. 24), 30367 (1976, September 15).
 # Key = first capitalized word + the year from the first paren containing one
 # (full APA date forms and preceding non-year parens are tolerated).
-_REF_LEAD = re.compile(r"^\s*([A-Z][A-Za-z'\-]+)")
+_REF_LEAD = re.compile(rf"^\s*({_AUT})")
 _REF_YEAR = re.compile(rf"\(({_YEAR})\b[^)]*\)")
 
 

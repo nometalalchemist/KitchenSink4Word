@@ -7,7 +7,7 @@
 [![License: PolyForm NC](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE)
 
 **Everything plus the kitchen sink for Microsoft Word.** The most complete
-Word (.docx) MCP server available — 147 tools, engineered not to corrupt, stress-tested against long, heavily formatted real-world documents. Now with live editing: documents open in Word are edited in place, visibly, with each tool call landing as a single Ctrl+Z step.
+Word (.docx) MCP server available — 170 tools, engineered not to corrupt, stress-tested against long, heavily formatted real-world documents. Now with live editing: documents open in Word are edited in place, visibly, with each tool call landing as a single Ctrl+Z step.
 
 > **The origin story:** an AI agent once needed *fifteen minutes* to edit
 > twenty table cells in a Word document, because no existing Word MCP could
@@ -36,7 +36,7 @@ Every public Word MCP server was surveyed before building this (August 2026):
 | Section moving / template transfer | ✅ | ❌ | ❌ | ❌ |
 | Atomic saves + auto-backup | ✅ | ❌ | ❌ | ❌ |
 
-**147 tools** across: workflow suites (mail merge, batch operations, redaction, compliance/accessibility audits, submission prep, front matter, diagnostics), text and formatting, tables (including merge-aware column
+**170 tools** across: equations (LaTeX → Word math), Zotero library citations, publication style conversion (8 styles, beta), review-cycle analytics, workflow suites (mail merge, batch operations, redaction, compliance/accessibility audits, submission prep, front matter, diagnostics), text and formatting, tables (including merge-aware column
 insert/delete and one-call bulk cell edits), footnotes/endnotes (full CRUD +
 footnote↔endnote conversion), TOC and caption lists, headers/footers/sections,
 images, bulleted/numbered lists, threaded comments, tracked changes (read,
@@ -221,6 +221,29 @@ Word-lock lifecycle, COM leak checks), and a dedicated cross-feature
 interaction bug-hunt. All findings fixed with regression tests. `research/` documents the OOXML
 algorithms and pitfalls the implementation is built on, with attribution to
 the MIT-licensed reference implementations studied.
+
+## Maturity — what the version number does and does not claim
+
+This project moves fast and is honest about what backs it. What the test
+record covers: every release passes the full suite (626 tests) plus
+dedicated adversarial rounds through the raw MCP transport (~2,500 calls
+to date), against a corpus of long, heavily formatted real-world documents
+— with zero corruption across all of it. What it does not yet cover: other
+machines, Word builds older than current Microsoft 365, non-English Word
+installs (some tools reference styles by localized display name), RTL
+scripts, and the diversity of documents only real users bring. The safety
+net while the tool earns that mileage is structural: automatic timestamped
+backups before every mutation and atomic validated saves, so a bad outcome
+is a restore, not a loss. If something misbehaves on your documents,
+[an issue](https://github.com/nometalalchemist/KitchenSink4Word/issues)
+with the symptom (never the document itself, unless it contains nothing
+private) is the most valuable thing you can send.
+
+**Beta-labeled tools** — heuristic by nature; review their flagged-items
+list rather than trusting silently: `convert_citation_style`,
+`anonymize_for_review`, `check_defined_terms`, and the text-reference
+scan inside `validate_cross_references`. Each returns an explicit list of
+what it could not confidently handle.
 
 ## Known limits
 

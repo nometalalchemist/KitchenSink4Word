@@ -43,13 +43,29 @@ def _in_deleted(el) -> bool:
     return False
 
 
+def _in_textbox(el, stop) -> bool:
+    """Inside w:txbxContent (either the mc:Choice wps or legacy v:textbox
+    copy)? Text-box content is a SEPARATE story: counting it here smears it
+    into the host paragraph DOUBLED (Word stores both compatibility copies).
+    Dedicated access lives in ops/textboxes.py."""
+    parent = el.getparent()
+    while parent is not None and parent is not stop:
+        if etree.QName(parent).localname == "txbxContent":
+            return True
+        parent = parent.getparent()
+    return False
+
+
 def build_map(p: etree._Element) -> tuple[str, list[Segment]]:
-    """Visible text of the paragraph plus segments mapping offsets to elements."""
+    """Visible text of the paragraph plus segments mapping offsets to
+    elements. Text inside text boxes is EXCLUDED (see _in_textbox)."""
     segments: list[Segment] = []
     parts: list[str] = []
     pos = 0
     for r in p.iter(qn("w:r")):
         if _in_deleted(r):
+            continue
+        if _in_textbox(r, p):
             continue
         for child in r:
             tag = etree.QName(child).localname

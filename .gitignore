@@ -23,3 +23,6 @@ V2_KICKOFF.md
 V1.5_KICKOFF.md
 KitchenSink4Word-Community-Feedback.md
 integration/
+
+# packed bundles ship as release assets, not commits
+bundle/*.mcpb

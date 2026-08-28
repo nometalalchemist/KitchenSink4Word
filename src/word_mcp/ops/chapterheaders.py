@@ -160,11 +160,24 @@ def setup_chapter_headers(
         # header there would read "Abstract" — skip it (explicit scope
         # lists still target it deliberately)
         if len(levels_by_section) > 1 and 0 in targets:
+            # Front-matter titles are matched by TEXT, not style, so this set
+            # is language-specific. English plus the Korean equivalents are
+            # covered; other languages' front-matter titles are not yet
+            # (their section 0 simply keeps the default behavior). Heading
+            # DETECTION itself is locale-safe: _style_outline_map /
+            # _outline_level resolve via styleId + outlineLvl, which do not
+            # localize.
             fm_titles = {
                 "abstract", "acknowledgments", "acknowledgements",
                 "dedication", "preface", "table of contents",
                 "list of figures", "list of tables", "list of equations",
                 "copyright", "declaration",
+                # Korean
+                "초록", "요약",          # abstract
+                "감사의 글", "감사의글",  # acknowledgments
+                "목차",                  # table of contents
+                "그림 목차", "그림목차",  # list of figures
+                "표 목차", "표목차",      # list of tables
             }
             sec0_headings = _section_heading_texts(pkg, 0, level)
             if sec0_headings and all(

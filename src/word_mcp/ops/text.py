@@ -70,6 +70,8 @@ def search_and_replace(
         projected = 0
         for part in _replace_parts(pkg, scope):
             for p in pkg.root(part).iter(qn("w:p")):
+                if _runmap._in_textbox(p, pkg.root(part)):
+                    continue
                 text, _ = _runmap.build_map(p)
                 for item in replacements:
                     if item.get("regex"):
@@ -89,6 +91,12 @@ def search_and_replace(
     for part in _replace_parts(pkg, scope):
         dirty = False
         for p in pkg.root(part).iter(qn("w:p")):
+            # Paragraphs nested inside text boxes are a separate story that
+            # every read tool (and preview_replace) excludes — editing them
+            # here made preview and reality diverge. Box content is edited
+            # only via set_textbox_text.
+            if _runmap._in_textbox(p, pkg.root(part)):
+                continue
             for item in replacements:
                 find, repl = item["find"], item["replace"]
                 use_regex = bool(item.get("regex"))

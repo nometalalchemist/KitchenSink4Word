@@ -26,6 +26,7 @@ from ..core.errors import (
     WordMcpError,
 )
 from ..ops import _regex as _rx
+from ..ops.localization import style_name_matches
 from .live import check_text_safe, insert_text_chunked, run_live
 
 # story types
@@ -122,9 +123,6 @@ def _in_content_control(p) -> bool:
         return False
 
 
-_TOC_HEADING_STYLES = {"toc heading", "tocheading"}
-
-
 def _sdt_regions(doc) -> list:
     """(start, end) spans of gallery SDT blocks (TOC / List of Figures).
 
@@ -145,11 +143,15 @@ def _sdt_regions(doc) -> list:
                 with contextlib.suppress(Exception):
                     first = doc.Range(start, start).Paragraphs(1)
                     prev = first.Previous()
+                    # NameLocal is the LOCALIZED display name ("TOC Heading"
+                    # only on English installs — 목차 제목 on Korean, etc.),
+                    # so the match routes through the localization aliases.
                     if (
                         prev is not None
                         and prev.Range.End == first.Range.Start
-                        and prev.Style.NameLocal.strip().lower()
-                        in _TOC_HEADING_STYLES
+                        and style_name_matches(
+                            prev.Style.NameLocal, "toc_heading"
+                        )
                     ):
                         start = prev.Range.Start
                 regions.append((start, rng.End))
