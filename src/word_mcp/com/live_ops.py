@@ -1614,3 +1614,118 @@ def _apply_char_formatting(rng, fmt: dict):
 #   protection set/remove (Word ignores or dialogs on programmatic
 #     protection changes to the active document; password flows especially).
 # ---------------------------------------------------------------------------
+
+
+# ---- paragraph formatting (Bug 12: completes the live citation workflow) ----
+
+_WD_ALIGN_MAP = {
+    "left": 0, "center": 1, "right": 2, "justify": 3,
+}
+
+_PARA_FMT_KEYS_LIVE = {
+    "alignment", "space_before_pt", "space_after_pt", "line_spacing",
+    "indent_left_pt", "indent_right_pt", "first_line_indent_pt",
+    "keep_with_next", "keep_lines_together", "page_break_before",
+    "widow_control", "outline_level",
+}
+
+_PARA_FMT_UNSUPPORTED_LIVE = {"shading", "borders", "tab_stops"}
+
+
+def set_paragraph_format(
+    path: str, indices: list[int], formatting: dict
+) -> dict:
+    """Live paragraph formatting via COM Paragraph.Format properties."""
+    unknown = set(formatting) - _PARA_FMT_KEYS_LIVE - _PARA_FMT_UNSUPPORTED_LIVE
+    if unknown:
+        raise WordMcpError(
+            f"unknown paragraph-formatting key(s) {sorted(unknown)}; "
+            f"allowed (live): {sorted(_PARA_FMT_KEYS_LIVE)}"
+        )
+    unsupported = set(formatting) & _PARA_FMT_UNSUPPORTED_LIVE
+    if unsupported:
+        raise WordMcpError(
+            f"paragraph-formatting key(s) {sorted(unsupported)} are not "
+            "supported in live mode (they require XML-level operations). "
+            "Close the document and use file-mode set_paragraph_format, or "
+            "apply the formatting manually in Word."
+        )
+    if "alignment" in formatting:
+        val = formatting["alignment"]
+        if val not in _WD_ALIGN_MAP:
+            raise WordMcpError(
+                f"alignment must be one of {list(_WD_ALIGN_MAP)}, got {val!r}"
+            )
+    if "outline_level" in formatting:
+        lvl = formatting["outline_level"]
+        if lvl is not None and (
+            isinstance(lvl, bool) or not isinstance(lvl, int)
+            or not 0 <= lvl <= 8
+        ):
+            raise WordMcpError(
+                "outline_level must be an integer 0-8 or null to remove"
+            )
+
+    def body(session):
+        doc = session.doc
+        paras = _body_paragraphs(doc)
+        applied = []
+        for idx in indices:
+            if not 0 <= idx < len(paras):
+                raise TargetNotFound(
+                    f"paragraph index {idx} out of range "
+                    f"({len(paras)} body paragraphs)"
+                )
+            p = paras[idx]
+            fmt = p.Format
+            keys_set = []
+            if "alignment" in formatting:
+                fmt.Alignment = _WD_ALIGN_MAP[formatting["alignment"]]
+                keys_set.append("alignment")
+            if "space_before_pt" in formatting:
+                fmt.SpaceBefore = float(formatting["space_before_pt"])
+                keys_set.append("space_before_pt")
+            if "space_after_pt" in formatting:
+                fmt.SpaceAfter = float(formatting["space_after_pt"])
+                keys_set.append("space_after_pt")
+            if "line_spacing" in formatting:
+                val = float(formatting["line_spacing"])
+                if val <= 6:
+                    fmt.LineSpacingRule = 5  # wdLineSpaceMultiple
+                    fmt.LineSpacing = val * 12
+                else:
+                    fmt.LineSpacingRule = 4  # wdLineSpaceExactly
+                    fmt.LineSpacing = val
+                keys_set.append("line_spacing")
+            if "indent_left_pt" in formatting:
+                fmt.LeftIndent = float(formatting["indent_left_pt"])
+                keys_set.append("indent_left_pt")
+            if "indent_right_pt" in formatting:
+                fmt.RightIndent = float(formatting["indent_right_pt"])
+                keys_set.append("indent_right_pt")
+            if "first_line_indent_pt" in formatting:
+                fmt.FirstLineIndent = float(formatting["first_line_indent_pt"])
+                keys_set.append("first_line_indent_pt")
+            if "keep_with_next" in formatting:
+                fmt.KeepWithNext = bool(formatting["keep_with_next"])
+                keys_set.append("keep_with_next")
+            if "keep_lines_together" in formatting:
+                fmt.KeepTogether = bool(formatting["keep_lines_together"])
+                keys_set.append("keep_lines_together")
+            if "page_break_before" in formatting:
+                fmt.PageBreakBefore = bool(formatting["page_break_before"])
+                keys_set.append("page_break_before")
+            if "widow_control" in formatting:
+                fmt.WidowControl = bool(formatting["widow_control"])
+                keys_set.append("widow_control")
+            if "outline_level" in formatting:
+                lvl = formatting["outline_level"]
+                if lvl is None:
+                    p.OutlineLevel = 10  # wdOutlineLevelBodyText
+                else:
+                    p.OutlineLevel = lvl + 1  # COM: 1-9 = Heading 1-9
+                keys_set.append("outline_level")
+            applied.append({"paragraph": idx, "keys_set": keys_set})
+        return {"paragraphs_formatted": len(applied), "applied": applied}
+
+    return run_live(path, "set paragraph format", body)

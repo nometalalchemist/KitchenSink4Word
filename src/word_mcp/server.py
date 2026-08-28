@@ -699,7 +699,8 @@ def format_text(
 
 @mcp.tool
 def set_paragraph_format(
-    file_path: str, indices: list[int], formatting: dict, backup: bool = True
+    file_path: str, indices: list[int], formatting: dict, backup: bool = True,
+    live: str = "auto",
 ) -> dict:
     """Set paragraph formatting on a batch of paragraphs (0-based indices).
     Keys: alignment, space_before_pt, space_after_pt, line_spacing,
@@ -709,13 +710,20 @@ def set_paragraph_format(
     to give template headings (Normal-styled, direct-formatted) a place in
     Word's navigation pane and TOC harvesting, where apply_style would
     change their look. get_paragraph_format is the matching reader.
-    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
-    rotation only); atomic validated save. Refuses documents open in Word.
-    """
-    return _edit(
-        file_path,
-        lambda pkg: _tx.set_paragraph_format(pkg, indices, formatting),
-        backup=backup,
+    Documents open in Word are edited live (shading, borders, and tab_stops
+    are refused live; all other keys work). Auto-backup: prev/anchor slots
+    in .ks4w-backups (backup=False skips rotation only); atomic validated
+    save."""
+    from .com import live_ops as _lo
+
+    return _route_live(
+        live,
+        lambda: _edit(
+            file_path,
+            lambda pkg: _tx.set_paragraph_format(pkg, indices, formatting),
+            backup=backup,
+        ),
+        lambda: _lo.set_paragraph_format(file_path, indices, formatting),
     )
 
 
