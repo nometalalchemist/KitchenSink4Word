@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KitchenSink4Word — Everything plus the kitchen sink for Microsoft Word</title>
-<meta name="description" content="Everything plus the kitchen sink: the most complete Word (.docx) MCP server — 170 tools — live editing of open documents, citations, merge-aware table surgery, footnotes, TOC, tracked changes, compare, protection. Engineered not to corrupt.">
+<title>KitchenSink4Word: Everything plus the kitchen sink for Microsoft Word</title>
+<meta name="description" content="Everything plus the kitchen sink: the most complete Word (.docx) MCP server. 170 tools: live editing of open documents, citations, merge-aware table surgery, footnotes, TOC, tracked changes, compare, protection. Engineered not to corrupt.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚰</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -70,6 +70,16 @@ a{color:var(--copper)}
   font-size:12px;letter-spacing:.14em;text-transform:uppercase;border-radius:4px;
   opacity:.85;mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='white'/%3E%3Ccircle cx='1' cy='1' r='.35' fill='black'/%3E%3C/svg%3E")}
 @media(max-width:640px){.stamp{display:none}}
+.idiom-note{font-size:12px;color:var(--ink-soft);margin:12px auto 0;max-width:560px;opacity:.85}
+.idiom-note:empty{display:none}
+
+/* who it's for */
+.for-lead{font-family:'Fraunces',serif;font-size:clamp(16px,2.1vw,20px);line-height:1.65;max-width:820px;margin:0 auto 30px}
+.for-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2px;background:var(--rule);border:2px solid var(--ink)}
+.forcard{background:var(--paper);padding:20px 20px 18px;transition:background .25s}
+.forcard:hover{background:var(--paper-deep)}
+.forcard h3{font-size:16px;font-weight:800}
+.forcard p{font-size:12.5px;color:var(--ink-soft);margin-top:8px;line-height:1.55}
 
 /* reveal on load */
 .rev{opacity:0;transform:translateY(14px);animation:rev .7s cubic-bezier(.2,.7,.2,1) forwards}
@@ -171,7 +181,8 @@ footer a{color:var(--copper)}
   <div class="rev d1"><span class="faucet">🚰</span><div class="drip"></div></div>
   <div class="catalog-no rev d2" data-i18n="hero.catno">Model Context Protocol · Server for Microsoft Word</div>
   <h1 class="rev d2">Kitchen&shy;Sink<span class="four">4</span>Word</h1>
-  <p class="tagline rev d3" data-i18n="hero.tagline">Everything <em>plus</em> the kitchen sink for Microsoft&nbsp;Word — the most complete .docx&nbsp;MCP&nbsp;server ever plumbed.</p>
+  <p class="tagline rev d3" data-i18n="hero.tagline">Everything <em>plus</em> the kitchen sink for Microsoft&nbsp;Word: the most complete .docx&nbsp;MCP&nbsp;server ever plumbed.</p>
+  <p class="idiom-note rev d3" data-i18n="hero.idiom"></p>
   <div class="specs-strip rev d4">
     <div class="spec"><span class="n">170</span><span class="l" data-i18n="spec.tools">Tools</span></div>
     <div class="spec"><span class="n">626</span><span class="l" data-i18n="spec.tests">Tests</span></div>
@@ -184,11 +195,23 @@ footer a{color:var(--copper)}
   </div>
 </header>
 
+<section id="for">
+  <div class="wrap">
+    <div class="sec-head"><span class="no" data-i18n="no0">DEPT. 00</span><h2 data-i18n="h2.for">What this is actually for</h2></div>
+    <p class="for-lead" data-i18n="for.lead">Plenty of tools can write a paragraph into a .docx file. This catalog exists for the work nobody else solved: editing real Word documents, live in the window, one undo step per call, with merge-aware table surgery, citations, footnotes, and the table of contents handled as first-class fixtures, edits written as tracked changes, redaction with verification, and publication style conversion. It was built for people whose documents are too important to lose.</p>
+    <div class="for-grid">
+      <div class="forcard"><h3 data-i18n="for1.t">For the academic</h3><p data-i18n="for1.p">A committee returns the manuscript covered in tracked revisions, and the citation apparatus has to survive the rewrite. Citations, footnotes, cross-references, APA parity checks, and the table of contents are first-class here, so an agent can take on the revision pass without breaking any of it.</p></div>
+      <div class="forcard"><h3 data-i18n="for2.t">For legal, compliance &amp; HR</h3><p data-i18n="for2.p">Contracts, policies, and case files live in Word, and every edit needs an author attached. Edits here can be written as tracked changes, document compare runs Word-native, and redaction actually removes the text, then verifies that it is gone.</p></div>
+      <div class="forcard"><h3 data-i18n="for3.t">For the Word power user</h3><p data-i18n="for3.p">For anyone whose documents are too important to gamble with. Every save is atomic and validated, a timestamped backup precedes each change, and live editing keeps the document open in Word, one Ctrl+Z step per call, with the cursor untouched.</p></div>
+    </div>
+  </div>
+</section>
+
 <section id="tale">
   <div class="wrap">
     <div class="sec-head"><span class="no" data-i18n="no1">DEPT. 01</span><h2 data-i18n="h2.tale">Why this exists</h2></div>
     <div class="tale" data-label="A CAUTIONARY TALE">
-      <p data-i18n="tale.p1">An AI agent once needed <em>fifteen minutes</em> to edit <em>twenty table cells</em> in a Word document. Not because the agent was slow — because every Word MCP server on the market was missing something. One couldn't delete a table column. Another had no footnotes. A third couldn't touch a table of contents. Installing all three still couldn't do the job.</p>
+      <p data-i18n="tale.p1">An AI agent once needed <em>fifteen minutes</em> to edit <em>twenty table cells</em> in a Word document. Not because the agent was slow, but because every Word MCP server on the market was missing something. One couldn't delete a table column. Another had no footnotes. A third couldn't touch a table of contents. Installing all three still couldn't do the job.</p>
       <p data-i18n="tale.p2">So instead, this got built: one server with <em>everything</em>. The twenty-cell edit now takes one call and finishes in twenty milliseconds. Your agents will simply never know the struggle.</p>
     </div>
   </div>
@@ -208,6 +231,7 @@ footer a{color:var(--copper)}
       <div class="dept"><h3><span data-i18n="dept8.t">Word Itself</span> <span class="num">№ 113–119</span></h3><p data-i18n="dept8.p">COM-backed field refresh (real TOC page numbers), PDF export, encrypted save, open-clean validation, live-Word status and lock management.</p><span class="count" data-i18n="dept8.c">7 TOOLS</span></div>
       <div class="dept"><h3><span data-i18n="dept9.t">Live Editing</span> <span class="num">№ 120–123</span></h3><p data-i18n="dept9.p">Edit documents while they are OPEN in Word: changes appear in the window, each tool call is one Ctrl+Z step, the cursor is never touched. Cursor-point insert, scroll-to-show, track-changes toggle, crash repair.</p><span class="count" data-i18n="dept9.c">NEW · 4 TOOLS + 9 ROUTED</span></div>
       <div class="dept"><h3><span data-i18n="dept10.t">Workflow Suites</span> <span class="num">№ 124–147</span></h3><p data-i18n="dept10.p">Mail merge from CSV/JSON, batch operations across document sets, true redaction with verification, accessibility &amp; template-compliance audits, cross-reference and caption validation, submission prep, front-matter assembly, chapter headers, structural diagnostics, PDF import.</p><span class="count" data-i18n="dept10.c">NEW · 24 TOOLS</span></div>
+      <div class="dept"><h3><span data-i18n="dept11.t">Academic Suite</span> <span class="num">№ 148–170</span></h3><p data-i18n="dept11.p">LaTeX equations as native Word math, Zotero library citations, publication style conversion across eight styles, review-cycle analytics, journal word counts, peer-review anonymization, table data round-trips, document splitting.</p><span class="count" data-i18n="dept11.c">NEW · 23 TOOLS</span></div>
     </div>
   </div>
 </section>
@@ -231,7 +255,7 @@ footer a{color:var(--copper)}
         <tr><td data-i18n="cmp.r11">Atomic saves + auto-backup</td><td class="us yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td></tr>
       </table>
     </div>
-    <p class="foot-note" data-i18n="cmp.note">Survey of every public Word MCP server, August 2026. Corrections welcome — open an issue.</p>
+    <p class="foot-note" data-i18n="cmp.note">Survey of every public Word MCP server, August 2026. Corrections welcome: open an issue.</p>
   </div>
 </section>
 
@@ -260,7 +284,7 @@ footer a{color:var(--copper)}
       <a class="counter" href="https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=bug_report.yml">
         <span class="icon">🔧</span>
         <h3 data-i18n="svc1.t">Found a leak?</h3>
-        <p data-i18n="svc1.p">Something glitched, refused, or misbehaved. File a report at the repair counter — the form asks exactly what a fix needs. Never attach a private document; rebuild the structure with placeholder text.</p>
+        <p data-i18n="svc1.p">Something glitched, refused, or misbehaved. File a report at the repair counter: the form asks exactly what a fix needs. Never attach a private document; rebuild the structure with placeholder text.</p>
         <span class="go" data-i18n="svc1.g">File a bug report →</span>
       </a>
       <a class="counter" href="https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=feature_request.yml">
@@ -272,7 +296,7 @@ footer a{color:var(--copper)}
       <a class="counter" href="https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml">
         <span class="icon">💼</span>
         <h3 data-i18n="svc3.t">Commercial fitting?</h3>
-        <p data-i18n="svc3.p">Free for personal and noncommercial use. Commercial use requires a separate license before use — this counter is where you arrange one.</p>
+        <p data-i18n="svc3.p">Free for personal and noncommercial use. Commercial use requires a separate license before use; this counter is where you arrange one.</p>
         <span class="go" data-i18n="svc3.g">Arrange a license →</span>
       </a>
     </div>
@@ -285,16 +309,16 @@ footer a{color:var(--copper)}
     <div class="guarantee">
       <span class="seal">🛡️</span>
       <h3 data-i18n="g.t">Engineered Not to Corrupt</h3>
-      <p data-i18n="g.p1">Atomic validated saves. Automatic timestamped backups before every change. Byte-identical passthrough of anything not being edited — equations, textboxes, and content controls pass through untouched. Battle-tested on long, heavily formatted real-world documents: one carrying 171 footnotes, one carrying 126 tracked revisions and reviewer comments, plus two insane-mode stress campaigns without a single Word repair prompt.</p>
-      <p style="margin-top:14px;font-size:11px;opacity:.75" data-i18n="g.p2">Provided as-is, without warranty of any kind, per the license — the engineering above is simply how seriously your documents are taken. Keep backups. (It makes them for you.)</p>
+      <p data-i18n="g.p1">Atomic validated saves. Automatic timestamped backups before every change. Byte-identical passthrough of anything not being edited: equations, textboxes, and content controls pass through untouched. Battle-tested on long, heavily formatted real-world documents: one carrying 171 footnotes, one carrying 126 tracked revisions and reviewer comments, plus two insane-mode stress campaigns without a single Word repair prompt.</p>
+      <p style="margin-top:14px;font-size:11px;opacity:.75" data-i18n="g.p2">Provided as-is, without warranty of any kind, per the license; the engineering above is simply how seriously your documents are taken. Keep backups. (It makes them for you.)</p>
     </div>
   </div>
 </section>
 
 <footer>
   <div class="wrap row">
-    <span data-i18n="f.left">© 2026 · <b>PolyForm Noncommercial 1.0.0</b> — free for personal, academic &amp; research use.<br>Commercial use requires a separate license <b>before</b> use — <a href="https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml">open an issue</a> to arrange one.</span>
-    <span style="text-align:right" data-i18n="f.right"><a href="https://github.com/nometalalchemist/KitchenSink4Word">github.com/nometalalchemist/KitchenSink4Word</a> · <a href="https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose">report a glitch</a><br>Built with Claude Code, in one very long day. 🚰</span>
+    <span data-i18n="f.left">© 2026 · <b>PolyForm Noncommercial 1.0.0</b>: free for personal, academic &amp; research use.<br>Commercial use requires a separate license <b>before</b> use; <a href="https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml">open an issue</a> to arrange one.</span>
+    <span style="text-align:right" data-i18n="f.right"><a href="https://github.com/nometalalchemist/KitchenSink4Word">github.com/nometalalchemist/KitchenSink4Word</a> · <a href="https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose">report a glitch</a><br>Prototyped with Claude Code in a day, then hardened through thousands of adversarial test calls. 🚰</span>
   </div>
 </footer>
 
@@ -303,29 +327,38 @@ footer a{color:var(--copper)}
 (function(){
 "use strict";
 var I18N = {
-<!-- KOREAN (ko) TRANSLATION: DRAFT — flagged for author review. The author reads Korean; please polish register/word choice before treating it as final. -->
+<!-- KOREAN (ko) TRANSLATION: DRAFT, flagged for author review. The author reads Korean; please polish register/word choice before treating it as final. -->
 en: {
-"pageTitle": "KitchenSink4Word — Everything plus the kitchen sink for Microsoft Word",
+"pageTitle": "KitchenSink4Word: Everything plus the kitchen sink for Microsoft Word",
 "m.left": "<b>EST. 2026</b> · FINE INSTRUMENTS FOR DOCUMENT PLUMBING",
 "m.catalog": "CATALOG № 170",
 "m.service": "SERVICE",
 "hero.stamp": "DOES<br>EVERYTHING",
 "hero.catno": "Model Context Protocol · Server for Microsoft Word",
-"hero.tagline": "Everything <em>plus</em> the kitchen sink for Microsoft&nbsp;Word — the most complete .docx&nbsp;MCP&nbsp;server ever plumbed.",
+"hero.tagline": "Everything <em>plus</em> the kitchen sink for Microsoft&nbsp;Word: the most complete .docx&nbsp;MCP&nbsp;server ever plumbed.",
+"hero.idiom": "",
 "spec.tools": "Tools",
 "spec.tests": "Tests",
 "spec.stress": "Stress calls",
 "spec.corr": "Corruptions",
 "btn.install": "Install the Sink",
 "btn.source": "Read the Source",
-"no1": "DEPT. 01", "no2": "DEPT. 02", "no3": "DEPT. 03", "no4": "DEPT. 04", "no5": "DEPT. 05",
+"no0": "DEPT. 00", "no1": "DEPT. 01", "no2": "DEPT. 02", "no3": "DEPT. 03", "no4": "DEPT. 04", "no5": "DEPT. 05",
+"h2.for": "What this is actually for",
+"for.lead": "Plenty of tools can write a paragraph into a .docx file. This catalog exists for the work nobody else solved: editing real Word documents, live in the window, one undo step per call, with merge-aware table surgery, citations, footnotes, and the table of contents handled as first-class fixtures, edits written as tracked changes, redaction with verification, and publication style conversion. It was built for people whose documents are too important to lose.",
+"for1.t": "For the academic",
+"for1.p": "A committee returns the manuscript covered in tracked revisions, and the citation apparatus has to survive the rewrite. Citations, footnotes, cross-references, APA parity checks, and the table of contents are first-class here, so an agent can take on the revision pass without breaking any of it.",
+"for2.t": "For legal, compliance &amp; HR",
+"for2.p": "Contracts, policies, and case files live in Word, and every edit needs an author attached. Edits here can be written as tracked changes, document compare runs Word-native, and redaction actually removes the text, then verifies that it is gone.",
+"for3.t": "For the Word power user",
+"for3.p": "For anyone whose documents are too important to gamble with. Every save is atomic and validated, a timestamped backup precedes each change, and live editing keeps the document open in Word, one Ctrl+Z step per call, with the cursor untouched.",
 "h2.tale": "Why this exists",
 "h2.inv": "The inventory",
 "h2.cmp": "Against the field",
 "h2.install": "Installation",
 "h2.svc": "Service department",
 "tale.label": "A CAUTIONARY TALE",
-"tale.p1": "An AI agent once needed <em>fifteen minutes</em> to edit <em>twenty table cells</em> in a Word document. Not because the agent was slow — because every Word MCP server on the market was missing something. One couldn't delete a table column. Another had no footnotes. A third couldn't touch a table of contents. Installing all three still couldn't do the job.",
+"tale.p1": "An AI agent once needed <em>fifteen minutes</em> to edit <em>twenty table cells</em> in a Word document. Not because the agent was slow, but because every Word MCP server on the market was missing something. One couldn't delete a table column. Another had no footnotes. A third couldn't touch a table of contents. Installing all three still couldn't do the job.",
 "tale.p2": "So instead, this got built: one server with <em>everything</em>. The twenty-cell edit now takes one call and finishes in twenty milliseconds. Your agents will simply never know the struggle.",
 "dept1.t": "Tables", "dept1.p": "Merge-aware column insert/delete, one-call bulk cell edits, merge/unmerge, gridBefore rows, nested tables, sort, split, named styles, header repeat.", "dept1.c": "24 TOOLS",
 "dept2.t": "References", "dept2.p": "Native citations &amp; bibliography (12 styles, verified Word rendering), footnotes &amp; endnotes with conversion, index generation, TOC &amp; caption lists, cross-references.", "dept2.c": "17 TOOLS",
@@ -337,6 +370,7 @@ en: {
 "dept8.t": "Word Itself", "dept8.p": "COM-backed field refresh (real TOC page numbers), PDF export, encrypted save, open-clean validation, live-Word status and lock management.", "dept8.c": "7 TOOLS",
 "dept9.t": "Live Editing", "dept9.p": "Edit documents while they are OPEN in Word: changes appear in the window, each tool call is one Ctrl+Z step, the cursor is never touched. Cursor-point insert, scroll-to-show, track-changes toggle, crash repair.", "dept9.c": "NEW · 4 TOOLS + 9 ROUTED",
 "dept10.t": "Workflow Suites", "dept10.p": "Mail merge from CSV/JSON, batch operations across document sets, true redaction with verification, accessibility &amp; template-compliance audits, cross-reference and caption validation, submission prep, front-matter assembly, chapter headers, structural diagnostics, PDF import.", "dept10.c": "NEW · 24 TOOLS",
+"dept11.t": "Academic Suite", "dept11.p": "LaTeX equations as native Word math, Zotero library citations, publication style conversion across eight styles, review-cycle analytics, journal word counts, peer-review anonymization, table data round-trips, document splitting.", "dept11.c": "NEW · 23 TOOLS",
 "cmp.cap": "Capability",
 "cmp.h2": "GongRzhe (2.1k★, archived)",
 "cmp.r1": "Table column insert/delete",
@@ -351,35 +385,44 @@ en: {
 "cmp.r10": "Section moving / template transfer",
 "cmp.r11": "Atomic saves + auto-backup",
 "v.merge": "✔ merge-aware", "v.conv": "✔ + conversion", "v.addonly": "add only", "v.styles": "✔ 12 styles", "v.native": "✔ Word-native", "v.buggy": "buggy", "v.partial": "partial",
-"cmp.note": "Survey of every public Word MCP server, August 2026. Corrections welcome — open an issue.",
+"cmp.note": "Survey of every public Word MCP server, August 2026. Corrections welcome: open an issue.",
 "inst.s1": "① GET THE FIXTURE",
 "inst.s2": "② CONNECT THE PLUMBING (Claude Code)",
 "inst.note": "Windows. File-based tools need no Word installation; the seven COM tools (TOC refresh, PDF, proofing…) use a local Microsoft Word. Full setup in the <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>.",
-"svc1.t": "Found a leak?", "svc1.p": "Something glitched, refused, or misbehaved. File a report at the repair counter — the form asks exactly what a fix needs. Never attach a private document; rebuild the structure with placeholder text.", "svc1.g": "File a bug report →",
+"svc1.t": "Found a leak?", "svc1.p": "Something glitched, refused, or misbehaved. File a report at the repair counter: the form asks exactly what a fix needs. Never attach a private document; rebuild the structure with placeholder text.", "svc1.g": "File a bug report →",
 "svc2.t": "Missing an attachment?", "svc2.p": "A Word capability the sink should also have. Describe the real task behind it and it goes on the workbench.", "svc2.g": "Request a feature →",
-"svc3.t": "Commercial fitting?", "svc3.p": "Free for personal and noncommercial use. Commercial use requires a separate license before use — this counter is where you arrange one.", "svc3.g": "Arrange a license →",
+"svc3.t": "Commercial fitting?", "svc3.p": "Free for personal and noncommercial use. Commercial use requires a separate license before use; this counter is where you arrange one.", "svc3.g": "Arrange a license →",
 "svc.note": "Reports are public GitHub issues (a free GitHub account is needed to file one). Every report lands in the maintainer's inbox.",
 "g.t": "Engineered Not to Corrupt",
-"g.p1": "Atomic validated saves. Automatic timestamped backups before every change. Byte-identical passthrough of anything not being edited — equations, textboxes, and content controls pass through untouched. Battle-tested on long, heavily formatted real-world documents: one carrying 171 footnotes, one carrying 126 tracked revisions and reviewer comments, plus two insane-mode stress campaigns without a single Word repair prompt.",
-"g.p2": "Provided as-is, without warranty of any kind, per the license — the engineering above is simply how seriously your documents are taken. Keep backups. (It makes them for you.)",
-"f.left": "© 2026 · <b>PolyForm Noncommercial 1.0.0</b> — free for personal, academic &amp; research use.<br>Commercial use requires a separate license <b>before</b> use — <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>open an issue</a> to arrange one.",
-"f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>report a glitch</a><br>Built with Claude Code, in one very long day. 🚰"
+"g.p1": "Atomic validated saves. Automatic timestamped backups before every change. Byte-identical passthrough of anything not being edited: equations, textboxes, and content controls pass through untouched. Battle-tested on long, heavily formatted real-world documents: one carrying 171 footnotes, one carrying 126 tracked revisions and reviewer comments, plus two insane-mode stress campaigns without a single Word repair prompt.",
+"g.p2": "Provided as-is, without warranty of any kind, per the license; the engineering above is simply how seriously your documents are taken. Keep backups. (It makes them for you.)",
+"f.left": "© 2026 · <b>PolyForm Noncommercial 1.0.0</b>: free for personal, academic &amp; research use.<br>Commercial use requires a separate license <b>before</b> use; <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>open an issue</a> to arrange one.",
+"f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>report a glitch</a><br>Prototyped with Claude Code in a day, then hardened through thousands of adversarial test calls. 🚰"
 },
 ko: {
-"pageTitle": "KitchenSink4Word — Microsoft Word를 위한 모든 것, 싱크대까지 통째로",
+"pageTitle": "KitchenSink4Word: Microsoft Word 도구라면 없는 게 없는 MCP 서버",
 "m.left": "<b>EST. 2026</b> · 문서 배관을 위한 정밀 기구점",
-"m.catalog": "카탈로그 № 147",
+"m.catalog": "카탈로그 № 170",
 "m.service": "서비스",
 "hero.stamp": "안 되는 게<br>없음",
 "hero.catno": "Model Context Protocol · Microsoft Word용 서버",
-"hero.tagline": "부엌 싱크대까지 <em>통째로</em> 담았습니다 — Microsoft&nbsp;Word를 위한 역대 가장 완전한 .docx&nbsp;MCP&nbsp;서버. “Everything <em>plus</em> the kitchen sink.”",
+"hero.tagline": "Microsoft&nbsp;Word 도구라면 정말 <em>없는 게 없습니다</em>. 역대 가장 완전한 .docx&nbsp;MCP&nbsp;서버. “Everything <em>plus</em> the kitchen sink.”",
+"hero.idiom": "영어 관용구 “everything but the kitchen sink”는 ‘생각할 수 있는 모든 것’이라는 뜻입니다. 이 카탈로그에는 그 싱크대까지 들어 있습니다.",
 "spec.tools": "도구",
 "spec.tests": "테스트",
 "spec.stress": "스트레스 호출",
 "spec.corr": "손상 건수",
 "btn.install": "싱크대 설치하기",
 "btn.source": "소스 읽어보기",
-"no1": "부문 01", "no2": "부문 02", "no3": "부문 03", "no4": "부문 04", "no5": "부문 05",
+"no0": "부문 00", "no1": "부문 01", "no2": "부문 02", "no3": "부문 03", "no4": "부문 04", "no5": "부문 05",
+"h2.for": "무엇을 위한 도구인가",
+"for.lead": ".docx 파일에 문단을 써 넣는 도구는 이미 많습니다. 이 카탈로그는 아직 아무도 풀지 못한 작업을 위해 존재합니다: Word에 열려 있는 진짜 문서를 그대로 편집하고, 호출 하나가 실행 취소 한 단계이며, 병합을 인식하는 표 수술, 일급으로 다뤄지는 인용·각주·목차, 추적 변경으로 기록되는 편집, 검증을 동반한 검열 삭제, 출판 스타일 변환까지 갖췄습니다. 잃어버리기에는 너무 중요한 문서를 다루는 사람들을 위해 만들어졌습니다.",
+"for1.t": "연구자에게",
+"for1.p": "심사위원회가 추적 변경으로 가득한 원고를 돌려보내도, 인용 장치는 수정 과정에서 살아남아야 합니다. 여기서는 인용, 각주, 상호 참조, APA 일치 검사, 목차가 모두 일급으로 다뤄지므로, 에이전트가 그 어느 것도 깨뜨리지 않고 수정 작업을 맡을 수 있습니다.",
+"for2.t": "법무·컴플라이언스·인사 담당자에게",
+"for2.p": "계약서, 정책 문서, 인사 기록은 Word 안에서 살아가고, 모든 편집에는 작성자가 붙어야 합니다. 여기서는 편집을 추적 변경으로 기록할 수 있고, 문서 비교는 Word 네이티브로 돌아가며, 검열 삭제는 텍스트를 실제로 제거한 뒤 정말 사라졌는지까지 확인합니다.",
+"for3.t": "Word 파워 유저에게",
+"for3.p": "문서를 잃는 일을 상상할 수 없는 모든 사람을 위한 것입니다. 저장은 원자적으로 검증되고, 모든 변경 전에 타임스탬프 백업이 만들어지며, 라이브 편집은 문서를 Word에 열어 둔 채 호출 하나당 Ctrl+Z 한 단계로, 커서는 건드리지 않고 진행됩니다.",
 "h2.tale": "왜 만들었나",
 "h2.inv": "재고 목록",
 "h2.cmp": "타사 비교",
@@ -398,6 +441,7 @@ ko: {
 "dept8.t": "Word 본체", "dept8.p": "COM 기반 필드 새로 고침(진짜 목차 쪽 번호), PDF 내보내기, 암호화 저장, 깨끗하게 열리는지 검증, 실행 중인 Word의 상태·잠금 관리.", "dept8.c": "도구 7종",
 "dept9.t": "라이브 편집", "dept9.p": "Word에 열려 있는 문서를 그대로 편집: 변경이 창에 바로 나타나고, 도구 호출 하나가 Ctrl+Z 한 단계이며, 커서는 절대 건드리지 않습니다. 커서 위치 삽입, 화면 스크롤 표시, 변경 추적 토글, 비정상 종료 복구.", "dept9.c": "신규 · 도구 4종 + 라우팅 9종",
 "dept10.t": "워크플로 묶음", "dept10.p": "CSV/JSON 편지 병합, 문서 묶음 일괄 작업, 검증을 동반한 진짜 검열 삭제, 접근성·서식 준수 감사, 상호 참조와 캡션 검증, 투고 준비, 앞부속 조립, 챕터 머리글, 구조 진단, PDF 가져오기.", "dept10.c": "신규 · 도구 24종",
+"dept11.t": "학술 도구", "dept11.p": "LaTeX 수식을 Word 수식으로 변환, Zotero 라이브러리 인용 삽입, 8개 출판 양식 간 변환, 리뷰 사이클 분석, 학술지 단어 수 계산, 피어 리뷰 익명화, 표 데이터 변환, 문서 분할.", "dept11.c": "신규 · 도구 23종",
 "cmp.cap": "기능",
 "cmp.h2": "GongRzhe (2.1k★, 보관됨)",
 "cmp.r1": "표 열 삽입/삭제",
@@ -412,35 +456,44 @@ ko: {
 "cmp.r10": "구역 이동/서식 이식",
 "cmp.r11": "원자적 저장 + 자동 백업",
 "v.merge": "✔ 병합 인식", "v.conv": "✔ + 상호 변환", "v.addonly": "추가만 가능", "v.styles": "✔ 12개 스타일", "v.native": "✔ Word 네이티브", "v.buggy": "불안정", "v.partial": "일부만",
-"cmp.note": "2026년 8월, 공개된 모든 Word MCP 서버 조사. 정정 환영 — 이슈를 열어 주세요.",
+"cmp.note": "2026년 8월, 공개된 모든 Word MCP 서버 조사. 정정은 언제든 환영입니다. 이슈를 열어 주세요.",
 "inst.s1": "① 기구 받기",
 "inst.s2": "② 배관 연결 (Claude Code)",
 "inst.note": "Windows 전용. 파일 기반 도구는 Word 설치가 필요 없고, COM 도구 7종(목차 새로 고침, PDF, 문법 검사…)만 로컬 Microsoft Word를 사용합니다. 전체 설정은 <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>에 있습니다.",
-"svc1.t": "물이 샙니까?", "svc1.p": "무언가 오작동하거나, 거부하거나, 이상하게 굴었다면 수리 창구에 신고서를 내 주세요 — 양식이 수리에 필요한 것만 정확히 묻습니다. 개인 문서는 절대 첨부하지 말고, 자리표시 텍스트로 구조만 재현해 주세요.", "svc1.g": "버그 신고하기 →",
+"svc1.t": "물이 샙니까?", "svc1.p": "무언가 오작동하거나, 거부하거나, 이상하게 굴었다면 수리 창구에 신고서를 내 주세요. 양식은 수리에 필요한 것만 정확히 묻습니다. 개인 문서는 절대 첨부하지 말고, 자리표시 텍스트로 구조만 재현해 주세요.", "svc1.g": "버그 신고하기 →",
 "svc2.t": "부속이 빠졌습니까?", "svc2.p": "싱크대에 마땅히 있어야 할 Word 기능이 있다면, 그 뒤에 있는 실제 작업을 설명해 주세요. 작업대에 올라갑니다.", "svc2.g": "기능 요청하기 →",
 "svc3.t": "영업용 설비가 필요합니까?", "svc3.p": "개인·비상업 용도는 무료입니다. 상업적 사용은 사용 전에 별도 라이선스가 필요하며, 바로 이 창구에서 절차를 진행합니다.", "svc3.g": "라이선스 문의하기 →",
 "svc.note": "신고는 공개 GitHub 이슈로 접수됩니다(제출에는 무료 GitHub 계정이 필요합니다). 모든 신고는 관리자의 수신함에 바로 도착합니다.",
 "g.t": "손상시키지 않도록 설계",
-"g.p1": "원자적 검증 저장. 모든 변경 전 타임스탬프 자동 백업. 편집하지 않는 부분은 바이트 단위 그대로 통과 — 수식, 텍스트 상자, 콘텐츠 컨트롤은 손대지 않고 지나갑니다. 길고 서식이 복잡한 실제 문서로 단련했습니다: 각주 171개짜리 하나, 추적 변경 126건과 검토자 메모를 실은 하나, 여기에 두 차례의 극한 모드 스트레스 캠페인까지 Word 복구 알림 한 번 없이 통과했습니다.",
-"g.p2": "라이선스에 따라 어떤 종류의 보증도 없이 있는 그대로 제공됩니다 — 위의 공학적 장치들은 여러분의 문서를 얼마나 진지하게 다루는지를 보여줄 뿐입니다. 백업을 유지하세요. (백업은 이 서버가 대신 만들어 줍니다.)",
-"f.left": "© 2026 · <b>PolyForm Noncommercial 1.0.0</b> — 개인·학술·연구 용도 무료.<br>상업적 사용은 사용 <b>전</b> 별도 라이선스가 필요합니다 — <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>이슈를 열어</a> 진행하세요.",
-"f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>오작동 신고</a><br>Claude Code와 함께, 아주 긴 하루 만에 만들었습니다. 🚰"
+"g.p1": "원자적 검증 저장. 모든 변경 전 타임스탬프 자동 백업. 편집하지 않는 부분은 바이트 단위 그대로 통과합니다. 수식, 텍스트 상자, 콘텐츠 컨트롤은 손대지 않고 지나갑니다. 길고 서식이 복잡한 실제 문서로 단련했습니다: 각주 171개짜리 하나, 추적 변경 126건과 검토자 메모를 실은 하나, 여기에 두 차례의 극한 모드 스트레스 캠페인까지 Word 복구 알림 한 번 없이 통과했습니다.",
+"g.p2": "라이선스에 따라 어떤 종류의 보증도 없이 있는 그대로 제공됩니다. 위의 공학적 장치들은 여러분의 문서를 얼마나 진지하게 다루는지를 보여줄 뿐입니다. 백업을 유지하세요. (백업은 이 서버가 대신 만들어 줍니다.)",
+"f.left": "© 2026 · <b>PolyForm Noncommercial 1.0.0</b>: 개인·학술·연구 용도 무료.<br>상업적 사용은 사용 <b>전</b> 별도 라이선스가 필요합니다. <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>이슈를 열어</a> 진행하세요.",
+"f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>오작동 신고</a><br>Claude Code로 하루 만에 프로토타입을 만들고, 수천 건의 적대적 테스트로 단단하게 다듬었습니다. 🚰"
 },
 ja: {
-"pageTitle": "KitchenSink4Word — Microsoft Word のためのすべてに、台所の流しまで",
+"pageTitle": "KitchenSink4Word: Microsoft Word のための、何でも揃う MCP サーバー",
 "m.left": "<b>EST. 2026</b> · 文書配管のための精密器具",
-"m.catalog": "カタログ № 147",
+"m.catalog": "カタログ № 170",
 "m.service": "サービス",
 "hero.stamp": "全部<br>入り",
 "hero.catno": "Model Context Protocol · Microsoft Word 用サーバー",
-"hero.tagline": "Microsoft&nbsp;Word のためのすべてに、台所の流しまで<em>おまけ</em>に — 史上もっとも完全に配管された .docx&nbsp;MCP&nbsp;サーバー。“Everything <em>plus</em> the kitchen sink.”",
+"hero.tagline": "Microsoft&nbsp;Word のためなら<em>何でも揃う</em>、まさに至れり尽くせり。史上もっとも完全に配管された .docx&nbsp;MCP&nbsp;サーバー。“Everything <em>plus</em> the kitchen sink.”",
+"hero.idiom": "英語の慣用句 “everything but the kitchen sink” は「考えつく限りのすべて」という意味。このカタログには、その流しまで入っています。",
 "spec.tools": "ツール",
 "spec.tests": "テスト",
 "spec.stress": "負荷呼び出し",
 "spec.corr": "破損",
 "btn.install": "流しを設置する",
 "btn.source": "ソースを読む",
-"no1": "第01部", "no2": "第02部", "no3": "第03部", "no4": "第04部", "no5": "第05部",
+"no0": "第00部", "no1": "第01部", "no2": "第02部", "no3": "第03部", "no4": "第04部", "no5": "第05部",
+"h2.for": "何のための道具か",
+"for.lead": ".docx に段落を書き込める道具なら、いくらでもあります。このカタログは、まだ誰も解いていなかった仕事のためにあります。Word で開いたままの本物の文書を編集し、呼び出し1回が元に戻す1段階。結合を認識する表の外科手術、一級品として扱われる引用・脚注・目次、変更履歴として書き込まれる編集、検証付きの墨消し、出版スタイルへの変換。失うわけにはいかない文書を扱う人のために作られました。",
+"for1.t": "研究者のために",
+"for1.p": "審査委員会から変更履歴だらけの原稿が戻ってきても、引用の装置は書き直しを生き延びなければなりません。ここでは引用、脚注、相互参照、APA 整合チェック、目次がすべて一級品として扱われるので、エージェントはどれも壊さずに修正作業を引き受けられます。",
+"for2.t": "法務・コンプライアンス・人事のために",
+"for2.p": "契約書も社内規程も人事記録も Word の中で生きていて、どの編集にも作成者が付いていなければなりません。ここでは編集を変更履歴として書き込め、文書比較は Word ネイティブで動き、墨消しはテキストを実際に取り除いたうえで、本当に消えたことまで確認します。",
+"for3.t": "Word のパワーユーザーのために",
+"for3.p": "文書を失うことなど考えられない、すべての人のための道具です。保存はアトミックに検証され、どの変更の前にもタイムスタンプ付きバックアップが作られ、ライブ編集は文書を Word で開いたまま、呼び出し1回につき Ctrl+Z 1段階、カーソルには触れずに進みます。",
 "h2.tale": "なぜ作ったか",
 "h2.inv": "在庫一覧",
 "h2.cmp": "他社比較",
@@ -459,6 +512,7 @@ ja: {
 "dept8.t": "Word 本体", "dept8.p": "COM 経由のフィールド更新(本物の目次ページ番号)、PDF 書き出し、暗号化保存、きれいに開けるかの検証、起動中 Word の状態とロック管理。", "dept8.c": "ツール7種",
 "dept9.t": "ライブ編集", "dept9.p": "Word で開いたままの文書を編集:変更はウィンドウに現れ、ツール呼び出し1回が Ctrl+Z の1段階、カーソルには一切触れません。カーソル位置への挿入、スクロール表示、変更履歴の切り替え、クラッシュ修復。", "dept9.c": "新着 · ツール4種 + ルーティング9種",
 "dept10.t": "ワークフロー一式", "dept10.p": "CSV/JSON からの差し込み印刷、文書セット横断の一括処理、検証付きの本当の墨消し、アクセシビリティとテンプレート準拠の監査、相互参照とキャプションの検証、投稿準備、前付けの組み立て、章ヘッダー、構造診断、PDF 取り込み。", "dept10.c": "新着 · ツール24種",
+"dept11.t": "学術スイート", "dept11.p": "LaTeX 数式を Word ネイティブ数式へ、Zotero ライブラリ引用、8 スタイル間の出版形式変換、レビュー分析、学術誌向け語数カウント、査読用匿名化、表データの相互変換、文書分割。", "dept11.c": "新着 · 23 ツール",
 "cmp.cap": "機能",
 "cmp.h2": "GongRzhe (2.1k★、アーカイブ済み)",
 "cmp.r1": "表の列の挿入/削除",
@@ -473,35 +527,44 @@ ja: {
 "cmp.r10": "セクション移動/テンプレート移植",
 "cmp.r11": "アトミック保存+自動バックアップ",
 "v.merge": "✔ 結合認識", "v.conv": "✔ + 相互変換", "v.addonly": "追加のみ", "v.styles": "✔ 12スタイル", "v.native": "✔ Word ネイティブ", "v.buggy": "不安定", "v.partial": "一部のみ",
-"cmp.note": "2026年8月、公開されている全 Word MCP サーバーの調査。訂正歓迎 — Issue をどうぞ。",
+"cmp.note": "2026年8月、公開されている全 Word MCP サーバーの調査。訂正は歓迎します。Issue をどうぞ。",
 "inst.s1": "① 器具を入手",
 "inst.s2": "② 配管を接続 (Claude Code)",
 "inst.note": "Windows 用。ファイルベースのツールに Word のインストールは不要、COM ツール7種(目次更新、PDF、文章校正…)のみローカルの Microsoft Word を使います。詳しい設定は <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a> へ。",
-"svc1.t": "水漏れですか?", "svc1.p": "何かが誤動作した、拒否した、様子がおかしい。修理窓口に報告書をどうぞ — フォームは修理に必要なことだけを尋ねます。私的な文書は決して添付せず、プレースホルダーのテキストで構造だけ再現してください。", "svc1.g": "バグを報告する →",
+"svc1.t": "水漏れですか?", "svc1.p": "何かが誤動作した、拒否した、様子がおかしい。修理窓口に報告書をどうぞ。フォームは修理に必要なことだけを尋ねます。私的な文書は決して添付せず、プレースホルダーのテキストで構造だけ再現してください。", "svc1.g": "バグを報告する →",
 "svc2.t": "部品が足りませんか?", "svc2.p": "この流しにあるべき Word の機能。その裏にある実際の作業を説明してもらえれば、作業台に載ります。", "svc2.g": "機能を要望する →",
 "svc3.t": "業務用の取り付けですか?", "svc3.p": "個人・非商用は無料です。商用利用には使用前に別途ライセンスが必要で、その手続きはこの窓口で行います。", "svc3.g": "ライセンスの相談 →",
 "svc.note": "報告は公開の GitHub Issue になります(提出には無料の GitHub アカウントが必要です)。すべての報告はメンテナーの受信箱に届きます。",
 "g.t": "壊さないための設計",
-"g.p1": "アトミックな検証付き保存。すべての変更前にタイムスタンプ付き自動バックアップ。編集しない部分はバイト単位でそのまま通過 — 数式、テキストボックス、コンテンツコントロールには手を触れません。長く書式の重い実際の文書で鍛えました:脚注171個の文書、変更履歴126件と校閲コメントを抱えた文書、さらに2回の常軌を逸したモードの負荷キャンペーンを、Word の修復ダイアログを一度も出さずに。",
-"g.p2": "ライセンスのとおり、現状有姿・無保証で提供されます — 上記の工学は、あなたの文書をどれだけ真剣に扱っているかを示すものにすぎません。バックアップは取っておいてください。(バックアップはこのサーバーが作ってくれます。)",
-"f.left": "© 2026 · <b>PolyForm Noncommercial 1.0.0</b> — 個人・学術・研究用途は無料。<br>商用利用には使用<b>前</b>に別途ライセンスが必要です — <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>Issue を開いて</a>ご相談ください。",
-"f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>不具合を報告</a><br>Claude Code とともに、とても長い一日で作りました。🚰"
+"g.p1": "アトミックな検証付き保存。すべての変更前にタイムスタンプ付き自動バックアップ。編集しない部分はバイト単位でそのまま通過します。数式、テキストボックス、コンテンツコントロールには手を触れません。長く書式の重い実際の文書で鍛えました:脚注171個の文書、変更履歴126件と校閲コメントを抱えた文書、さらに2回の常軌を逸したモードの負荷キャンペーンを、Word の修復ダイアログを一度も出さずに。",
+"g.p2": "ライセンスのとおり、現状有姿・無保証で提供されます。上記の工学は、あなたの文書をどれだけ真剣に扱っているかを示すものにすぎません。バックアップは取っておいてください。(バックアップはこのサーバーが作ってくれます。)",
+"f.left": "© 2026 · <b>PolyForm Noncommercial 1.0.0</b>:個人・学術・研究用途は無料。<br>商用利用には使用<b>前</b>に別途ライセンスが必要です。<a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>Issue を開いて</a>ご相談ください。",
+"f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>不具合を報告</a><br>Claude Code で一日でプロトタイプを作り、数千件の敵対的テストで鍛え上げました。🚰"
 },
 zh: {
-"pageTitle": "KitchenSink4Word — 为 Microsoft Word 准备的一切,连厨房水槽也在内",
+"pageTitle": "KitchenSink4Word: 为 Microsoft Word 而备,应有尽有的 MCP 服务器",
 "m.left": "<b>EST. 2026</b> · 文档管道精密器具行",
-"m.catalog": "目录 № 147",
+"m.catalog": "目录 № 170",
 "m.service": "服务",
 "hero.stamp": "无所<br>不能",
 "hero.catno": "Model Context Protocol · Microsoft Word 专用服务器",
-"hero.tagline": "为 Microsoft&nbsp;Word 备齐一切,<em>连</em>厨房水槽也一并奉上 — 迄今管道铺设最完整的 .docx&nbsp;MCP&nbsp;服务器。“Everything <em>plus</em> the kitchen sink.”",
+"hero.tagline": "为 Microsoft&nbsp;Word 而备,<em>应有尽有</em>。迄今管道铺设最完整的 .docx&nbsp;MCP&nbsp;服务器。“Everything <em>plus</em> the kitchen sink.”",
+"hero.idiom": "英语习语 “everything but the kitchen sink” 意为“能想到的一切”。这份目录连那个水槽也一并收录。",
 "spec.tools": "工具",
 "spec.tests": "测试",
 "spec.stress": "压力调用",
 "spec.corr": "损坏",
 "btn.install": "安装这台水槽",
 "btn.source": "阅读源码",
-"no1": "第01部", "no2": "第02部", "no3": "第03部", "no4": "第04部", "no5": "第05部",
+"no0": "第00部", "no1": "第01部", "no2": "第02部", "no3": "第03部", "no4": "第04部", "no5": "第05部",
+"h2.for": "它究竟是干什么用的",
+"for.lead": "能往 .docx 里写几段话的工具遍地都是。这份目录为的是那些至今无人解决的活儿:在 Word 窗口里实时编辑真实文档,每次调用就是一步撤销;识别合并单元格的表格手术;被当作头等公民的引文、脚注与目录;写成修订的编辑;带验证的真正涂黑;还有出版样式转换。它是为那些文档重要到丢不起的人造的。",
+"for1.t": "给学者",
+"for1.p": "评审委员会把满是修订的稿子退回来,引文体系还得在改稿中活下来。在这里,引文、脚注、交叉引用、APA 一致性检查和目录都是头等公民,智能体可以接手整轮修改而不碰坏其中任何一样。",
+"for2.t": "给法务、合规与人事",
+"for2.p": "合同、制度与案卷都活在 Word 里,每处改动都得有作者署名。在这里,编辑可以写成修订,文档比较用 Word 原生引擎,涂黑会真正删掉文字,再核实它确实不见了。",
+"for3.t": "给 Word 重度用户",
+"for3.p": "献给所有文档重要到不容有失的人。保存是原子化并经校验的,每次改动之前都会生成带时间戳的备份,实时编辑让文档在 Word 里保持打开,每次调用一步 Ctrl+Z,光标丝毫不动。",
 "h2.tale": "为什么会有它",
 "h2.inv": "库存清单",
 "h2.cmp": "同行对比",
@@ -520,6 +583,7 @@ zh: {
 "dept8.t": "Word 本尊", "dept8.p": "COM 驱动的域刷新(真实的目录页码)、PDF 导出、加密保存、能否干净打开的校验、运行中 Word 的状态与锁管理。", "dept8.c": "7 件工具",
 "dept9.t": "实时编辑", "dept9.p": "文档在 Word 里开着照样编辑:改动直接出现在窗口里,每次工具调用就是一步 Ctrl+Z,光标绝不被碰。光标处插入、滚动定位、修订开关、崩溃修复。", "dept9.c": "新品 · 4 件工具 + 9 件转接",
 "dept10.t": "工作流套装", "dept10.p": "CSV/JSON 邮件合并、跨文档集批量操作、带验证的真正涂黑、无障碍与模板合规审计、交叉引用与题注校验、投稿准备、前置页组装、章节页眉、结构诊断、PDF 导入。", "dept10.c": "新品 · 24 件工具",
+"dept11.t": "学术套件", "dept11.p": "LaTeX 公式转为 Word 原生公式、Zotero 文献库引用、8 种出版格式互转、评审周期分析、期刊字数统计、同行评审匿名化、表格数据互转、文档拆分。", "dept11.c": "新增 · 23 个工具",
 "cmp.cap": "能力",
 "cmp.h2": "GongRzhe(2.1k★,已归档)",
 "cmp.r1": "表格列插入/删除",
@@ -534,42 +598,51 @@ zh: {
 "cmp.r10": "整节搬移/模板移植",
 "cmp.r11": "原子保存+自动备份",
 "v.merge": "✔ 识别合并", "v.conv": "✔ + 互转", "v.addonly": "仅能添加", "v.styles": "✔ 12 种样式", "v.native": "✔ Word 原生", "v.buggy": "有缺陷", "v.partial": "不完整",
-"cmp.note": "2026 年 8 月对所有公开 Word MCP 服务器的调查。欢迎指正 — 请开 issue。",
+"cmp.note": "2026 年 8 月对所有公开 Word MCP 服务器的调查。欢迎指正,请开 issue。",
 "inst.s1": "① 领取器具",
 "inst.s2": "② 接好管道(Claude Code)",
 "inst.note": "Windows 平台。基于文件的工具无需安装 Word;七件 COM 工具(目录刷新、PDF、校对…)使用本机的 Microsoft Word。完整设置见 <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>。",
-"svc1.t": "漏水了?", "svc1.p": "有东西出错、拒绝干活或行为异常?到维修柜台填一份报告 — 表单只问修复所需的信息。切勿附上私人文档;请用占位文字重建结构。", "svc1.g": "提交缺陷报告 →",
+"svc1.t": "漏水了?", "svc1.p": "有东西出错、拒绝干活或行为异常?到维修柜台填一份报告,表单只问修复所需的信息。切勿附上私人文档;请用占位文字重建结构。", "svc1.g": "提交缺陷报告 →",
 "svc2.t": "缺个配件?", "svc2.p": "这台水槽还该有的某项 Word 能力。说明它背后的真实任务,它就会上工作台。", "svc2.g": "提出功能请求 →",
-"svc3.t": "商用装配?", "svc3.p": "个人与非商业用途免费。商业使用须在使用前另行取得许可 — 手续就在这个柜台办理。", "svc3.g": "洽谈许可 →",
+"svc3.t": "商用装配?", "svc3.p": "个人与非商业用途免费。商业使用须在使用前另行取得许可,手续就在这个柜台办理。", "svc3.g": "洽谈许可 →",
 "svc.note": "报告以公开 GitHub issue 的形式提交(需要一个免费的 GitHub 账号)。每份报告都会直达维护者的收件箱。",
 "g.t": "为“不损坏”而设计",
-"g.p1": "原子化的校验保存。每次改动前自动生成带时间戳的备份。未被编辑的内容逐字节原样通过 — 公式、文本框、内容控件一概不动。在篇幅长、格式重的真实文档上久经考验:一份带 171 个脚注,一份载有 126 条修订与审阅批注,外加两轮疯狂模式压力测试,全程未触发一次 Word 修复提示。",
-"g.p2": "依许可证按现状提供,不附带任何形式的担保 — 上述工程设计,只是说明你的文档被多么认真地对待。请保留备份。(它会替你做备份。)",
-"f.left": "© 2026 · <b>PolyForm Noncommercial 1.0.0</b> — 个人、学术与研究用途免费。<br>商业使用须在使用<b>前</b>另行取得许可 — 请<a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>开一个 issue</a> 办理。",
-"f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>报告故障</a><br>与 Claude Code 一起,在漫长的一天里建成。🚰"
+"g.p1": "原子化的校验保存。每次改动前自动生成带时间戳的备份。未被编辑的内容逐字节原样通过:公式、文本框、内容控件一概不动。在篇幅长、格式重的真实文档上久经考验:一份带 171 个脚注,一份载有 126 条修订与审阅批注,外加两轮疯狂模式压力测试,全程未触发一次 Word 修复提示。",
+"g.p2": "依许可证按现状提供,不附带任何形式的担保。上述工程设计,只是说明你的文档被多么认真地对待。请保留备份。(它会替你做备份。)",
+"f.left": "© 2026 · <b>PolyForm Noncommercial 1.0.0</b>:个人、学术与研究用途免费。<br>商业使用须在使用<b>前</b>另行取得许可,请<a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>开一个 issue</a> 办理。",
+"f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>报告故障</a><br>与 Claude Code 一天完成原型，经过数千次对抗性测试反复锤炼。🚰"
 },
 de: {
-"pageTitle": "KitchenSink4Word — Alles und dazu die Küchenspüle für Microsoft Word",
+"pageTitle": "KitchenSink4Word: Microsoft Word mit allem Drum und Dran",
 "m.left": "<b>GEGR. 2026</b> · FEINE INSTRUMENTE FÜR DOKUMENTEN-KLEMPNEREI",
-"m.catalog": "KATALOG № 147",
+"m.catalog": "KATALOG № 170",
 "m.service": "SERVICE",
 "hero.stamp": "KANN<br>ALLES",
 "hero.catno": "Model Context Protocol · Server für Microsoft Word",
-"hero.tagline": "Alles <em>und dazu</em> die Küchenspüle für Microsoft&nbsp;Word — der vollständigste .docx-MCP-Server, der je verrohrt wurde. “Everything <em>plus</em> the kitchen sink.”",
+"hero.tagline": "Für Microsoft&nbsp;Word, <em>mit allem Drum und Dran</em>: der vollständigste .docx-MCP-Server, der je verrohrt wurde. “Everything <em>plus</em> the kitchen sink.”",
+"hero.idiom": "Die englische Redewendung “everything but the kitchen sink” bedeutet: wirklich alles. Dieser Katalog liefert die Spüle gleich mit.",
 "spec.tools": "Werkzeuge",
 "spec.tests": "Tests",
 "spec.stress": "Stress-Aufrufe",
 "spec.corr": "Beschädigungen",
 "btn.install": "Spüle installieren",
 "btn.source": "Quelltext lesen",
-"no1": "ABT. 01", "no2": "ABT. 02", "no3": "ABT. 03", "no4": "ABT. 04", "no5": "ABT. 05",
+"no0": "ABT. 00", "no1": "ABT. 01", "no2": "ABT. 02", "no3": "ABT. 03", "no4": "ABT. 04", "no5": "ABT. 05",
+"h2.for": "Wofür das Ganze da ist",
+"for.lead": "Werkzeuge, die einen Absatz in eine .docx-Datei schreiben, gibt es genug. Dieser Katalog ist für die Arbeit da, die sonst niemand gelöst hat: echte Word-Dokumente bearbeiten, live im Fenster, ein Rückgängig-Schritt pro Aufruf, mit verbund-bewusster Tabellenchirurgie, Zitaten, Fußnoten und Inhaltsverzeichnis als Armaturen erster Klasse, Änderungen geschrieben als nachverfolgte Änderungen, Schwärzung mit Verifikation und Umwandlung in Publikationsstile. Gebaut für Menschen, deren Dokumente zu wichtig sind, um sie zu verlieren.",
+"for1.t": "Für die Wissenschaft",
+"for1.p": "Das Komitee schickt das Manuskript voller nachverfolgter Änderungen zurück, und der Zitierapparat muss die Überarbeitung überstehen. Zitate, Fußnoten, Querverweise, APA-Paritätsprüfung und Inhaltsverzeichnis sind hier erste Klasse, sodass ein Agent die Überarbeitungsrunde übernehmen kann, ohne irgendetwas davon zu zerbrechen.",
+"for2.t": "Für Recht, Compliance und Personal",
+"for2.p": "Verträge, Richtlinien und Akten leben in Word, und jede Änderung braucht einen Urheber. Hier lassen sich Änderungen als nachverfolgte Änderungen schreiben, der Dokumentvergleich läuft Word-nativ, und die Schwärzung entfernt den Text wirklich und prüft anschließend, dass er verschwunden ist.",
+"for3.t": "Für Word-Poweruser",
+"for3.p": "Für alle, deren Dokumente zu wichtig sind, um mit ihnen zu spielen. Jedes Speichern ist atomar und validiert, vor jeder Änderung entsteht ein Backup mit Zeitstempel, und die Live-Bearbeitung lässt das Dokument in Word geöffnet, ein Strg+Z-Schritt pro Aufruf, der Cursor bleibt unberührt.",
 "h2.tale": "Warum es das gibt",
 "h2.inv": "Das Inventar",
 "h2.cmp": "Gegen die Konkurrenz",
 "h2.install": "Installation",
 "h2.svc": "Serviceabteilung",
 "tale.label": "EIN WARNENDES BEISPIEL",
-"tale.p1": "Ein KI-Agent brauchte einmal <em>fünfzehn Minuten</em>, um <em>zwanzig Tabellenzellen</em> in einem Word-Dokument zu ändern. Nicht weil der Agent langsam war — weil jedem Word-MCP-Server auf dem Markt etwas fehlte. Einer konnte keine Tabellenspalte löschen. Ein anderer hatte keine Fußnoten. Ein dritter kam an kein Inhaltsverzeichnis heran. Selbst alle drei zusammen schafften die Aufgabe nicht.",
+"tale.p1": "Ein KI-Agent brauchte einmal <em>fünfzehn Minuten</em>, um <em>zwanzig Tabellenzellen</em> in einem Word-Dokument zu ändern. Nicht weil der Agent langsam war, sondern weil jedem Word-MCP-Server auf dem Markt etwas fehlte. Einer konnte keine Tabellenspalte löschen. Ein anderer hatte keine Fußnoten. Ein dritter kam an kein Inhaltsverzeichnis heran. Selbst alle drei zusammen schafften die Aufgabe nicht.",
 "tale.p2": "Also wurde stattdessen dies gebaut: ein Server mit <em>allem</em>. Die Änderung der zwanzig Zellen ist heute ein Aufruf und in zwanzig Millisekunden erledigt. Ihre Agenten werden diese Mühsal schlicht nie kennenlernen.",
 "dept1.t": "Tabellen", "dept1.p": "Verbund-bewusstes Einfügen/Löschen von Spalten, Massen-Zellbearbeitung in einem Aufruf, Verbinden/Teilen, gridBefore-Zeilen, verschachtelte Tabellen, Sortieren, Teilen, benannte Vorlagen, Kopfzeilen-Wiederholung.", "dept1.c": "24 WERKZEUGE",
 "dept2.t": "Verweise", "dept2.p": "Native Zitate &amp; Literaturverzeichnis (12 Stile, in Word verifiziert gerendert), Fuß- &amp; Endnoten mit Umwandlung, Indexerstellung, Inhalts- &amp; Abbildungsverzeichnisse, Querverweise.", "dept2.c": "17 WERKZEUGE",
@@ -581,6 +654,7 @@ de: {
 "dept8.t": "Word selbst", "dept8.p": "COM-gestützte Feldaktualisierung (echte Inhaltsverzeichnis-Seitenzahlen), PDF-Export, verschlüsseltes Speichern, Öffnet-sauber-Prüfung, Status- und Sperrverwaltung des laufenden Word.", "dept8.c": "7 WERKZEUGE",
 "dept9.t": "Live-Bearbeitung", "dept9.p": "Dokumente bearbeiten, während sie in Word GEÖFFNET sind: Änderungen erscheinen im Fenster, jeder Werkzeugaufruf ist ein Strg+Z-Schritt, der Cursor bleibt unberührt. Einfügen an der Cursorposition, Hinscrollen, Umschalten der Änderungsnachverfolgung, Absturzreparatur.", "dept9.c": "NEU · 4 WERKZEUGE + 9 GEROUTET",
 "dept10.t": "Workflow-Garnituren", "dept10.p": "Serienbriefe aus CSV/JSON, Stapelläufe über Dokumentsätze, echte Schwärzung mit Verifikation, Audits für Barrierefreiheit &amp; Vorlagenkonformität, Prüfung von Querverweisen und Beschriftungen, Einreichungsvorbereitung, Titelei-Montage, Kapitelkopfzeilen, Strukturdiagnose, PDF-Import.", "dept10.c": "NEU · 24 WERKZEUGE",
+"dept11.t": "Akademische Suite", "dept11.p": "LaTeX-Formeln als native Word-Formeln, Zitate aus der Zotero-Bibliothek, Stilkonvertierung zwischen acht Publikationsformaten, Review-Analysen, Wortzählung für Fachzeitschriften, Anonymisierung für Peer-Review, Tabellendaten-Austausch, Dokumentaufteilung.", "dept11.c": "NEU · 23 TOOLS",
 "cmp.cap": "Fähigkeit",
 "cmp.h2": "GongRzhe (2.1k★, archiviert)",
 "cmp.r1": "Tabellenspalten einfügen/löschen",
@@ -595,42 +669,51 @@ de: {
 "cmp.r10": "Abschnitte verschieben / Vorlagen-Transfer",
 "cmp.r11": "Atomares Speichern + Auto-Backup",
 "v.merge": "✔ verbund-bewusst", "v.conv": "✔ + Umwandlung", "v.addonly": "nur Hinzufügen", "v.styles": "✔ 12 Stile", "v.native": "✔ Word-nativ", "v.buggy": "fehlerhaft", "v.partial": "teilweise",
-"cmp.note": "Erhebung über jeden öffentlichen Word-MCP-Server, August 2026. Korrekturen willkommen — einfach ein Issue öffnen.",
+"cmp.note": "Erhebung über jeden öffentlichen Word-MCP-Server, August 2026. Korrekturen willkommen: einfach ein Issue öffnen.",
 "inst.s1": "① DIE ARMATUR BESORGEN",
 "inst.s2": "② DIE ROHRE ANSCHLIESSEN (Claude Code)",
 "inst.note": "Windows. Dateibasierte Werkzeuge brauchen kein installiertes Word; die sieben COM-Werkzeuge (Inhaltsverzeichnis-Aktualisierung, PDF, Korrekturhilfen…) nutzen ein lokales Microsoft Word. Vollständige Einrichtung im <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>.",
-"svc1.t": "Ein Leck gefunden?", "svc1.p": "Etwas hat gehakt, verweigert oder sich danebenbenommen. Geben Sie am Reparaturschalter einen Bericht ab — das Formular fragt genau das ab, was eine Reparatur braucht. Hängen Sie nie ein privates Dokument an; bauen Sie die Struktur mit Platzhaltertext nach.", "svc1.g": "Fehler melden →",
+"svc1.t": "Ein Leck gefunden?", "svc1.p": "Etwas hat gehakt, verweigert oder sich danebenbenommen. Geben Sie am Reparaturschalter einen Bericht ab; das Formular fragt genau das ab, was eine Reparatur braucht. Hängen Sie nie ein privates Dokument an; bauen Sie die Struktur mit Platzhaltertext nach.", "svc1.g": "Fehler melden →",
 "svc2.t": "Fehlt ein Anbauteil?", "svc2.p": "Eine Word-Fähigkeit, die die Spüle auch haben sollte. Beschreiben Sie die echte Aufgabe dahinter, und sie kommt auf die Werkbank.", "svc2.g": "Funktion wünschen →",
-"svc3.t": "Gewerbliche Montage?", "svc3.p": "Kostenlos für private und nichtkommerzielle Nutzung. Kommerzielle Nutzung erfordert vor der Nutzung eine gesonderte Lizenz — an diesem Schalter wird sie vereinbart.", "svc3.g": "Lizenz vereinbaren →",
+"svc3.t": "Gewerbliche Montage?", "svc3.p": "Kostenlos für private und nichtkommerzielle Nutzung. Kommerzielle Nutzung erfordert vor der Nutzung eine gesonderte Lizenz; an diesem Schalter wird sie vereinbart.", "svc3.g": "Lizenz vereinbaren →",
 "svc.note": "Berichte sind öffentliche GitHub-Issues (zum Einreichen genügt ein kostenloses GitHub-Konto). Jeder Bericht landet im Posteingang des Maintainers.",
 "g.t": "Konstruiert mit dem Ziel, nichts zu beschädigen",
-"g.p1": "Atomares, validiertes Speichern. Automatische Backups mit Zeitstempel vor jeder Änderung. Byte-identische Durchleitung von allem, was nicht bearbeitet wird — Formeln, Textfelder und Inhaltssteuerelemente passieren unangetastet. Erprobt an langen, stark formatierten realen Dokumenten: eines mit 171 Fußnoten, eines mit 126 nachverfolgten Änderungen und Prüferkommentaren, dazu zwei Stresskampagnen im Irrsinnsmodus ohne einen einzigen Word-Reparaturdialog.",
-"g.p2": "Bereitgestellt wie besehen, ohne Gewährleistung jeglicher Art, gemäß Lizenz — die obige Ingenieursarbeit zeigt lediglich, wie ernst Ihre Dokumente genommen werden. Behalten Sie Backups. (Es legt sie für Sie an.)",
-"f.left": "© 2026 · <b>PolyForm Noncommercial 1.0.0</b> — kostenlos für private, akademische &amp; Forschungsnutzung.<br>Kommerzielle Nutzung erfordert <b>vor</b> der Nutzung eine gesonderte Lizenz — <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>ein Issue öffnen</a>, um sie zu vereinbaren.",
-"f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>Störung melden</a><br>Gebaut mit Claude Code, an einem sehr langen Tag. 🚰"
+"g.p1": "Atomares, validiertes Speichern. Automatische Backups mit Zeitstempel vor jeder Änderung. Byte-identische Durchleitung von allem, was nicht bearbeitet wird: Formeln, Textfelder und Inhaltssteuerelemente passieren unangetastet. Erprobt an langen, stark formatierten realen Dokumenten: eines mit 171 Fußnoten, eines mit 126 nachverfolgten Änderungen und Prüferkommentaren, dazu zwei Stresskampagnen im Irrsinnsmodus ohne einen einzigen Word-Reparaturdialog.",
+"g.p2": "Bereitgestellt wie besehen, ohne Gewährleistung jeglicher Art, gemäß Lizenz; die obige Ingenieursarbeit zeigt lediglich, wie ernst Ihre Dokumente genommen werden. Behalten Sie Backups. (Es legt sie für Sie an.)",
+"f.left": "© 2026 · <b>PolyForm Noncommercial 1.0.0</b>: kostenlos für private, akademische &amp; Forschungsnutzung.<br>Kommerzielle Nutzung erfordert <b>vor</b> der Nutzung eine gesonderte Lizenz; <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>ein Issue öffnen</a>, um sie zu vereinbaren.",
+"f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>Störung melden</a><br>Mit Claude Code an einem Tag prototypisiert, dann gehärtet durch Tausende adversarialer Testaufrufe. 🚰"
 },
 fr: {
-"pageTitle": "KitchenSink4Word — Tout, jusqu'à l'évier de la cuisine, pour Microsoft Word",
+"pageTitle": "KitchenSink4Word : absolument tout pour Microsoft Word, jusqu'au moindre détail",
 "m.left": "<b>FONDÉ EN 2026</b> · INSTRUMENTS DE PRÉCISION POUR PLOMBERIE DOCUMENTAIRE",
-"m.catalog": "CATALOGUE № 147",
+"m.catalog": "CATALOGUE № 170",
 "m.service": "SERVICE",
 "hero.stamp": "FAIT<br>TOUT",
 "hero.catno": "Model Context Protocol · Serveur pour Microsoft Word",
-"hero.tagline": "Tout, <em>jusqu'à</em> l'évier de la cuisine, pour Microsoft&nbsp;Word — le serveur MCP .docx le plus complet jamais raccordé. “Everything <em>plus</em> the kitchen sink.”",
+"hero.tagline": "Pour Microsoft&nbsp;Word : <em>absolument tout, jusqu'au moindre détail</em>. Le serveur MCP .docx le plus complet jamais raccordé. “Everything <em>plus</em> the kitchen sink.”",
+"hero.idiom": "L'expression anglaise “everything but the kitchen sink” signifie « absolument tout ». Ce catalogue livre l'évier avec.",
 "spec.tools": "Outils",
 "spec.tests": "Tests",
 "spec.stress": "Appels d'endurance",
 "spec.corr": "Corruptions",
 "btn.install": "Installer l'évier",
 "btn.source": "Lire la source",
-"no1": "RAYON 01", "no2": "RAYON 02", "no3": "RAYON 03", "no4": "RAYON 04", "no5": "RAYON 05",
+"no0": "RAYON 00", "no1": "RAYON 01", "no2": "RAYON 02", "no3": "RAYON 03", "no4": "RAYON 04", "no5": "RAYON 05",
+"h2.for": "À quoi ça sert, au juste",
+"for.lead": "Des outils capables d'écrire un paragraphe dans un .docx, il y en a plein. Ce catalogue existe pour le travail que personne d'autre n'a résolu : modifier de vrais documents Word, en direct dans la fenêtre, un cran d'annulation par appel, avec la chirurgie de tableaux tenant compte des fusions, les citations, notes de bas de page et table des matières traitées en pièces de première classe, les modifications écrites en suivi des modifications, le caviardage avec vérification et la conversion aux styles de publication. Il a été construit pour ceux dont les documents sont trop importants pour être perdus.",
+"for1.t": "Pour l'universitaire",
+"for1.p": "Le comité renvoie le manuscrit couvert de révisions suivies, et l'appareil critique doit survivre à la réécriture. Ici, citations, notes de bas de page, renvois, contrôle de parité APA et table des matières sont de première classe : un agent peut prendre en charge la passe de révision sans rien casser.",
+"for2.t": "Pour le juridique, la conformité et les RH",
+"for2.p": "Contrats, politiques et dossiers vivent dans Word, et chaque modification doit porter un auteur. Ici, les modifications peuvent s'écrire en suivi des modifications, la comparaison de documents tourne en natif Word, et le caviardage supprime réellement le texte, puis vérifie qu'il a bien disparu.",
+"for3.t": "Pour l'utilisateur exigeant de Word",
+"for3.p": "Pour tous ceux dont les documents sont trop précieux pour courir le moindre risque. Chaque enregistrement est atomique et validé, une sauvegarde horodatée précède chaque modification, et l'édition en direct laisse le document ouvert dans Word, un cran de Ctrl+Z par appel, sans jamais toucher au curseur.",
 "h2.tale": "Pourquoi ça existe",
 "h2.inv": "L'inventaire",
 "h2.cmp": "Face à la concurrence",
 "h2.install": "Installation",
 "h2.svc": "Service après-vente",
 "tale.label": "UN CONTE ÉDIFIANT",
-"tale.p1": "Un agent IA a un jour mis <em>quinze minutes</em> à modifier <em>vingt cellules de tableau</em> dans un document Word. Non pas que l'agent fût lent — c'est que chaque serveur MCP Word du marché avait une lacune. L'un ne savait pas supprimer une colonne de tableau. Un autre n'avait pas de notes de bas de page. Un troisième ne pouvait pas toucher à une table des matières. Même installés tous les trois, le travail restait impossible.",
+"tale.p1": "Un agent IA a un jour mis <em>quinze minutes</em> à modifier <em>vingt cellules de tableau</em> dans un document Word. Non pas que l'agent fût lent : c'est que chaque serveur MCP Word du marché avait une lacune. L'un ne savait pas supprimer une colonne de tableau. Un autre n'avait pas de notes de bas de page. Un troisième ne pouvait pas toucher à une table des matières. Même installés tous les trois, le travail restait impossible.",
 "tale.p2": "Alors, à la place, ceci a été construit : un seul serveur avec <em>tout</em>. La modification des vingt cellules tient désormais en un appel et s'achève en vingt millisecondes. Vos agents ne connaîtront tout simplement jamais cette galère.",
 "dept1.t": "Tableaux", "dept1.p": "Insertion/suppression de colonnes tenant compte des fusions, modification de cellules en masse en un appel, fusion/défusion, lignes gridBefore, tableaux imbriqués, tri, scission, styles nommés, répétition de l'en-tête.", "dept1.c": "24 OUTILS",
 "dept2.t": "Références", "dept2.p": "Citations et bibliographie natives (12 styles, rendu vérifié dans Word), notes de bas de page et de fin avec conversion, génération d'index, tables des matières et des légendes, renvois.", "dept2.c": "17 OUTILS",
@@ -642,6 +725,7 @@ fr: {
 "dept8.t": "Word en personne", "dept8.p": "Actualisation des champs via COM (vrais numéros de page de la table des matières), export PDF, enregistrement chiffré, contrôle d'ouverture propre, état du Word en cours et gestion des verrous.", "dept8.c": "7 OUTILS",
 "dept9.t": "Édition en direct", "dept9.p": "Modifier des documents pendant qu'ils sont OUVERTS dans Word : les changements apparaissent dans la fenêtre, chaque appel d'outil est un cran de Ctrl+Z, le curseur n'est jamais touché. Insertion au point du curseur, défilement d'affichage, bascule du suivi des modifications, réparation après plantage.", "dept9.c": "NOUVEAU · 4 OUTILS + 9 ROUTÉS",
 "dept10.t": "Panoplies de flux", "dept10.p": "Publipostage depuis CSV/JSON, opérations par lots sur des ensembles de documents, vrai caviardage avec vérification, audits d'accessibilité et de conformité aux modèles, validation des renvois et des légendes, préparation à la soumission, assemblage des pages liminaires, en-têtes de chapitre, diagnostics structurels, import PDF.", "dept10.c": "NOUVEAU · 24 OUTILS",
+"dept11.t": "Suite académique", "dept11.p": "Équations LaTeX en mathématiques Word natives, citations depuis la bibliothèque Zotero, conversion entre huit styles de publication, analyses du cycle de relecture, comptage de mots pour revues, anonymisation pour évaluation par les pairs, échange de données de tableaux, découpage de documents.", "dept11.c": "NOUVEAU · 23 OUTILS",
 "cmp.cap": "Capacité",
 "cmp.h2": "GongRzhe (2.1k★, archivé)",
 "cmp.r1": "Insertion/suppression de colonnes",
@@ -656,35 +740,44 @@ fr: {
 "cmp.r10": "Déplacement de sections / transfert de modèles",
 "cmp.r11": "Enregistrements atomiques + sauvegarde auto",
 "v.merge": "✔ fusions gérées", "v.conv": "✔ + conversion", "v.addonly": "ajout seul", "v.styles": "✔ 12 styles", "v.native": "✔ natif Word", "v.buggy": "bogué", "v.partial": "partiel",
-"cmp.note": "Recensement de tous les serveurs MCP Word publics, août 2026. Corrections bienvenues — ouvrez un ticket.",
+"cmp.note": "Recensement de tous les serveurs MCP Word publics, août 2026. Corrections bienvenues : ouvrez un ticket.",
 "inst.s1": "① SE PROCURER LA ROBINETTERIE",
 "inst.s2": "② RACCORDER LA TUYAUTERIE (Claude Code)",
 "inst.note": "Windows. Les outils sur fichier ne demandent aucune installation de Word ; les sept outils COM (actualisation de la table des matières, PDF, vérification linguistique…) utilisent un Microsoft Word local. Configuration complète dans le <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>.",
-"svc1.t": "Une fuite ?", "svc1.p": "Quelque chose a buggé, refusé ou déraillé. Déposez un signalement au comptoir des réparations — le formulaire demande exactement ce qu'il faut pour réparer. Ne joignez jamais un document privé ; reconstruisez la structure avec du texte de substitution.", "svc1.g": "Signaler un bogue →",
+"svc1.t": "Une fuite ?", "svc1.p": "Quelque chose a buggé, refusé ou déraillé. Déposez un signalement au comptoir des réparations : le formulaire demande exactement ce qu'il faut pour réparer. Ne joignez jamais un document privé ; reconstruisez la structure avec du texte de substitution.", "svc1.g": "Signaler un bogue →",
 "svc2.t": "Un accessoire manquant ?", "svc2.p": "Une capacité de Word que l'évier devrait aussi avoir. Décrivez la tâche réelle qui la motive et elle rejoint l'établi.", "svc2.g": "Demander une fonction →",
-"svc3.t": "Installation commerciale ?", "svc3.p": "Gratuit pour un usage personnel et non commercial. L'usage commercial exige une licence distincte avant utilisation — c'est à ce comptoir qu'elle se négocie.", "svc3.g": "Convenir d'une licence →",
+"svc3.t": "Installation commerciale ?", "svc3.p": "Gratuit pour un usage personnel et non commercial. L'usage commercial exige une licence distincte avant utilisation ; c'est à ce comptoir qu'elle se négocie.", "svc3.g": "Convenir d'une licence →",
 "svc.note": "Les signalements sont des tickets GitHub publics (un compte GitHub gratuit suffit pour en déposer un). Chaque signalement atterrit dans la boîte du mainteneur.",
 "g.t": "Conçu pour ne pas corrompre",
-"g.p1": "Enregistrements atomiques validés. Sauvegardes automatiques horodatées avant chaque modification. Passage à l'identique, octet pour octet, de tout ce qui n'est pas modifié — équations, zones de texte et contrôles de contenu traversent intacts. Éprouvé sur de vrais documents longs et lourdement mis en forme : l'un portant 171 notes de bas de page, l'autre 126 révisions suivies et commentaires de relecteurs, plus deux campagnes d'endurance en mode démentiel sans une seule invite de réparation de Word.",
-"g.p2": "Fourni tel quel, sans garantie d'aucune sorte, conformément à la licence — l'ingénierie ci-dessus dit simplement avec quel sérieux vos documents sont traités. Gardez des sauvegardes. (Il les fait pour vous.)",
-"f.left": "© 2026 · <b>PolyForm Noncommercial 1.0.0</b> — gratuit pour un usage personnel, académique et de recherche.<br>L'usage commercial exige une licence distincte <b>avant</b> utilisation — <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>ouvrez un ticket</a> pour la convenir.",
-"f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>signaler un pépin</a><br>Construit avec Claude Code, en une très longue journée. 🚰"
+"g.p1": "Enregistrements atomiques validés. Sauvegardes automatiques horodatées avant chaque modification. Passage à l'identique, octet pour octet, de tout ce qui n'est pas modifié : équations, zones de texte et contrôles de contenu traversent intacts. Éprouvé sur de vrais documents longs et lourdement mis en forme : l'un portant 171 notes de bas de page, l'autre 126 révisions suivies et commentaires de relecteurs, plus deux campagnes d'endurance en mode démentiel sans une seule invite de réparation de Word.",
+"g.p2": "Fourni tel quel, sans garantie d'aucune sorte, conformément à la licence ; l'ingénierie ci-dessus dit simplement avec quel sérieux vos documents sont traités. Gardez des sauvegardes. (Il les fait pour vous.)",
+"f.left": "© 2026 · <b>PolyForm Noncommercial 1.0.0</b> : gratuit pour un usage personnel, académique et de recherche.<br>L'usage commercial exige une licence distincte <b>avant</b> utilisation ; <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>ouvrez un ticket</a> pour la convenir.",
+"f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>signaler un pépin</a><br>Prototypé avec Claude Code en une journée, puis endurci par des milliers d'appels de test adversariaux. 🚰"
 },
 es: {
-"pageTitle": "KitchenSink4Word — Todo y además el fregadero de la cocina, para Microsoft Word",
+"pageTitle": "KitchenSink4Word: de todo para Microsoft Word, hasta lo que no imaginas",
 "m.left": "<b>EST. 2026</b> · INSTRUMENTOS FINOS PARA FONTANERÍA DOCUMENTAL",
-"m.catalog": "CATÁLOGO № 147",
+"m.catalog": "CATÁLOGO № 170",
 "m.service": "SERVICIO",
 "hero.stamp": "LO HACE<br>TODO",
 "hero.catno": "Model Context Protocol · Servidor para Microsoft Word",
-"hero.tagline": "Todo, <em>y además</em> el fregadero de la cocina, para Microsoft&nbsp;Word — el servidor MCP .docx más completo jamás entubado. “Everything <em>plus</em> the kitchen sink.”",
+"hero.tagline": "Para Microsoft&nbsp;Word: <em>de todo, hasta lo que no imaginas</em>. El servidor MCP .docx más completo jamás entubado. “Everything <em>plus</em> the kitchen sink.”",
+"hero.idiom": "La expresión inglesa “everything but the kitchen sink” significa «absolutamente todo». Este catálogo incluye hasta el fregadero.",
 "spec.tools": "Herramientas",
 "spec.tests": "Pruebas",
 "spec.stress": "Llamadas de estrés",
 "spec.corr": "Corrupciones",
 "btn.install": "Instalar el fregadero",
 "btn.source": "Leer el código",
-"no1": "DEPTO. 01", "no2": "DEPTO. 02", "no3": "DEPTO. 03", "no4": "DEPTO. 04", "no5": "DEPTO. 05",
+"no0": "DEPTO. 00", "no1": "DEPTO. 01", "no2": "DEPTO. 02", "no3": "DEPTO. 03", "no4": "DEPTO. 04", "no5": "DEPTO. 05",
+"h2.for": "Para qué sirve realmente",
+"for.lead": "Herramientas que escriben un párrafo en un .docx hay de sobra. Este catálogo existe para el trabajo que nadie más había resuelto: editar documentos de Word reales, en vivo en la ventana, un paso de deshacer por llamada, con cirugía de tablas consciente de las combinaciones, citas, notas al pie y tabla de contenido tratadas como piezas de primera clase, ediciones escritas como cambios rastreados, censura con verificación y conversión a estilos de publicación. Se construyó para quienes tienen documentos demasiado importantes como para perderlos.",
+"for1.t": "Para el académico",
+"for1.p": "El comité devuelve el manuscrito lleno de revisiones rastreadas y el aparato de citas tiene que sobrevivir a la reescritura. Aquí las citas, las notas al pie, las referencias cruzadas, la comprobación de paridad APA y la tabla de contenido son de primera clase, así que un agente puede encargarse de la pasada de revisión sin romper nada de eso.",
+"for2.t": "Para legal, cumplimiento y RR. HH.",
+"for2.p": "Los contratos, las políticas y los expedientes viven en Word, y cada edición necesita un autor. Aquí las ediciones pueden escribirse como cambios rastreados, la comparación de documentos corre en modo nativo de Word, y la censura elimina el texto de verdad y luego comprueba que ha desaparecido.",
+"for3.t": "Para el usuario avanzado de Word",
+"for3.p": "Para cualquiera cuyos documentos sean demasiado importantes como para arriesgarlos. Cada guardado es atómico y validado, una copia de seguridad con marca de tiempo precede a cada cambio, y la edición en vivo deja el documento abierto en Word, con un paso de Ctrl+Z por llamada y el cursor intacto.",
 "h2.tale": "Por qué existe",
 "h2.inv": "El inventario",
 "h2.cmp": "Frente a la competencia",
@@ -703,6 +796,7 @@ es: {
 "dept8.t": "El propio Word", "dept8.p": "Actualización de campos vía COM (números de página reales en la tabla de contenido), exportación a PDF, guardado cifrado, validación de apertura limpia, estado del Word en ejecución y gestión de bloqueos.", "dept8.c": "7 HERRAMIENTAS",
 "dept9.t": "Edición en vivo", "dept9.p": "Edite documentos mientras están ABIERTOS en Word: los cambios aparecen en la ventana, cada llamada de herramienta es un paso de Ctrl+Z y el cursor nunca se toca. Inserción en el punto del cursor, desplazamiento para mostrar, alternar el control de cambios, reparación tras un cierre inesperado.", "dept9.c": "NUEVO · 4 HERRAMIENTAS + 9 ENRUTADAS",
 "dept10.t": "Juegos de flujo de trabajo", "dept10.p": "Combinación de correspondencia desde CSV/JSON, operaciones por lotes sobre conjuntos de documentos, censura auténtica con verificación, auditorías de accesibilidad y de conformidad con plantillas, validación de referencias cruzadas y títulos, preparación de envíos, montaje de páginas preliminares, encabezados de capítulo, diagnósticos estructurales, importación de PDF.", "dept10.c": "NUEVO · 24 HERRAMIENTAS",
+"dept11.t": "Suite académica", "dept11.p": "Ecuaciones LaTeX como matemáticas nativas de Word, citas desde la biblioteca de Zotero, conversión entre ocho estilos de publicación, análisis del ciclo de revisión, recuento de palabras para revistas, anonimización para revisión por pares, intercambio de datos de tablas, división de documentos.", "dept11.c": "NUEVO · 23 HERRAMIENTAS",
 "cmp.cap": "Capacidad",
 "cmp.h2": "GongRzhe (2.1k★, archivado)",
 "cmp.r1": "Insertar/eliminar columnas de tabla",
@@ -728,8 +822,8 @@ es: {
 "g.t": "Diseñado para no corromper",
 "g.p1": "Guardados atómicos validados. Copias de seguridad automáticas con marca de tiempo antes de cada cambio. Paso idéntico byte a byte de todo lo que no se edita: ecuaciones, cuadros de texto y controles de contenido pasan intactos. Curtido en documentos reales largos y muy formateados: uno con 171 notas al pie, otro con 126 revisiones rastreadas y comentarios de revisores, más dos campañas de estrés en modo demencial sin un solo aviso de reparación de Word.",
 "g.p2": "Se ofrece tal cual, sin garantía de ningún tipo, según la licencia: la ingeniería anterior solo muestra con cuánta seriedad se tratan sus documentos. Conserve copias de seguridad. (Él las hace por usted.)",
-"f.left": "© 2026 · <b>PolyForm Noncommercial 1.0.0</b> — gratis para uso personal, académico y de investigación.<br>El uso comercial requiere una licencia aparte <b>antes</b> del uso — <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>abra un issue</a> para gestionarla.",
-"f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>informar de un fallo</a><br>Construido con Claude Code, en un día muy largo. 🚰"
+"f.left": "© 2026 · <b>PolyForm Noncommercial 1.0.0</b>: gratis para uso personal, académico y de investigación.<br>El uso comercial requiere una licencia aparte <b>antes</b> del uso; <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>abra un issue</a> para gestionarla.",
+"f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>informar de un fallo</a><br>Prototipado con Claude Code en un día y endurecido con miles de llamadas de prueba adversariales. 🚰"
 }
 };
 /*I18N-END*/

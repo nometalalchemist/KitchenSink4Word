@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "kitchensink4word",
   "display_name": "KitchenSink4Word",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Everything plus the kitchen sink for Microsoft Word. 147 tools for creating, editing, and formatting .docx documents, plus live in-Word editing.",
   "long_description": "A Model Context Protocol server for Microsoft Word documents. 147 tools across document creation, text and formatting, tables, styles, images, headers and footers, footnotes, comments, tracked changes, mail merge, batch operations, redaction, compliance and accessibility audits, and document diagnostics. Live mode edits documents open in Word in place, with each tool call landing as a single undo step; live mode requires Windows with Microsoft Word installed. The file-based majority of the toolset works on any .docx file without Word running. Launching this bundle requires uv (the uvx command) on your machine; the server itself is fetched from PyPI on first launch.",
   "author": {
@@ -30,7 +30,7 @@
     "mcp_config": {
       "command": "uvx",
       "args": [
-        "kitchensink4word==1.5.0"
+        "kitchensink4word==1.5.1"
       ]
     }
   },

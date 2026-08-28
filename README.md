@@ -7,13 +7,14 @@
 [![License: PolyForm NC](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE)
 
 **Everything plus the kitchen sink for Microsoft Word.** The most complete
-Word (.docx) MCP server available — 170 tools, engineered not to corrupt, stress-tested against long, heavily formatted real-world documents. Now with live editing: documents open in Word are edited in place, visibly, with each tool call landing as a single Ctrl+Z step.
+Word (.docx) MCP server available: 170 tools, engineered not to corrupt, stress-tested against long, heavily formatted real-world documents. Now with live editing: documents open in Word are edited in place, visibly, with each tool call landing as a single Ctrl+Z step.
 
 > **The origin story:** an AI agent once needed *fifteen minutes* to edit
 > twenty table cells in a Word document, because no existing Word MCP could
 > delete a table column, bulk-edit cells, manage footnotes, AND insert a TOC.
-> So instead of installing three mediocre servers, this one got built in a
-> day — and now your agents won't have that problem.
+> So instead of installing three mediocre servers, this one got built.
+> Prototyped in a day, then hardened until adversarial test agents ran out
+> of complaints. Your agents won't have that problem.
 
 ## Why this one (the honest comparison)
 
@@ -46,7 +47,7 @@ validation on Windows.
 
 ## What's new in v1.4 (2026-08-28)
 
-**The workflow tier** — 24 new tools that turn document primitives into
+**The workflow tier**: 24 new tools that turn document primitives into
 complete jobs:
 
 - **Document production**: `mail_merge` (template + CSV/JSON → one document
@@ -65,9 +66,9 @@ complete jobs:
   nothing), `validate_captions`, `check_defined_terms` (legal drafts:
   defined-but-unused, used-but-undefined, defined twice, used before
   defined).
-- **Finishing moves**: `prepare_for_submission` (accept all revisions,
-  strip comments and identifying metadata in one call — content untouched,
-  idempotent), `redact_text` (TRUE removal from text, tables, headers,
+- **Finishing moves**: `prepare_for_submission` (accept all revisions and
+  strip comments and identifying metadata in one idempotent call; content
+  itself stays untouched), `redact_text` (TRUE removal from text, tables, headers,
   footnotes, comments, properties, hyperlinks, field codes and tracked
   deletions, with a verification re-scan and an explicit list of what was
   NOT examined), `assemble_front_matter` (title page through TOC with
@@ -79,8 +80,8 @@ complete jobs:
 
 ## What's new in v1.3 (2026-08-28)
 
-**Live editing.** A document open in Word no longer has to be closed first —
-the high-value tools route to a live COM layer automatically when the file is
+**Live editing.** A document open in Word no longer has to be closed first.
+The high-value tools route to a live COM layer automatically when the file is
 locked (or explicitly with `live="force"`; `live="off"` restores the old
 refusal):
 
@@ -92,7 +93,7 @@ refusal):
   undo.
 - **The cursor is sacred.** All addressing is Range-based; the user's
   selection, scroll position, and view are never touched. (One deliberate
-  exception: `live_scroll_to` brings a location into view on request —
+  exception: `live_scroll_to` brings a location into view on request,
   without selecting it.)
 - Routed tools: `search_and_replace`, `insert_paragraphs`,
   `delete_paragraphs`, `set_cells`, `format_text`, `get_text`, `find_text`,
@@ -106,13 +107,13 @@ refusal):
 - Protection-restricted documents get typed refusals up front; documents in
   Protected View are named as such.
 - Reference-manager field codes (Zotero and friends) survive live and
-  file-based edits around them — verified by dedicated tests.
+  file-based edits around them, verified by dedicated tests.
 
 ## What's new in v1.2 (2026-08-28)
 
 - **Word-native citations & bibliography**: structured source store, CITATION
   fields with page/suppress switches, BIBLIOGRAPHY field, 12 selectable styles
-  (APA, Chicago, MLA, IEEE, ...) — verified end-to-end: Word renders the
+  (APA, Chicago, MLA, IEEE, ...), verified end-to-end: Word renders the
   fields in the selected style.
 - **Index** (XE entries with nesting and see-references + INDEX field) and
   **caption lists** (List of Tables/Figures).
@@ -145,13 +146,13 @@ refusal):
   not 20 round-trips.
 - **Tracked-change writing.** `track=True, author="Jane"` on replace/insert/
   delete/cell tools produces real Word revisions the recipient can
-  accept/reject — proven round-trip against the server's own revision engine.
+  accept/reject, proven round-trip against the server's own revision engine.
 - **Document compare.** `com_compare_documents` produces a Word-native redline
   between two versions of a document.
 - **Never corrupts.** Atomic saves (temp file → structural validation →
   replace), automatic timestamped backups before every mutation, byte-identical
   passthrough of anything not being edited (equations, textboxes, content
-  controls survive untouched), and clean typed errors — a file open in Word is
+  controls survive untouched), and clean typed errors: a file open in Word is
   refused with a message, not a hang.
 - **Fragmented-run safe.** Find/replace works across Word's arbitrarily split
   runs while preserving per-character formatting, with a ReDoS timeout guard on
@@ -207,28 +208,29 @@ claude mcp add word -s user -- <absolute-path>\.venv\Scripts\word-mcp.exe
 corpus of real-world documents (book-length chapters, a document with 171
 footnotes, a manuscript with 126 tracked changes and reviewer comments), and
 CI auto-generates **structurally equivalent synthetic stand-ins**
-(`tests/make_corpus.py`) so the full suite runs on any machine — including
+(`tests/make_corpus.py`) so the full suite runs on any machine, including
 yours and every pull request. Local real documents, when present, take
 precedence. `tests/word_validator.py`
-opens outputs in invisible Word and fails on any repair prompt — the definitive
+opens outputs in invisible Word and fails on any repair prompt, the definitive
 corruption check.
 
-Development history: built with Claude Code in a single day (2026-08-27),
-tested through three rounds — unit gates per phase, an edge-case session
-(89 calls), and two "insane mode" rounds through the raw MCP stdio transport (scale
+Development history: prototyped with Claude Code in a day (2026-08-27),
+then hardened across three release cycles through six dedicated adversarial
+rounds: roughly 3,200 raw calls through the MCP stdio transport (scale
 torture, pathological merge topologies, Unicode/schema fuzzing, ReDoS,
-Word-lock lifecycle, COM leak checks), and a dedicated cross-feature
-interaction bug-hunt. All findings fixed with regression tests. `research/` documents the OOXML
+Word-lock lifecycle, live-editing interaction hunts, COM leak checks) plus
+per-phase unit gates. Every finding fixed with a regression test, same
+session it was found. `research/` documents the OOXML
 algorithms and pitfalls the implementation is built on, with attribution to
 the MIT-licensed reference implementations studied.
 
-## Maturity — what the version number does and does not claim
+## Maturity: what the version number does and does not claim
 
 This project moves fast and is honest about what backs it. What the test
 record covers: every release passes the full suite (626 tests) plus
 dedicated adversarial rounds through the raw MCP transport (~2,500 calls
 to date), against a corpus of long, heavily formatted real-world documents
-— with zero corruption across all of it. What it does not yet cover: other
+with zero corruption across all of it. What it does not yet cover: other
 machines, Word builds older than current Microsoft 365, non-English Word
 installs (some tools reference styles by localized display name), RTL
 scripts, and the diversity of documents only real users bring. The safety
@@ -239,7 +241,7 @@ is a restore, not a loss. If something misbehaves on your documents,
 with the symptom (never the document itself, unless it contains nothing
 private) is the most valuable thing you can send.
 
-**Beta-labeled tools** — heuristic by nature; review their flagged-items
+**Beta-labeled tools**, heuristic by nature: review their flagged-items
 list rather than trusting silently: `convert_citation_style`,
 `anonymize_for_review`, `check_defined_terms`, and the text-reference
 scan inside `validate_cross_references`. Each returns an explicit list of
@@ -250,7 +252,7 @@ what it could not confidently handle.
 - Live regex replacements skip matches positioned after complex fields in a
   story (COM character offsets drift there); the skip count is reported and a
   literal find still works. Live `set_cells` refuses vertically merged tables
-  (the file-based tool is merge-aware — close the doc for those).
+  (the file-based tool is merge-aware; close the doc for those).
 - Live tracked-change attribution is best-effort: Word signed into an Office
   account attributes revisions to that account; results report the effective
   author honestly.
@@ -259,6 +261,6 @@ what it could not confidently handle.
 
 ## License
 
-**PolyForm Noncommercial 1.0.0** — free for personal, academic, research, and
-any other noncommercial use. Commercial use requires a separate license **before** use — open an issue
+**PolyForm Noncommercial 1.0.0**: free for personal, academic, research, and
+any other noncommercial use. Commercial use requires a separate license **before** use; open an issue
 to arrange one.

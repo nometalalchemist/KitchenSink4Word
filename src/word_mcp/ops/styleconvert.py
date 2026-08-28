@@ -58,9 +58,9 @@ from .styleconvert_data import (
 # Derived from ops/citecheck.py's tuned patterns, extended with locator
 # (page) capture and multi-style year forms.
 
-# Latin capitalized OR hangul author tokens; Korean uses 와/과 connectors.
-# (_YEAR imported from citecheck already accepts "n.d.".)
-_AUTHOR_TOKEN = r"(?:[A-Z][\w'’\-]+|[가-힣]+)"
+# Latin capitalized (accents included) OR hangul author tokens; Korean uses
+# 와/과 connectors. (_YEAR imported from citecheck already accepts "n.d.".)
+_AUTHOR_TOKEN = r"(?:[A-ZÀ-ÞĀ-Žƀ-Ƀ][\w'’\-]+|[가-힣]+)"
 _AUTHOR_SEQ = (
     rf"{_AUTHOR_TOKEN}(?:\s+(?:and|&|와|과)\s+{_AUTHOR_TOKEN})*"
 )

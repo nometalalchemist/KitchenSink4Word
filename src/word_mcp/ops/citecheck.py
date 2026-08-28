@@ -39,8 +39,9 @@ _REF_HEADINGS = re.compile(
 # "n.d." (no date) is a legal APA year; hangul surnames are legal authors —
 # both were invisible to the Latin-only patterns (v1.5 adversarial F4).
 _YEAR = r"(?:(?:1[89]\d\d|20\d\d)[a-z]?|n\.d\.)"
-# one author token: a Latin capitalized word OR a hangul word
-_AUT = r"(?:[A-Z][A-Za-z'\-]+|[가-힣]+)"
+# one author token: a capitalized Latin word (accents included — Müller,
+# García, Łukasz; \w continues with any Unicode letter) OR a hangul word
+_AUT = r"(?:[A-ZÀ-ÞĀ-Žƀ-Ƀ][\w'’\-]+|[가-힣]+)"
 # Narrative: Smith (2026) / Smith and Jones (2026) / Smith et al. (2026)
 _NARRATIVE = re.compile(
     rf"(?<![\w가-힣])({_AUT})"

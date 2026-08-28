@@ -130,3 +130,22 @@ def test_f7_extract_images_dir_is_file_refused(tmp_path):
     blocker.write_text("i am a file")
     with pytest.raises(WordMcpError, match="existing FILE"):
         srv.extract_images(str(path), str(blocker))
+
+
+def test_accented_latin_authors_recognized(tmp_path):
+    """Müller/García-class names were invisible to the Latin-only citation
+    patterns (post-v1.5.0 finding, fixed in 1.5.1)."""
+    path = tmp_path / "accents.docx"
+    srv.create_document(str(path))
+    srv.insert_paragraphs(
+        str(path),
+        [{"text": "As Müller (2019) shows, and see also (García, 2020)."},
+         {"text": "References"},
+         {"text": "Müller, K. (2019). Der Titel. Zeitschrift, 1(1), 1-10."},
+         {"text": "García, L. (2020). El título. Revista, 2(2), 20-30."}],
+        at_end=True, backup=False,
+    )
+    srv.apply_style(str(path), [1], "Heading 1", backup=False)
+    parity = srv.check_citation_parity(str(path))
+    uncited = parity.get("uncited_references", [])
+    assert not any("Müller" in u or "García" in u for u in uncited), parity
