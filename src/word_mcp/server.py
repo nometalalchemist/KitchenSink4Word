@@ -298,9 +298,11 @@ def validate_document(file_path: str) -> dict:
 
 @mcp.tool
 def create_document(file_path: str, title: str | None = None) -> dict:
-    """Create a new blank .docx, optionally setting the title property.
-    Refuses to overwrite an existing file. Returns {created: path}.
-    """
+    """Create a new blank .docx file, optionally setting the title core
+    property. Refuses to overwrite an existing file (use copy_document with
+    overwrite=True for that). Parent directories are created automatically.
+    Populate the document afterward with insert_paragraphs, create_table,
+    define_style, and other tools."""
     from pathlib import Path
 
     from docx import Document
@@ -767,7 +769,10 @@ def add_list(
 
 @mcp.tool
 def get_lists(file_path: str) -> list:
-    """List paragraphs grouped by numbering instance, with levels and text."""
+    """Numbered and bulleted list paragraphs grouped by numbering instance,
+    with each item's nesting level (0-based), numbering style (bullet or
+    decimal/lowerLetter/lowerRoman/...), and text. Useful for verifying
+    list restarts and nesting after insert_document or add_list. Read-only."""
     return _ls.get_lists(DocxPackage(file_path))
 
 
@@ -806,9 +811,11 @@ def list_tables(file_path: str) -> list:
 
 @mcp.tool
 def get_table(file_path: str, table_index: int) -> dict:
-    """Read one table in full: cell texts, gridSpan/vMerge merge map, and
-    widths (table_index from list_tables). Read-only.
-    """
+    """Read one body-level table in full: every cell's text, the merge map
+    (gridSpan for horizontal, vMerge for vertical), column widths, and
+    the table style. table_index is 0-based in list_tables order. For
+    tables nested inside a cell, use get_nested_table instead. Use
+    set_cells/set_cells_block to write cell values. Read-only."""
     return _rd.get_table(DocxPackage(file_path), table_index)
 
 
@@ -1166,7 +1173,11 @@ def get_nested_table(
     cell: int,
     nested_index: int = 0,
 ) -> dict:
-    """Read a table nested inside a cell of a body-level table."""
+    """Read a table nested inside a cell of a body-level table: rows, cells,
+    text, and merge info, exactly like get_table but addressed by the host
+    table_index, host row/cell, and nested_index (0 when the cell holds one
+    nested table; higher for multiple). Use set_nested_cells to write.
+    Read-only."""
     return _tb.get_nested_table(
         DocxPackage(file_path), table_index, row=row, cell=cell,
         nested_index=nested_index,
@@ -1204,13 +1215,19 @@ def set_nested_cells(
 
 @mcp.tool
 def list_footnotes(file_path: str) -> list:
-    """Footnotes with ids, display positions, and text."""
+    """Every footnote in the document: id, the body paragraph where the
+    reference appears (display position), and the note's full text. Use
+    add_footnote/edit_footnote/delete_footnote to modify; validate_notes to
+    check integrity. Read-only."""
     return _rd.list_footnotes(DocxPackage(file_path))
 
 
 @mcp.tool
 def list_endnotes(file_path: str) -> list:
-    """Endnotes with ids, display positions, and text."""
+    """Every endnote in the document: id, the body paragraph where the
+    reference appears (display position), and the note's full text. Use
+    add_endnote/edit_endnote/delete_endnote to modify; validate_notes to
+    check integrity. Read-only."""
     return _rd.list_endnotes(DocxPackage(file_path))
 
 
@@ -1354,8 +1371,11 @@ def delete_endnote(
 
 @mcp.tool
 def validate_notes(file_path: str) -> dict:
-    """Footnote/endnote integrity. ok=no corruption; needs_cleanup=orphan
-    definitions exist (run cleanup_orphan_notes)."""
+    """Check footnote/endnote structural integrity: whether note
+    definitions match their body references and whether orphan definitions
+    exist. ok=true means no corruption; needs_cleanup=true means orphan
+    note definitions were found (run cleanup_orphan_notes to purge them).
+    Use list_footnotes/list_endnotes to see note contents. Read-only."""
     return _nt.validate_notes(DocxPackage(file_path))
 
 
@@ -1393,9 +1413,10 @@ def add_bookmark(
 
 @mcp.tool
 def list_bookmarks(file_path: str) -> list:
-    """List the user-visible bookmarks defined in the document (targets for
-    add_cross_reference). Read-only.
-    """
+    """Every user-visible bookmark: name, the paragraph index where it
+    starts, and the bookmarked text. Bookmarks serve as targets for
+    add_cross_reference and as stable anchors for navigation. Internal
+    bookmarks (TOC, field-generated) are excluded. Read-only."""
     return _fl.list_bookmarks(DocxPackage(file_path))
 
 
@@ -1506,8 +1527,11 @@ def insert_toc(
 
 @mcp.tool
 def read_toc(file_path: str) -> dict:
-    """All TOC-family fields (main TOC, List of Tables/Figures) and their
-    cached entries."""
+    """Read every TOC-family field (main TOC, List of Tables, List of
+    Figures) and its cached entries: title, page number, heading level.
+    The cached text reflects the state at last field update; refresh with
+    com_refresh_fields (requires Word) then re-read. Use insert_toc/
+    insert_caption_list/delete_toc to manage TOCs. Read-only."""
     return _tc.read_toc(DocxPackage(file_path))
 
 
@@ -1642,8 +1666,11 @@ def add_source(
 
 @mcp.tool
 def list_sources(file_path: str) -> list:
-    """List the bibliography sources stored in the document. Read-only.
-    """
+    """Bibliography sources stored in the document's XML source store: tag,
+    type (JournalArticle, Book, ...), author, title, year, and all other
+    fields. These feed insert_citation and insert_bibliography when using
+    Word's native citation system (not Zotero/Mendeley/EndNote). Run
+    detect_citation_system first on unfamiliar documents. Read-only."""
     return _bib.list_sources(DocxPackage(file_path))
 
 
@@ -1773,7 +1800,10 @@ def mark_index_entry(
 
 @mcp.tool
 def list_index_entries(file_path: str) -> list:
-    """All XE index entries marked in the document."""
+    """Every XE index entry marked in the document: main text, sub-entry,
+    see/see-also references, and the paragraph where each appears. Use
+    mark_index_entry to add entries and insert_index to generate the
+    compiled index. Read-only."""
     return _fl.list_index_entries(DocxPackage(file_path))
 
 
@@ -1836,8 +1866,10 @@ def move_section(
 
 @mcp.tool
 def list_section_blocks(file_path: str) -> list:
-    """Headings with each section's element count (planning aid for
-    move_section)."""
+    """Headings with each section's body-element count, paragraph count,
+    and table count: the planning aid for move_section (shows what will
+    travel with each heading) and for insert_document/copy_table (shows
+    body-item indices at section boundaries). Read-only."""
     return _sx.list_section_blocks(DocxPackage(file_path))
 
 
@@ -2037,7 +2069,10 @@ def remove_document_protection(file_path: str, backup: bool = True) -> dict:
 
 @mcp.tool
 def get_protection(file_path: str) -> dict:
-    """Current protection state (mode, password, formatting restriction)."""
+    """Current document protection state: mode (none, readOnly, comments,
+    trackedChanges, forms), whether a password is set, and whether
+    formatting restrictions are active. Use set_document_protection to
+    enable and remove_document_protection to disable. Read-only."""
     return _pr.get_protection(DocxPackage(file_path))
 
 
@@ -2046,7 +2081,10 @@ def get_protection(file_path: str) -> dict:
 
 @mcp.tool
 def get_headers_footers(file_path: str) -> dict:
-    """Every header/footer part with its text and page-number-field flag."""
+    """Every header and footer part across all sections: text content,
+    whether it contains a PAGE-number field, and the part type (default,
+    first page, even page). Use set_header/set_footer to write them and
+    setup_chapter_headers for per-chapter running headers. Read-only."""
     return _fu.get_headers_footers(DocxPackage(file_path))
 
 
@@ -2198,7 +2236,10 @@ def set_line_numbering(
 
 @mcp.tool
 def list_sections(file_path: str) -> list:
-    """Sections with page size, orientation, margins, header/footer refs."""
+    """Every section: page width/height, orientation (portrait/landscape),
+    all margins, and header/footer part references. Use
+    set_section_properties to change page geometry and add_section_break to
+    create new sections. Read-only."""
     return _fu.list_sections(DocxPackage(file_path))
 
 
@@ -2278,8 +2319,10 @@ def add_image(
 
 @mcp.tool
 def list_images(file_path: str) -> list:
-    """List the document's images with sizes and media targets. Read-only.
-    """
+    """Every inline image: index (use with resize_image, replace_image,
+    set_image_alt_text), display size in points, native pixel dimensions,
+    effective DPI, alt text, and the media part path. For print-quality
+    checks, use check_image_resolution instead. Read-only."""
     return _md.list_images(DocxPackage(file_path))
 
 
@@ -2506,7 +2549,11 @@ def delete_comment(file_path: str, comment_id: str, backup: bool = True) -> dict
 
 @mcp.tool
 def get_tracked_changes(file_path: str, author: str | None = None) -> list:
-    """Tracked changes (insertions, deletions, moves, format changes)."""
+    """Every tracked change: type (insertion, deletion, move, format
+    change), author, date, the affected text, and paragraph location.
+    Filter by author to see one reviewer's edits. Use accept_revisions/
+    reject_revisions to resolve, or revision_summary/revision_analytics
+    for aggregate views. Read-only."""
     return _rd.get_tracked_changes(DocxPackage(file_path), author=author)
 
 
@@ -2552,9 +2599,11 @@ def reject_revisions(
 
 @mcp.tool
 def com_word_status() -> dict:
-    """Is Word running and responsive, and which documents does it have open
-    (with per-document dirty/autosave state)? interactive_state:
-    ready | busy (dialog open) | blocked (long operation) | not_running."""
+    """Check whether Word is running and what state it is in: interactive_state
+    (ready, busy if a dialog is open, blocked if a long operation is running,
+    not_running), and a list of open documents with per-document dirty flag
+    and autosave state. Use before live editing to confirm Word is responsive,
+    or to discover which files are locked. No file_path needed. Read-only."""
     from .com import bridge, live
 
     out = bridge.word_status()
@@ -2571,9 +2620,12 @@ def com_word_status() -> dict:
 def live_insert_at_cursor(
     file_path: str, text: str, newline: bool = False
 ) -> dict:
-    """Insert text at the USER'S CURSOR in the open document (main text
-    only). The cursor position is read once; the selection itself is never
-    touched. newline: end the insertion with a paragraph break."""
+    """Insert text at the user's cursor position in the open document (main
+    body text only; headers/footers/footnotes not supported). The cursor
+    position is read once and never moved; the user's selection is
+    untouched. newline=True ends the insertion with a paragraph break.
+    Use insert_paragraphs for index-addressed insertion instead. Requires
+    the document to be open in Word."""
     from .com import live_ops as _lo
 
     return _lo.insert_at_cursor(file_path, text, newline=newline)
@@ -2585,9 +2637,10 @@ def live_scroll_to(
     find: str | None = None,
     paragraph_index: int | None = None,
 ) -> dict:
-    """Scroll the user's Word window to show a location ("here is what I
-    changed") WITHOUT selecting anything or moving their cursor. Target by
-    find text or body paragraph index."""
+    """Scroll the user's Word window to show a location without selecting
+    anything or moving their cursor (useful after a live edit to show the
+    user what changed). Target by find text (first match) or body
+    paragraph_index. The document must be open in Word. Read-only."""
     from .com import live_ops as _lo
 
     return _lo.scroll_to(file_path, find=find, paragraph_index=paragraph_index)
@@ -2595,9 +2648,11 @@ def live_scroll_to(
 
 @mcp.tool
 def live_set_track_changes(file_path: str, enabled: bool) -> dict:
-    """Turn track changes on/off on the OPEN document, persistently (this is
-    a deliberate state change, unlike the auto-restored track flags on edit
-    tools). Returns the previous state."""
+    """Turn track changes on or off on the open document. This is a
+    persistent state change (the document remembers the setting), unlike
+    the track flag on edit tools like search_and_replace which auto-restores.
+    Returns the previous state so you can restore it later. The document
+    must be open in Word."""
     from .com import live_ops as _lo
 
     return _lo.set_track_changes(file_path, enabled)
@@ -2615,8 +2670,12 @@ def word_live_repair() -> dict:
 
 @mcp.tool
 def com_refresh_fields(file_path: str) -> dict:
-    """Update every field (TOC page numbers, PAGEREF, SEQ) immediately via an
-    invisible Word instance. Use after insert_toc for instant page numbers."""
+    """Update every field in the document (TOC page numbers, PAGEREF,
+    NUMPAGES, SEQ, cross-references) via an invisible Word instance, giving
+    correct page numbers and computed values immediately. Use after
+    insert_toc/insert_index/insert_caption_list for real page numbers, or
+    after any edit that shifts pages. The source file is modified in place.
+    Requires Word installed."""
     from .com import bridge
 
     return bridge.refresh_fields(file_path)
@@ -2624,10 +2683,11 @@ def com_refresh_fields(file_path: str) -> dict:
 
 @mcp.tool
 def com_export_pdf(file_path: str, pdf_path: str | None = None) -> dict:
-    """Export to PDF via an invisible Word instance (full fidelity: fields,
-    footnotes, TOC). Output defaults beside the source; the source file is
-    unmodified.
-    """
+    """Export the document to PDF via an invisible Word instance with full
+    fidelity (fields resolved, footnotes, TOC, headers/footers, images).
+    pdf_path defaults to the source filename with .pdf extension in the
+    same directory. The source .docx is never modified. Requires Word
+    installed."""
     from .com import bridge
 
     return bridge.export_pdf(file_path, pdf_path)
@@ -2676,9 +2736,12 @@ def com_combine_documents(
     revised_path: str,
     output_path: str | None = None,
 ) -> dict:
-    """Combine two documents' TRACKED CHANGES into one (two reviewers' edits
-    of the same draft, both attributions preserved). Compare diffs content;
-    combine merges revisions."""
+    """Combine two reviewers' tracked changes into one document (both sets
+    of revisions with their original attributions preserved). Use when two
+    people edited copies of the same draft and you need a unified redline.
+    For diffing two versions to discover what changed, use
+    com_compare_documents instead. Output defaults beside the original.
+    Requires Word installed."""
     from .com import bridge
 
     return bridge.combine_documents(original_path, revised_path, output_path)
@@ -2687,7 +2750,10 @@ def com_combine_documents(
 @mcp.tool
 def com_save_open_document(file_path: str) -> dict:
     """Tell the user's running Word to SAVE a document it has open, so
-    file-based tools can read the current state."""
+    file-based tools can read the current state. Use before diagnose_document
+    or any file-mode tool that needs the latest edits flushed to disk.
+    Does nothing if Word is not running or the file is not open. Requires
+    Word installed."""
     from .com import bridge
 
     return bridge.save_open_document(file_path)
@@ -2695,8 +2761,10 @@ def com_save_open_document(file_path: str) -> dict:
 
 @mcp.tool
 def com_close_open_document(file_path: str, save: bool = True) -> dict:
-    """Tell the user's running Word to CLOSE an open document (saving by
-    default), releasing the lock for file-based editing."""
+    """Tell the user's running Word to CLOSE an open document, releasing
+    the file lock so file-based tools can edit it. Saves by default; pass
+    save=False to discard unsaved changes. Use when switching from live
+    editing to file-mode tools. Requires Word installed."""
     from .com import bridge
 
     return bridge.close_open_document(file_path, save=save)
@@ -2704,8 +2772,12 @@ def com_close_open_document(file_path: str, save: bool = True) -> dict:
 
 @mcp.tool
 def com_proofing_errors(file_path: str, limit: int = 100) -> dict:
-    """Word's own spelling/grammar error lists with context (review aid;
-    includes proper nouns it does not recognize)."""
+    """Word's own spelling and grammar error lists with surrounding
+    context: each error, its type (spelling/grammar), the sentence
+    containing it, and suggested corrections. Useful as a review aid
+    before submission (note: proper nouns and technical terms appear as
+    spelling errors). Requires Word installed; opens an invisible instance.
+    Read-only."""
     from .com import bridge
 
     return bridge.proofing_errors(file_path, limit=limit)
@@ -2713,7 +2785,10 @@ def com_proofing_errors(file_path: str, limit: int = 100) -> dict:
 
 @mcp.tool
 def com_readability_statistics(file_path: str) -> dict:
-    """Word's readability statistics (Flesch, grade level, counts)."""
+    """Word's own readability statistics via COM: Flesch Reading Ease,
+    Flesch-Kincaid Grade Level, word/sentence/paragraph counts, and
+    averages. Requires Word installed; opens an invisible instance to
+    compute the statistics. Read-only."""
     from .com import bridge
 
     return bridge.readability_statistics(file_path)
@@ -2723,8 +2798,11 @@ def com_readability_statistics(file_path: str) -> dict:
 def com_save_with_password(
     file_path: str, password: str, output_path: str | None = None
 ) -> dict:
-    """Save an ENCRYPTED copy requiring a password to open (real encryption,
-    unlike document protection)."""
+    """Save an ENCRYPTED copy requiring a password to open (real AES
+    encryption applied by Word, unlike document protection which is an
+    editing restriction). output_path defaults to the same file; a
+    different path saves a new encrypted copy. Requires Word installed;
+    opens an invisible instance to apply the encryption."""
     from .com import bridge
 
     return bridge.save_with_password(
@@ -3009,17 +3087,17 @@ def batch_apply(
     stop_on_error: bool = True,
     backup: bool = True,
 ) -> dict:
-    """Apply the same operations to MANY documents. operations: [{'tool':
-    name, 'params': {...}}] with each tool's normal parameters minus
-    file_path. Allowed tools: search_and_replace, insert_paragraphs,
-    delete_paragraphs, replace_paragraph_text, format_text,
-    set_paragraph_format, apply_style, set_header, set_footer,
-    add_page_numbers, set_page_number_format, set_document_properties,
-    set_cells, add_watermark, remove_watermark. Per file: ALL operations,
-    then one slot rotation and one atomic validated save; a failing
-    operation leaves that file untouched, and stop_on_error=True skips the
-    remaining files (already-saved files keep their changes). Refuses files
-    open in Word.
+    """Apply the same operations to MANY documents in one call (e.g. update
+    a footer across 50 templates). operations: [{'tool': name, 'params':
+    {...}}] with each tool's normal parameters minus file_path. Allowed
+    tools: search_and_replace, insert_paragraphs, delete_paragraphs,
+    replace_paragraph_text, format_text, set_paragraph_format, apply_style,
+    set_header, set_footer, add_page_numbers, set_page_number_format,
+    set_document_properties, set_cells, add_watermark, remove_watermark.
+    Per file: all operations run, then one prev/anchor slot rotation and one
+    atomic validated save; a failing operation leaves that file untouched,
+    and stop_on_error=True skips remaining files (already-saved files keep
+    their changes). Refuses files open in Word.
     """
     return _bt.batch_apply(
         file_paths, operations, stop_on_error=stop_on_error, backup=backup
@@ -3881,16 +3959,17 @@ def insert_field(
     placeholder: str = "",
     backup: bool = True,
 ) -> dict:
-    """Insert a generic Word field right after `after_anchor` text. field_code
+    """Insert a generic Word field right after `after_anchor` text (plain
+    paragraph text, literal characters, not XML entities; occurrence picks
+    which match when the anchor appears more than once). field_code
     examples: 'DATE', 'TIME \\@ "HH:mm"', 'FILENAME', 'NUMPAGES', 'PAGE',
     'SEQ Exhibit \\* Arabic'. Codes are validated against an allowlist of
     known-safe fields (document info, page/date/time numbers, SEQ);
-    anything that links out or executes is refused, and the refusal names
-    the allowlist. The field is written dirty so Word computes the real
-    result on the next refresh; `placeholder` shows until then.
-    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
-    rotation only); atomic validated save. Refuses documents open in Word.
-    """
+    anything that links out or executes is refused, naming the allowlist.
+    The field is written dirty so Word computes the result on the next
+    refresh; `placeholder` shows until then. Auto-backup: prev/anchor
+    slots in .ks4w-backups (backup=False skips rotation only); atomic
+    validated save. Refuses documents open in Word."""
     return _edit(
         file_path,
         lambda pkg: _fl.insert_field(
@@ -3980,15 +4059,16 @@ def insert_content_control(
     backup: bool = True,
 ) -> dict:
     """Insert a new PLAIN-TEXT content control (inline SDT) right after
-    `after_anchor` text, with a unique tag (refused if the tag exists) and
-    optional alias and initial text. Plain text is the one control type
-    this server can build verifiably safely; creating checkbox, dropdown,
-    date, picture, gallery, or repeating controls is refused (list/fill
-    still cover those when a template provides them). Fill it later via
-    fill_form_fields or set_content_control_value by its tag. Auto-backup:
-    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
-    atomic validated save. Refuses documents open in Word.
-    """
+    `after_anchor` text (plain paragraph text, literal characters;
+    occurrence picks which match when the anchor appears more than once),
+    with a unique tag (refused if it exists) and optional alias and initial
+    text. Plain text is the one control type this server can build safely;
+    creating checkbox, dropdown, date, picture, gallery, or repeating
+    controls is refused (list/fill still cover those when a template
+    provides them). Fill it later via fill_form_fields or
+    set_content_control_value by its tag. Auto-backup: prev/anchor slots
+    in .ks4w-backups (backup=False skips rotation only); atomic validated
+    save. Refuses documents open in Word."""
     return _edit(
         file_path,
         lambda pkg: _fm.insert_content_control(
