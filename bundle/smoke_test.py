@@ -89,8 +89,8 @@ def main() -> int:
             str(cfg.get("args")),
         )
         check("no tools array (Smithery bug #787)", "tools" not in m)
-        check("license is PolyForm-Noncommercial-1.0.0",
-              m.get("license") == "PolyForm-Noncommercial-1.0.0", str(m.get("license")))
+        check("license is AGPL-3.0-only",
+              m.get("license") == "AGPL-3.0-only", str(m.get("license")))
 
         # 3. mcpb validate, if available
         mcpb_cli = shutil.which("mcpb")

@@ -4,7 +4,7 @@
 
 [![Tests](https://github.com/nometalalchemist/KitchenSink4Word/actions/workflows/tests.yml/badge.svg)](https://github.com/nometalalchemist/KitchenSink4Word/actions/workflows/tests.yml)
 [![PyPI](https://img.shields.io/pypi/v/kitchensink4word)](https://pypi.org/project/kitchensink4word/)
-[![License: PolyForm NC](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
 [Landing page](https://nometalalchemist.github.io/KitchenSink4Word/) · [llms.txt](https://nometalalchemist.github.io/KitchenSink4Word/llms.txt) (machine-readable capability manifest for agents and LLM crawlers)
 
@@ -358,6 +358,5 @@ what it could not confidently handle.
 
 ## License
 
-**PolyForm Noncommercial 1.0.0**: free for personal, academic, research, and
-any other noncommercial use. Commercial use requires a separate license **before** use; open an issue
+**AGPL-3.0**: free for any use under AGPL terms (copyleft: modifications to served copies must be open-sourced). Commercial license available for use cases that cannot comply; open an issue
 to arrange one.

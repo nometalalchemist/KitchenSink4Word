@@ -111,4 +111,4 @@ the user keeps the original open in Word for reading while the agent works on a 
 
 ## License
 
-PolyForm Noncommercial 1.0.0. Free for personal, academic, and research use. Commercial use requires a separate license arranged BEFORE use: open a GitHub issue with the commercial license template at https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml
+AGPL-3.0. Free for any use under AGPL terms (copyleft: modifications to served copies must be shared). Commercial license available for use cases that cannot comply with AGPL: https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml

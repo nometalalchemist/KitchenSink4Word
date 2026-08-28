@@ -1,11 +1,12 @@
-# KitchenSink4Word — License Notice
+# KitchenSink4Word : License Notice
 
 Copyright (c) 2026 Nykolus Alvut
 
-KitchenSink4Word is licensed under the PolyForm Noncommercial License
-1.0.0 (see the LICENSE file). Free for personal, academic, research, and
-other noncommercial use. Commercial use requires a separate license
-BEFORE use: open a GitHub issue or contact the maintainer to arrange one.
+KitchenSink4Word is licensed under the GNU Affero General Public
+License v3.0 (AGPL-3.0) : see the LICENSE file. Free for any use
+(personal, academic, commercial) under AGPL terms. If your use case
+cannot comply with AGPL copyleft requirements, a commercial license
+is available: open a GitHub issue or contact the maintainer.
 
 Required Notice: Copyright (c) 2026 Nykolus Alvut
 (https://github.com/nometalalchemist/KitchenSink4Word)

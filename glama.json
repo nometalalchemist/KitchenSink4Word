@@ -1,0 +1,44 @@
+{
+  "name": "KitchenSink4Word",
+  "display_name": "KitchenSink4Word",
+  "description": "Everything plus the kitchen sink for Microsoft Word: 189 tools for document creation, editing, formatting, citations, tracked changes, live editing, charts, document assembly, and more. Engineered not to corrupt.",
+  "repository": "https://github.com/nometalalchemist/KitchenSink4Word",
+  "homepage": "https://nometalalchemist.github.io/KitchenSink4Word/",
+  "license": "AGPL-3.0",
+  "author": {
+    "name": "Nykolus Alvut",
+    "url": "https://github.com/nometalalchemist"
+  },
+  "categories": [
+    "Productivity",
+    "Document Processing",
+    "Office"
+  ],
+  "tags": [
+    "word",
+    "docx",
+    "microsoft-word",
+    "documents",
+    "office",
+    "editing",
+    "formatting",
+    "citations",
+    "bibliography",
+    "tracked-changes",
+    "tables",
+    "footnotes",
+    "charts",
+    "accessibility",
+    "live-editing",
+    "academic",
+    "dissertation"
+  ],
+  "install": {
+    "pip": "pip install kitchensink4word",
+    "uvx": "uvx kitchensink4word",
+    "claude_code": "claude mcp add word -- uvx kitchensink4word"
+  },
+  "platforms": ["windows", "linux", "macos"],
+  "runtime": "python",
+  "transport": "stdio"
+}
