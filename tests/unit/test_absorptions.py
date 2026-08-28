@@ -41,6 +41,8 @@ INTEGRATION = Path(__file__).resolve().parents[2] / "integration"
 
 
 def _reg():
+    if not (INTEGRATION / "absorptions_registrations.py").exists():
+        pytest.skip("integration/ staging dir not present (gitignored)")
     if str(INTEGRATION) not in sys.path:
         sys.path.insert(0, str(INTEGRATION))
     import absorptions_registrations as reg

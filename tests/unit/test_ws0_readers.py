@@ -340,7 +340,10 @@ def test_ws0_registration_snippet_importable():
     FastMCP instance (paste-readiness), exactly like prior bundles."""
     import sys
 
-    integration = str(Path(__file__).resolve().parents[2] / "integration")
+    integration_dir = Path(__file__).resolve().parents[2] / "integration"
+    if not (integration_dir / "ws0_readers_registrations.py").exists():
+        pytest.skip("integration/ staging dir not present (gitignored)")
+    integration = str(integration_dir)
     if integration not in sys.path:
         sys.path.insert(0, integration)
     import ws0_readers_registrations as reg

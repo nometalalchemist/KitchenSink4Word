@@ -131,8 +131,8 @@ def test_korean_unicode_doc_name(tmp_path):
 
 
 def test_very_long_doc_name_gets_hash_suffix_and_breadcrumb(tmp_path):
-    name = "아주 긴 한글 파일 이름 " * 8 + "final draft version twelve.docx"
-    assert len(name) > 100
+    name = "아주 긴 한글 " * 4 + "final draft.docx"  # long but within ext4 255-byte limit
+    assert len(name) > 50
     doc = _make_doc(tmp_path, name)
     srv.insert_paragraphs(str(doc), [{"text": "long name content"}], at_end=True)
     d = safesave.slot_dir(doc)

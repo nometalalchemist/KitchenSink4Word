@@ -124,6 +124,7 @@ class TestContainment:
         with pytest.raises(SandboxViolation):
             check_path(r"\\?\UNC\some-server\share\doc.docx", "test")
 
+    @pytest.mark.skipif(os.name != "nt", reason="\\\\?\\ paths are Windows-only")
     def test_extended_length_local_normalized(self, root):
         p = check_path("\\\\?\\" + str(root / "a.docx"), "test")
         assert not p.startswith("\\\\?\\")
@@ -163,6 +164,7 @@ class TestContainment:
 
 
 class TestJunction:
+    @pytest.mark.skipif(os.name != "nt", reason="junctions are Windows-only")
     def test_junction_escape_blocked(self, root, tmp_path):
         """A junction inside the root pointing outside must not smuggle the
         target back in: realpath resolves it before containment."""
