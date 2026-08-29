@@ -5,6 +5,7 @@
 [![Tests](https://github.com/nometalalchemist/KitchenSink4Word/actions/workflows/tests.yml/badge.svg)](https://github.com/nometalalchemist/KitchenSink4Word/actions/workflows/tests.yml)
 [![PyPI](https://img.shields.io/pypi/v/kitchensink4word)](https://pypi.org/project/kitchensink4word/)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+[![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/nometalalchemist/kitchensink4word)
 
 [Landing page](https://nometalalchemist.github.io/KitchenSink4Word/) · [llms.txt](https://nometalalchemist.github.io/KitchenSink4Word/llms.txt) (machine-readable capability manifest for agents and LLM crawlers)
 
