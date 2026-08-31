@@ -2,7 +2,7 @@
 
 > Everything plus the kitchen sink for Microsoft Word: the most complete Word (.docx) MCP server available. 189 tools covering live editing of documents open in Word, native citations and bibliography, merge-aware table surgery, footnotes and endnotes, TOC, tracked-changes authoring, Word-native document compare, protection, redaction, mail merge, and accessibility audits. Engineered not to corrupt: atomic validated saves, automatic backups before every mutation, and published adversarial test evidence.
 
-This file describes the shipped release: v1.5.1 on PyPI (as of 2026-08-28).
+This file describes the shipped release: v1.6.0 on PyPI (as of 2026-08-31).
 Platform: Windows. File-based tools (the large majority) work without Microsoft Word installed; the com_* and live_* tools use a local Microsoft Word via COM.
 MCP transport: stdio.
 
@@ -15,7 +15,7 @@ MCP transport: stdio.
 - Any other MCP client: run the `kitchensink4word` (or `word-mcp`) executable over stdio, e.g. `{"mcpServers": {"word": {"command": "kitchensink4word"}}}`
 - MCP registry name: `io.github.nometalalchemist/kitchensink4word`
 
-## Context cost (measured, v1.5.1)
+## Context cost (measured, v1.6.0)
 
 Published because almost no MCP server tells you what it costs to load:
 
@@ -98,7 +98,7 @@ the user keeps the original open in Word for reading while the agent works on a 
 - Automatic timestamped backup before every file mutation.
 - Byte-identical passthrough of anything not being edited (equations, textboxes, content controls).
 - Documents open in Word are refused by file-mode tools; the live_*/com_* tools handle that case explicitly.
-- Test evidence for v1.5.1: 627 tests, roughly 3,200 adversarial calls through the raw MCP stdio transport, zero corruptions, verified by opening outputs in invisible Word and failing on any repair prompt.
+- Test evidence for v1.6.0: 946 tests, roughly 4,400 adversarial calls through the raw MCP stdio transport, zero corruptions, verified by opening outputs in invisible Word and failing on any repair prompt.
 
 ## Links
 
