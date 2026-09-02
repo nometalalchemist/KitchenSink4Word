@@ -677,11 +677,27 @@ def merge_cells(
     top-left cell's text."""
     tbl = _find_table(pkg, table_index)
     rows, model = _table_model(tbl)
+    if end_row < start_row:
+        raise WordMcpError(
+            f"merge range is inverted: end_row {end_row} precedes "
+            f"start_row {start_row}"
+        )
     if not (0 <= start_row <= end_row < len(rows)):
-        raise TargetNotFound("row range out of bounds")
+        raise TargetNotFound(
+            f"row range {start_row}..{end_row} out of bounds "
+            f"(table has {len(rows)} row(s), 0-based)"
+        )
     n_grid = len(_grid_cols(tbl))
+    if end_col < start_col:
+        raise WordMcpError(
+            f"merge range is inverted: end_col {end_col} precedes "
+            f"start_col {start_col}"
+        )
     if not (0 <= start_col <= end_col < n_grid):
-        raise TargetNotFound("column range out of bounds")
+        raise TargetNotFound(
+            f"column range {start_col}..{end_col} out of bounds "
+            f"(grid has {n_grid} column(s), 0-based)"
+        )
     if start_row == end_row and start_col == end_col:
         raise WordMcpError(
             "merge range is a single cell; nothing to merge (widen the range)"

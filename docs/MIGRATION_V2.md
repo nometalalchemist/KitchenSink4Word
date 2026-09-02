@@ -241,7 +241,7 @@ All 189 v1.6 tools, grouped by their v2 destination (107 v2 tools receive them).
 
 | v1 tool | v2 call | parameter moves | notes |
 |---|---|---|---|
-| diagnose_document | `diagnose_document` | - | counted under Validation and workflow in 2.16; still no live route BY DESIGN |
+| diagnose_document | `diagnose_document` | - | counted under Validation and workflow in 2.16; still no live route BY DESIGN; v2: top-level ok re-keyed to healthy (the envelope ok now means the call succeeded) |
 
 ### -> `export_images`
 
@@ -758,20 +758,20 @@ All 189 v1.6 tools, grouped by their v2 destination (107 v2 tools receive them).
 
 | v1 tool | v2 call | parameter moves | notes |
 |---|---|---|---|
-| audit_accessibility | `validate(checks=["accessibility"])` | - | - |
-| check_brand_compliance | `validate(checks=["brand"])` | `rules` -> `options.brand` | options.brand takes the same rules dict the v1 tool took |
-| check_citation_parity | `validate(checks=["citation_parity"])` | - | - |
-| check_defined_terms | `validate(checks=["defined_terms"])` | `definition_patterns` -> `options.defined_terms.definition_patterns` | - |
-| check_image_resolution | `validate(checks=["image_resolution"])` | `min_dpi` -> `options.image_resolution.min_dpi` | runs as one check inside the validate battery |
-| check_reference_field_integrity | `validate(checks=["reference_fields"])` | - | - |
-| check_template_compliance | `validate(checks=["template"])` | `rules` -> `options.template` | options.template takes the v1 rules DICT (same flag as brand) |
-| validate_captions | `validate(checks=["captions"])` | - | - |
-| validate_chapter_headers | `validate(checks=["chapter_headers"])` | - | - |
-| validate_cross_references | `validate(checks=["cross_references"])` | - | - |
-| validate_document | `validate(checks=["core"])` | - | core is the default check set; v1 result dict lands verbatim under results.core.findings |
-| validate_form_completeness | `validate(checks=["forms"])` | `required` -> `options.forms.required` | - |
-| validate_notes | `validate(checks=["notes"])` | - | - |
-| verify_redaction | `validate(checks=["redaction"])` | `targets` -> `options.redaction.targets` | the redaction check re-scans for the given patterns without changing anything |
+| audit_accessibility | `validate(checks=["accessibility"])` | - | v2: report top level is {passed, results} (ok belongs to the envelope) |
+| check_brand_compliance | `validate(checks=["brand"])` | `rules` -> `options.brand` | options.brand takes the same rules dict the v1 tool took; v2: report top level is {passed, results} (ok belongs to the envelope) |
+| check_citation_parity | `validate(checks=["citation_parity"])` | - | v2: report top level is {passed, results} (ok belongs to the envelope) |
+| check_defined_terms | `validate(checks=["defined_terms"])` | `definition_patterns` -> `options.defined_terms.definition_patterns` | v2: report top level is {passed, results} (ok belongs to the envelope) |
+| check_image_resolution | `validate(checks=["image_resolution"])` | `min_dpi` -> `options.image_resolution.min_dpi` | runs as one check inside the validate battery; v2: report top level is {passed, results} (ok belongs to the envelope) |
+| check_reference_field_integrity | `validate(checks=["reference_fields"])` | - | v2: report top level is {passed, results} (ok belongs to the envelope) |
+| check_template_compliance | `validate(checks=["template"])` | `rules` -> `options.template` | options.template takes the v1 rules DICT (same flag as brand); v2: report top level is {passed, results} (ok belongs to the envelope) |
+| validate_captions | `validate(checks=["captions"])` | - | v2: report top level is {passed, results} (ok belongs to the envelope) |
+| validate_chapter_headers | `validate(checks=["chapter_headers"])` | - | v2: report top level is {passed, results} (ok belongs to the envelope) |
+| validate_cross_references | `validate(checks=["cross_references"])` | - | v2: report top level is {passed, results} (ok belongs to the envelope) |
+| validate_document | `validate(checks=["core"])` | - | core is the default check set; v1 result dict lands verbatim under results.core.findings; v2: report top level is {passed, results} (ok belongs to the envelope) |
+| validate_form_completeness | `validate(checks=["forms"])` | `required` -> `options.forms.required` | v2: report top level is {passed, results} (ok belongs to the envelope) |
+| validate_notes | `validate(checks=["notes"])` | - | v2: report top level is {passed, results} (ok belongs to the envelope) |
+| verify_redaction | `validate(checks=["redaction"])` | `targets` -> `options.redaction.targets` | the redaction check re-scans for the given patterns without changing anything; v2: report top level is {passed, results} (ok belongs to the envelope) |
 
 ### -> `word_count`
 

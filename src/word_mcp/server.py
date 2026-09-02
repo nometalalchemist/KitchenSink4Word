@@ -717,8 +717,8 @@ def diagnose_document(file_path: str) -> dict:
     and numbering, content-control and bookmark sanity, duplicate revision
     ids, missing image targets, broken cross-references, and a per-part size
     profile. Never fails on a weird-but-openable document; every check
-    degrades to a reported problem, and ok=false only for problems that
-    render broken or lose content in Word. The deep companion to
+    degrades to a reported problem, and healthy=false only for problems
+    that render broken or lose content in Word. The deep companion to
     validate(checks=['core']). No live mode BY DESIGN: this reads the saved
     package's XML, stale while Word holds unsaved changes. Close the
     document first, or use com_validate_opens_clean / live
@@ -728,7 +728,11 @@ def diagnose_document(file_path: str) -> dict:
     from .core.errors import DocumentLocked
 
     try:
-        return _dg.diagnose_document(DocxPackage(file_path))
+        out = _dg.diagnose_document(DocxPackage(file_path))
+        # Re-key the v1 domain flag: the envelope's top-level ok means the
+        # CALL succeeded, so an unhealthy document must not answer
+        # ok:false (adversarial 6a). Ops shape unchanged for v1 file mode.
+        return {"healthy": out.pop("ok"), **out}
     except DocumentLocked as exc:
         raise DocumentLocked(
             f"{file_path} is open in Word (or locked). diagnose_document "
@@ -1273,8 +1277,9 @@ def validate(
     print DPI; options.image_resolution.min_dpi, default 300), accessibility
     (headings, alt text, table headers, contrast, title, link text),
     redaction (options.redaction.targets re-scanned across every XML part).
-    Returns {ok, results: {check: {passed, findings}}} with each check's v1
-    findings shape kept. Read-only, always: repairs live in
+    Returns {passed, results: {check: {passed, findings}}}, each check's
+    v1 findings shape kept; passed=false means findings, not a failed
+    call. Read-only, always: repairs live in
     fix_accessibility, manage_note, and redact_text. Reads the saved file;
     close documents open in Word first.
     """
@@ -1305,8 +1310,12 @@ def validate(
         findings = run(pkg, opts.get(check) or {})
         results[check] = {"passed": bool(passed(findings)),
                           "findings": findings}
+    # "passed", not "ok": the envelope's top-level ok means THE CALL
+    # SUCCEEDED; a check battery that ran fine but found problems is a
+    # successful call (adversarial 6a: a domain ok:false rode out looking
+    # like a failed call with no error object).
     return {
-        "ok": all(r["passed"] for r in results.values()),
+        "passed": all(r["passed"] for r in results.values()),
         "results": results,
     }
 
@@ -1856,24 +1865,24 @@ def apply_edits(
     backup: bool = True,
     live: str = "auto",
 ) -> dict:
-    """Apply a batch of anchor-addressed edits in one call: one lock, one
-    backup, one validated save for the whole batch. Anchors come from
+    """Apply a batch of anchor-addressed edits in one call: one lock,
+    backup, and validated save for the whole batch. Anchors come from
     get_document_view. Ops (each edit is a dict with "op"): replace
-    {anchor, find, text, occurrence?} (occurrence omitted = every match
-    in that paragraph); set_text {anchor, text} (whole paragraph);
+    {anchor, find, text, occurrence?} (occurrence omitted = every
+    match); set_text {anchor, text} (whole paragraph);
     insert {location, markdown} (headings, plain paragraphs, lists, and
     pipe tables become real Word structures; location is the standard
     object, e.g. {"anchor": "hex", "position": "after"}); delete {anchor
     or anchors}; set_style {anchor, style}; format {anchor, formatting,
     find?, occurrence?}; set_paragraph_format {anchor, format}; set_cell
-    {anchor: "t:hex:rNcN", text}. Every anchor and location is validated
-    BEFORE anything mutates: one stale anchor refuses the WHOLE batch
-    (STALE_ANCHOR, listing every failed op; re-view and resend). The
-    changed map carries per-op results, with fresh anchors for inserted
-    paragraphs, so follow-up batches chain without re-viewing. Ops
-    execute in order; keep
-    deletes last. Three or more edits in one section, use this; otherwise
-    the fine-grained tools. Auto-backup in file mode (prev/anchor slots
+    {anchor: "t:hex:rNcN", text}. The whole batch validates BEFORE
+    anything mutates, against BATCH-START text (never reference text an
+    earlier op creates); one stale anchor refuses it all (STALE_ANCHOR
+    lists failed ops: re-view, resend). The changed map carries per-op
+    results, with fresh anchors for inserted paragraphs, so follow-up
+    batches chain without re-viewing. Ops run in order; keep deletes
+    last. Use this for 3+ edits in one section, else the fine-grained
+    tools. Auto-backup in file mode (prev/anchor slots
     in .ks4w-backups; backup=False skips rotation); atomic validated
     save. A document open in Word is edited live as ONE undo step
     (markdown lists and tables are file-mode only there; unsaved-change
@@ -2300,6 +2309,12 @@ def modify_table_structure(
             + (f" target={target!r}" if target else "")
             + "; each action reads only its own parameters"
         )
+    if action == "insert" and (
+        isinstance(count, bool) or not isinstance(count, int) or count < 1
+    ):
+        # Adversarial 6a: count=0 / count=-3 previously rode through to a
+        # silent zero-row no-op reported as success.
+        raise WordMcpError(f"count must be an integer >= 1, got {count!r}")
     if key == ("insert", "rows"):
         if at is None:
             raise WordMcpError("insert rows requires at (position)")
@@ -2740,6 +2755,15 @@ def manage_note(
     if location is not None:
         raise WordMcpError(
             f"location applies to action='insert' only, not {action!r}"
+        )
+    if action in ("edit", "delete") and (
+        note_id is not None and position is not None
+    ):
+        # Adversarial 6a F7: both given rode through and note_id silently
+        # won, mis-targeting when they disagree. Exactly one, as promised.
+        raise WordMcpError(
+            f"action={action!r} takes exactly ONE of note_id or position, "
+            "got both"
         )
     if action == "edit":
         if text is None:

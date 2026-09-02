@@ -343,6 +343,9 @@ def _resolve_para_anchor(pkg: DocxPackage, edit: dict, op: str) -> dict:
             f"{edit['anchor']!r} is a {what}"
             + ("; use the set_cell op or set_cells for cell text"
                if op in ("replace", "set_text")
+               else f"; use delete_element(type='table', "
+                    f"index={info['table_index']}) to delete the table"
+               if op == "delete" and info["kind"] == "table"
                else "; use the table tools for tables")
         )
         if op == "delete":
@@ -430,6 +433,17 @@ def _validate_one(pkg: DocxPackage, edit: dict) -> dict:
             raise WordMcpError('"anchors" must be a non-empty list of ids')
         infos = [
             _resolve_para_anchor(pkg, {"anchor": a}, op) for a in ids
+        ]
+        # Dedupe by resolved paragraph (adversarial 6a finding 1): the same
+        # anchor listed twice (or two spellings of one anchor) otherwise
+        # yields duplicate indices, and the bottom-up run deletion then
+        # deletes a NEIGHBOR paragraph on the second pass. Deleting a
+        # paragraph twice can only mean it once.
+        seen_idx: set[int] = set()
+        infos = [
+            info for info in infos
+            if not (info["paragraph_index"] in seen_idx
+                    or seen_idx.add(info["paragraph_index"]))
         ]
         return {"op": op, "kind": "delete",
                 "els": [i["el"] for i in infos],
@@ -700,9 +714,9 @@ def _apply_one(pkg: DocxPackage, edit: dict, plan: dict, i: int) -> dict:
     if op == "insert":
         return _apply_insert(pkg, plan, i)
     if op == "delete":
-        indices = sorted(
+        indices = sorted({
             _current_index(pkg, el, "paragraph", i) for el in plan["els"]
-        )
+        })
         # contiguous runs, deleted bottom-up so indices stay valid
         runs: list[list[int]] = []
         for idx in indices:

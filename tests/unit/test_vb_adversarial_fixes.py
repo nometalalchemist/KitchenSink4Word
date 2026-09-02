@@ -56,7 +56,7 @@ def test_b2_diagnose_malformed_document_not_ok(tmp_path):
                 data = data[:-40]  # truncate: malformed XML
             zout.writestr(item, data)
     r = srv.diagnose_document(str(broken))
-    assert r["ok"] is False
+    assert r["healthy"] is False  # re-keyed from "ok" (6a envelope fix)
     assert any(p["severity"] == "error" for p in r["problems"])
 
 

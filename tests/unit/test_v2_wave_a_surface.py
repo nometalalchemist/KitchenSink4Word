@@ -142,7 +142,8 @@ def test_validate_default_is_core(plain_doc):
     f = core["findings"]
     assert f["package_ok"] is True
     assert f["fields_balanced"] is True
-    assert res["ok"] is True
+    assert res["passed"] is True
+    assert "ok" not in res  # the envelope owns top-level ok (6a fix)
 
 
 def test_validate_battery_runs_multiple_checks(rich_doc):
@@ -209,7 +210,7 @@ def test_validate_forms_options_routed(plain_doc):
     assert findings["complete"] is False
     assert "missing_field_name" in findings["missing_fields"]
     assert res["results"]["forms"]["passed"] is False
-    assert res["ok"] is False
+    assert res["passed"] is False
 
 
 # -------------------------------------------------------------- absorptions
