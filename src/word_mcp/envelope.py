@@ -51,6 +51,8 @@ from .core.sandbox import SandboxViolation
 # Order matters: specific classes before their WordMcpError base.
 CODE_MAP: tuple[tuple[type[BaseException], str], ...] = (
     (_err.AmbiguousTarget, "AMBIGUOUS_LOCATION"),
+    (_err.StaleAnchor, "STALE_ANCHOR"),
+    (_err.RangeOutOfBounds, "RANGE_OUT_OF_BOUNDS"),
     (_err.TargetNotFound, "NOT_FOUND"),
     (_err.DocumentNotFound, "NOT_FOUND"),
     (MutationLockTimeout, "DOCUMENT_LOCKED"),
@@ -182,6 +184,11 @@ def refusal(exc: BaseException) -> dict:
     if ph:
         hint = f"{hint} {ph}".strip()
     error: dict[str, Any] = {"code": code, "message": message, "hint": hint}
+    # Ambiguity refusals from the locate resolver (Section 6.2) carry every
+    # match on the exception; surface them per the declared refusal shape.
+    matches = getattr(exc, "matches", None)
+    if matches:
+        error["matches"] = matches
     detail = getattr(exc, "detail", None)
     if detail:
         error["detail"] = detail

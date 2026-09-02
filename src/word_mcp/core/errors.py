@@ -33,6 +33,21 @@ class UnsupportedStructure(WordMcpError):
     """Merge topology or XML shape we refuse to guess about (conservative mode)."""
 
 
+class RangeOutOfBounds(WordMcpError):
+    """A {start, end} range is inverted or exceeds the document bounds.
+
+    Raised by the v2 locate resolver (core/locate.py) and the Phase 3
+    view/batch layer; maps to the closed code RANGE_OUT_OF_BOUNDS."""
+
+
+class StaleAnchor(WordMcpError):
+    """A get_document_view anchor no longer resolves; the document changed
+    since the view was taken.
+
+    Pre-staged for the Phase 3 view/batch layer; maps to the closed code
+    STALE_ANCHOR."""
+
+
 class ValidationFailed(WordMcpError):
     """Post-edit validation caught a problem; the original file was NOT modified."""
 
