@@ -11,7 +11,10 @@ paragraph indices as inserts and deletes shift them.
 Live-route limits, stated honestly rather than approximated:
 - Anchors resolve against the last SAVED state (the Wave E caveat: unsaved
   changes in Word are invisible to the resolver). The replace op verifies
-  the matched text against Word's own range before writing.
+  the matched text against Word's own range before writing; every other
+  index-addressed op runs the snapshot staleness guard (live_ops
+  _stale_guard): when the open document is dirty, the live target must
+  still match the snapshot text its anchor resolved to, else STALE_ANCHOR.
 - Markdown lists and pipe tables in insert ops are file-mode only; the
   batch refuses up front with the close-the-file hint.
 - A mid-batch apply failure leaves the batch partially applied in the
@@ -88,7 +91,7 @@ def _replace_body(index: int, find: str, new: str, occurrence: int | None):
     return body
 
 
-def _set_style_body(index: int, style: str):
+def _set_style_body(index: int, style: str, verify_text: str | None = None):
     def body(session):
         doc = session.doc
         paras = _lo._body_paragraphs(doc)
@@ -97,6 +100,7 @@ def _set_style_body(index: int, style: str):
                 f"paragraph index {index} out of range "
                 f"({len(paras)} body paragraphs)"
             )
+        _lo._stale_guard(session, paras, index, verify_text, "set_style")
         rng = doc.Range(paras[index].Range.Start, paras[index].Range.End)
         tried = [style]
         m = _HEADING_RE.fullmatch(style)
@@ -138,7 +142,9 @@ def _live_spec(edit: dict, plan: dict, i: int) -> dict:
             for item in seg["items"]:
                 spec_item = {"text": item["text"]}
                 if "level" in item:
-                    spec_item["style"] = f"Heading {item['level']}"
+                    # heading_level applies the built-in style by its
+                    # numeric constant (locale-independent)
+                    spec_item["heading_level"] = item["level"]
                 items.append(spec_item)
         spec["items"] = items
         spec["mode"] = plan["mode"]
@@ -182,17 +188,31 @@ def _live_spec(edit: dict, plan: dict, i: int) -> dict:
 
 
 def apply_edits_live(
-    path: str, edits: list[dict], plans: list[dict], n_paras: int
+    path: str, edits: list[dict], plans: list[dict], n_paras: int,
+    snap_texts: list[str] | None = None,
 ) -> dict:
     """Execute a pre-validated batch against the OPEN document in one undo
     group. plans come from ops/batch.validate_edits on the disk snapshot;
     n_paras is that snapshot's body paragraph count (the index space the
-    plans speak)."""
+    plans speak). snap_texts (parallel to that index space) enables the
+    staleness guard: when the open document has unsaved changes, each
+    index-addressed op verifies its live target still matches the snapshot
+    text its anchor resolved to, refusing (STALE_ANCHOR) on mismatch."""
     specs = [_live_spec(e, p, i) for i, (e, p) in enumerate(zip(edits, plans))]
 
     def body(session):
         # snapshot index -> current index (None = deleted by this batch)
         pos: list = list(range(n_paras))
+        # original indices whose TEXT this batch already rewrote: their
+        # snapshot text is legitimately stale, skip further verification
+        rewritten: set[int] = set()
+
+        def vt(o: int | None) -> str | None:
+            """snapshot verify-text for original index o, or None."""
+            if (snap_texts is None or o is None
+                    or o in rewritten or not 0 <= o < len(snap_texts)):
+                return None
+            return snap_texts[o]
 
         def cur(o: int, i: int) -> int:
             c = pos[o] if 0 <= o < len(pos) else None
@@ -224,13 +244,15 @@ def apply_edits_live(
                     c = cur(spec["index"], i)
                     if mode == "after":
                         _lo.insert_paragraphs_body(
-                            spec["items"], after_index=c
+                            spec["items"], after_index=c,
+                            verify_text=vt(spec["index"]),
                         )(session)
                         pos = [None if x is None else x + k if x > c else x
                                for x in pos]
                     else:  # before
                         _lo.insert_paragraphs_body(
-                            spec["items"], before_index=c
+                            spec["items"], before_index=c,
+                            verify_text=vt(spec["index"]),
                         )(session)
                         pos = [None if x is None else x + k if x >= c else x
                                for x in pos]
@@ -240,16 +262,21 @@ def apply_edits_live(
                              "on the next view after the document is saved"),
                 }
             elif op == "delete":
-                currents = sorted(cur(o, i) for o in spec["indices"])
-                runs: list[list[int]] = []
-                for c in currents:
-                    if runs and c == runs[-1][-1] + 1:
-                        runs[-1].append(c)
+                pairs = sorted((cur(o, i), o) for o in spec["indices"])
+                runs: list[list[tuple[int, int]]] = []
+                for c, o in pairs:
+                    if runs and c == runs[-1][-1][0] + 1:
+                        runs[-1].append((c, o))
                     else:
-                        runs.append([c])
+                        runs.append([(c, o)])
                 deleted = 0
-                for run in reversed(runs):  # bottom-up: indices stay valid
-                    _lo.delete_paragraphs_body(run[0], run[-1])(session)
+                for pair_run in reversed(runs):  # bottom-up: stay valid
+                    run = [c for c, _o in pair_run]
+                    _lo.delete_paragraphs_body(
+                        run[0], run[-1],
+                        verify_start_text=vt(pair_run[0][1]),
+                        verify_end_text=vt(pair_run[-1][1]),
+                    )(session)
                     width = run[-1] - run[0] + 1
                     pos = [
                         None if x is None or run[0] <= x <= run[-1]
@@ -268,27 +295,35 @@ def apply_edits_live(
                     "row": spec["row"], "col": spec["col"],
                 }
             elif op == "replace":
+                # _replace_body re-finds and re-verifies the text in the
+                # LIVE paragraph, so it needs no snapshot guard
                 changed[str(i)] = _replace_body(
                     cur(spec["index"], i), spec["find"], spec["text"],
                     spec["occurrence"],
                 )(session)
+                rewritten.add(spec["index"])
             elif op == "set_text":
                 changed[str(i)] = _lo.replace_paragraph_text_body(
-                    cur(spec["index"], i), spec["text"]
+                    cur(spec["index"], i), spec["text"],
+                    verify_text=vt(spec["index"]),
                 )(session)
+                rewritten.add(spec["index"])
             elif op == "set_style":
                 changed[str(i)] = _set_style_body(
-                    cur(spec["index"], i), spec["style"]
+                    cur(spec["index"], i), spec["style"],
+                    verify_text=vt(spec["index"]),
                 )(session)
             elif op == "format":
                 changed[str(i)] = _lo.format_text_body(
                     spec["formatting"],
                     paragraph_index=cur(spec["index"], i),
                     find=spec["find"], occurrence=spec["occurrence"],
+                    verify_text=vt(spec["index"]),
                 )(session)
             else:  # set_paragraph_format
                 changed[str(i)] = _lo.set_paragraph_format_body(
-                    [cur(spec["index"], i)], spec["format"]
+                    [cur(spec["index"], i)], spec["format"],
+                    verify_texts=[vt(spec["index"])],
                 )(session)
         return {"applied": len(specs), "changed": changed, "warnings": []}
 

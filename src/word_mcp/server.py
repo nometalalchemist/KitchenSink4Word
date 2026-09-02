@@ -386,6 +386,65 @@ def _resolve_for_live(file_path: str, location):
     )
 
 
+# Selectors whose resolution depends on document CONTENT: on a live branch
+# they resolve against the disk snapshot, so the resolved index must be
+# re-verified at the COM boundary (live_ops._stale_guard) in case Word
+# holds unsaved changes. paragraph/cursor addressing carries no snapshot
+# dependency and keeps the v1 index-trust contract.
+_TEXT_SELECTORS = frozenset({"search", "after_heading", "outline", "anchor"})
+
+
+def _snapshot_para_texts(pkg: DocxPackage) -> list[str]:
+    """Body-paragraph plain texts of a snapshot, index-aligned with the
+    live layer's _body_paragraphs."""
+    return [
+        _rd.paragraph_text(el)
+        for kind, _i, el in _rd.body_items(pkg)
+        if kind == "paragraph"
+    ]
+
+
+def _snapshot_verify_text(pkg: DocxPackage, r) -> str | None:
+    """The snapshot text the staleness guard verifies against, or None
+    when the selector did not depend on snapshot content."""
+    if r.selector not in _TEXT_SELECTORS:
+        return None
+    texts = _snapshot_para_texts(pkg)
+    if 0 <= r.paragraph_index < len(texts):
+        return texts[r.paragraph_index]
+    return None
+
+
+def _resolve_for_live_verified(file_path: str, location):
+    """(resolved, verify_text) for a live branch: verify_text is the disk
+    snapshot's text at the resolved paragraph when the selector was
+    content-dependent, for verify-or-refuse at the COM boundary."""
+    pkg = _disk_snapshot_pkg(file_path)
+    r = resolve_location(
+        pkg, location, cursor_reader=_live_cursor_reader(file_path)
+    )
+    return r, _snapshot_verify_text(pkg, r)
+
+
+def _expand_range_verified(pkg: DocxPackage, range_spec, *,
+                           what: str = "range"):
+    """_expand_range plus per-endpoint verify texts, for live branches."""
+    if not isinstance(range_spec, dict):
+        raise WordMcpError(
+            f"{what} takes {{'start': ..., 'end': ...}} with ints or "
+            "location objects as endpoints"
+        )
+    spec = dict(range_spec)
+    if is_range_spec(spec):
+        for key in ("start", "end"):
+            value = spec.get(key)
+            if isinstance(value, int) and not isinstance(value, bool):
+                spec[key] = {"paragraph": value}
+    r = resolve_range(pkg, spec)
+    return (r, _snapshot_verify_text(pkg, r.start),
+            _snapshot_verify_text(pkg, r.end))
+
+
 # ===================================================== 2.1 document lifecycle
 
 
@@ -1386,12 +1445,12 @@ def insert_paragraphs(
 ) -> dict:
     """Insert paragraphs (items {text, style?, formatting?, heading_level?})
     at a location object (omitted = document end). heading_level 1-9 makes
-    the item a heading (Heading style, or outlineLvl on outline-based
-    documents). inherit_format/copy_format_from clone neighbor formatting
-    (file mode only); track records insertions by author. Auto-backup in
-    file mode: prev/anchor slots in .ks4w-backups (backup=False skips
-    rotation only); atomic validated save. Documents open in Word are
-    edited live, unsaved until the user saves.
+    the item a heading. inherit_format/copy_format_from clone neighbor
+    formatting (file mode only); track records insertions by author.
+    Auto-backup in file mode: prev/anchor slots in .ks4w-backups
+    (backup=False skips rotation only); atomic validated save. Documents
+    open in Word are edited live; a stale text-selector target (unsaved
+    changes moved it) refuses: save in Word, retry.
     """
     from .com import live_ops as _lo
 
@@ -1478,19 +1537,31 @@ def insert_paragraphs(
                 "this document is open in Word: close it in Word and retry, "
                 "or insert without format cloning"
             )
-        if heading_items:
-            raise WordMcpError(
-                "heading_level items are file-mode only (heading styles "
-                "and outline levels are written into the saved package); "
-                "close the document in Word and retry"
+        verify = None
+        if location is None:
+            after_index, before_index, at_end = None, None, True
+        else:
+            r, verify = _resolve_for_live_verified(file_path, location)
+            after_index, before_index, at_end = _positioning(
+                None, lambda loc: r
             )
-        after_index, before_index, at_end = _positioning(
-            None, lambda loc: _resolve_for_live(file_path, loc)
-        )
+        items = list(cleaned)
+        if heading_items:
+            # live headings: built-in Heading styles by numeric constant
+            # (locale-safe), or direct outline levels on outline-based
+            # documents, matching the file path's mode detection
+            outline_mode = _outline_based_headings(
+                _disk_snapshot_pkg(file_path)
+            )
+            key = "outline_heading" if outline_mode else "heading_level"
+            for pos, level in heading_items:
+                item = dict(items[pos])
+                item[key] = level
+                items[pos] = item
         return _lo.insert_paragraphs(
-            file_path, cleaned,
+            file_path, items,
             after_index=after_index, before_index=before_index,
-            at_end=at_end, track=track, author=author,
+            at_end=at_end, track=track, author=author, verify_text=verify,
         )
 
     return _route_live(live, _file_call, _live_call)
@@ -1538,13 +1609,17 @@ def delete_paragraphs(
         return _edit(file_path, _do, backup=backup)
 
     def _live_call() -> dict:
+        vs = ve = None
         if range is not None:
-            pkg = _disk_snapshot_pkg(file_path)
-            s, e = _expand_range(pkg, range)
+            rr, vs, ve = _expand_range_verified(
+                _disk_snapshot_pkg(file_path), range
+            )
+            s, e = rr.start_index, rr.end_index
         else:
             s, e = start, end
         return _lo.delete_paragraphs(file_path, s, e, track=track,
-                                     author=author)
+                                     author=author, verify_start_text=vs,
+                                     verify_end_text=ve)
 
     return _route_live(live, _file_call, _live_call)
 
@@ -1578,9 +1653,10 @@ def set_paragraph_text(
         return _edit(file_path, _do, backup=backup)
 
     def _live_call() -> dict:
-        idx = _resolve_for_live(file_path, location).paragraph_index
-        return _lo.replace_paragraph_text(file_path, idx, new_text,
-                                          expect=expect)
+        r, verify = _resolve_for_live_verified(file_path, location)
+        return _lo.replace_paragraph_text(file_path, r.paragraph_index,
+                                          new_text, expect=expect,
+                                          verify_text=verify)
 
     return _route_live(live, _file_call, _live_call)
 
@@ -1783,24 +1859,25 @@ def apply_edits(
     """Apply a batch of anchor-addressed edits in one call: one lock, one
     backup, one validated save for the whole batch. Anchors come from
     get_document_view. Ops (each edit is a dict with "op"): replace
-    {anchor, find, text, occurrence?} (occurrence omitted replaces every
-    match in that paragraph); set_text {anchor, text} (whole paragraph);
+    {anchor, find, text, occurrence?} (occurrence omitted = every match
+    in that paragraph); set_text {anchor, text} (whole paragraph);
     insert {location, markdown} (headings, plain paragraphs, lists, and
     pipe tables become real Word structures; location is the standard
     object, e.g. {"anchor": "hex", "position": "after"}); delete {anchor
     or anchors}; set_style {anchor, style}; format {anchor, formatting,
     find?, occurrence?}; set_paragraph_format {anchor, format}; set_cell
     {anchor: "t:hex:rNcN", text}. Every anchor and location is validated
-    against the current file BEFORE anything mutates: one stale anchor
-    refuses the WHOLE batch (STALE_ANCHOR, listing every failed op;
-    re-view and resend). The result's changed map carries per-op results,
-    including fresh durable anchors for inserted paragraphs, so a
-    follow-up batch chains without re-viewing. Ops execute in order; keep
+    BEFORE anything mutates: one stale anchor refuses the WHOLE batch
+    (STALE_ANCHOR, listing every failed op; re-view and resend). The
+    changed map carries per-op results, with fresh anchors for inserted
+    paragraphs, so follow-up batches chain without re-viewing. Ops
+    execute in order; keep
     deletes last. Three or more edits in one section, use this; otherwise
-    the fine-grained tools. Auto-backup in file mode: prev/anchor slots
-    in .ks4w-backups (backup=False skips rotation only); atomic validated
+    the fine-grained tools. Auto-backup in file mode (prev/anchor slots
+    in .ks4w-backups; backup=False skips rotation); atomic validated
     save. A document open in Word is edited live as ONE undo step
-    (markdown lists and tables are file-mode only there).
+    (markdown lists and tables are file-mode only there; unsaved-change
+    stale targets refuse: save in Word, resend).
     """
     if atomic is not True:
         raise WordMcpError(
@@ -1821,10 +1898,10 @@ def apply_edits(
 
         snap = _disk_snapshot_pkg(file_path)
         plans = _batch.validate_edits(snap, edits)
-        n_paras = sum(
-            1 for k, _i, _e in _rd.body_items(snap) if k == "paragraph"
+        snap_texts = _snapshot_para_texts(snap)
+        return _lb.apply_edits_live(
+            file_path, edits, plans, len(snap_texts), snap_texts
         )
-        return _lb.apply_edits_live(file_path, edits, plans, n_paras)
 
     return _route_live(live, _file_call, _live_call)
 
@@ -1906,12 +1983,21 @@ def format_text(
         return _edit(file_path, _do, backup=backup)
 
     def _live_call() -> dict:
-        idx = _single_index(
-            lambda: _expand_range(_disk_snapshot_pkg(file_path), range)
-        )
+        idx = None
+        verify = None
+        if range is not None:
+            rr, verify, _ve = _expand_range_verified(
+                _disk_snapshot_pkg(file_path), range
+            )
+            if rr.start_index != rr.end_index:
+                raise WordMcpError(
+                    "formatting mode takes a SINGLE-paragraph range (start "
+                    "== end); make one call per paragraph"
+                )
+            idx = rr.start_index
         return _lo.format_text(
             file_path, formatting, paragraph_index=idx, find=find,
-            occurrence=occ,
+            occurrence=occ, verify_text=verify,
         )
 
     return _route_live(live, _file_call, _live_call)

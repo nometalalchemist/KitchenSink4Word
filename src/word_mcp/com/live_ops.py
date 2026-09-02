@@ -27,6 +27,7 @@ import re
 
 from ..core.errors import (
     AmbiguousTarget,
+    StaleAnchor,
     TargetNotFound,
     UnsupportedStructure,
     WordMcpError,
@@ -297,6 +298,61 @@ def _para_text(p, deleted_spans: list | None = None) -> str:
             keep.append(ch)
         text = "".join(keep)
     return text.replace("\x0c", "")
+
+
+# --------------------------------------------- snapshot staleness guard
+#
+# Live-branch location resolution reads a DISK SNAPSHOT of the open
+# document (server._resolve_for_live), so a text selector (search,
+# after_heading, outline, anchor) resolved while Word holds unsaved
+# changes can point at the wrong live paragraph. Bodies that accept a
+# verify_text compare the live paragraph's text against the snapshot
+# paragraph the selector matched, and refuse (STALE_ANCHOR) on mismatch.
+# The check is skipped when doc.Saved is true (live == disk, nothing can
+# be stale), so the refusal's remedy — save the document in Word — always
+# clears it.
+
+_NOTE_REF_RE = re.compile(r"\[(?:fn|en):\d+\]")
+
+
+def _texts_equivalent(file_text: str, live_text: str) -> bool:
+    """File-layer paragraph text vs Range.Text, normalized: note-reference
+    markers ([fn:3] vs \\x02), soft breaks (\\n vs \\x0b), non-breaking
+    hyphens, and object placeholders/control chars the two extractors
+    render differently."""
+    f = _NOTE_REF_RE.sub("\x02", file_text)
+    lv = (
+        live_text.replace("\x0b", "\n")
+        .replace("\x1e", "-")
+        .replace("\x1f", "")
+    )
+    keep = "\t\n\x02"
+    f = "".join(ch for ch in f if ch >= " " or ch in keep)
+    lv = "".join(ch for ch in lv if ch >= " " or ch in keep)
+    return f == lv
+
+
+def _stale_guard(session, paras, index: int, expected: str | None,
+                 what: str) -> None:
+    """Refuse when a snapshot-resolved index cannot be trusted: the open
+    document has unsaved changes AND the live paragraph no longer carries
+    the text the selector matched on disk. expected=None disables the
+    check (index/cursor addressing, where no snapshot text was involved)."""
+    if expected is None:
+        return
+    with contextlib.suppress(Exception):
+        if session.doc.Saved:
+            return
+    if not 0 <= index < len(paras):
+        return  # the op's own bounds check raises the precise error
+    if not _texts_equivalent(expected, _para_text(paras[index])):
+        raise StaleAnchor(
+            f"{what}: the open document has UNSAVED changes and paragraph "
+            f"{index} no longer matches the saved file this location was "
+            "resolved against (locations resolve against the last saved "
+            "state). Save the document in Word (com_save_document) and "
+            "retry."
+        )
 
 
 def _hex_to_wdcolor(color: str) -> int:
@@ -1004,7 +1060,8 @@ def get_comments(path: str, author: str | None = None) -> list:
 
 
 def replace_paragraph_text(
-    path: str, index: int, new_text: str, expect: str | None = None
+    path: str, index: int, new_text: str, expect: str | None = None,
+    verify_text: str | None = None,
 ) -> dict:
     """Live full-paragraph text replacement (L4). FILE-MODE SHAPE:
     {replaced_paragraph: index, replaced_text: old}. expect guards stale
@@ -1022,12 +1079,14 @@ def replace_paragraph_text(
     silently leaves both behind)."""
     return run_live(
         path, "replace paragraph text",
-        replace_paragraph_text_body(index, new_text, expect),
+        replace_paragraph_text_body(index, new_text, expect,
+                                    verify_text=verify_text),
     )
 
 
 def replace_paragraph_text_body(
-    index: int, new_text: str, expect: str | None = None
+    index: int, new_text: str, expect: str | None = None,
+    verify_text: str | None = None,
 ):
     """Session-level body factory; the apply_edits live route composes
     these inside ONE undo group. Same code the public tool runs."""
@@ -1041,6 +1100,7 @@ def replace_paragraph_text_body(
                 f"no body paragraph with index {index}; the document has "
                 f"{len(paras)} body paragraphs"
             )
+        _stale_guard(session, paras, index, verify_text, "set_text")
         p = paras[index]
         rng = doc.Range(p.Range.Start, max(p.Range.Start, p.Range.End - 1))
         current = rng.Text or ""
@@ -1111,13 +1171,14 @@ def insert_paragraphs(
     at_end: bool = False,
     track: bool = False,
     author: str = "Claude",
+    verify_text: str | None = None,
 ) -> dict:
     return run_live(
         path, "insert paragraphs",
         insert_paragraphs_body(
             paragraphs, after_index=after_index, before_index=before_index,
             after_anchor=after_anchor, at_end=at_end, track=track,
-            author=author,
+            author=author, verify_text=verify_text,
         ),
     )
 
@@ -1131,6 +1192,7 @@ def insert_paragraphs_body(
     at_end: bool = False,
     track: bool = False,
     author: str = "Claude",
+    verify_text: str | None = None,
 ):
     """Session-level body factory; see replace_paragraph_text_body."""
     targets = [after_index is not None, before_index is not None,
@@ -1171,6 +1233,7 @@ def insert_paragraphs_body(
                     f"after_index {after_index} out of range "
                     f"({len(paras)} body paragraphs)"
                 )
+            _stale_guard(session, paras, after_index, verify_text, "insert")
             point = paras[after_index].Range.End - 1
             prefix = True
         else:
@@ -1179,6 +1242,7 @@ def insert_paragraphs_body(
                     f"before_index {before_index} out of range "
                     f"({len(paras)} body paragraphs)"
                 )
+            _stale_guard(session, paras, before_index, verify_text, "insert")
             point = paras[before_index].Range.Start
             prefix = False
 
@@ -1196,7 +1260,18 @@ def insert_paragraphs_body(
             else:
                 p_start, p_end = rng.Start, max(rng.Start, rng.End - 1)
             styled = doc.Range(p_start, max(p_start, p_end))
-            if spec.get("style"):
+            if spec.get("heading_level"):
+                # built-in heading via the wdStyleHeadingN constant
+                # (-2 .. -10): locale-independent, unlike the name form
+                level = int(spec["heading_level"])
+                styled.Style = doc.Styles(-(level + 1))
+            elif spec.get("outline_heading"):
+                # outline-based heading (academic-template pattern): keep
+                # the Normal look, set the outline level directly
+                styled.Style = doc.Styles(-1)  # wdStyleNormal
+                first = styled.Paragraphs(1)
+                first.OutlineLevel = int(spec["outline_heading"])
+            elif spec.get("style"):
                 try:
                     styled.Style = spec["style"]
                 except Exception as exc:
@@ -1221,10 +1296,14 @@ def delete_paragraphs(
     end: int | None = None,
     track: bool = False,
     author: str = "Claude",
+    verify_start_text: str | None = None,
+    verify_end_text: str | None = None,
 ) -> dict:
     return run_live(
         path, "delete paragraphs",
-        delete_paragraphs_body(start, end, track=track, author=author),
+        delete_paragraphs_body(start, end, track=track, author=author,
+                               verify_start_text=verify_start_text,
+                               verify_end_text=verify_end_text),
     )
 
 
@@ -1234,6 +1313,8 @@ def delete_paragraphs_body(
     *,
     track: bool = False,
     author: str = "Claude",
+    verify_start_text: str | None = None,
+    verify_end_text: str | None = None,
 ):
     """Session-level body factory; see replace_paragraph_text_body."""
     def body(session):
@@ -1245,6 +1326,9 @@ def delete_paragraphs_body(
                 f"paragraph range [{start}..{last}] out of range "
                 f"({len(paras)} body paragraphs)"
             )
+        _stale_guard(session, paras, start, verify_start_text, "delete")
+        if last != start:
+            _stale_guard(session, paras, last, verify_end_text, "delete")
         rng = doc.Range(paras[start].Range.Start, paras[last].Range.End)
         if rng.Tables.Count:
             raise UnsupportedStructure(
@@ -1387,12 +1471,13 @@ def format_text(
     paragraph_index: int | None = None,
     find: str | None = None,
     occurrence: int = 1,
+    verify_text: str | None = None,
 ) -> dict:
     return run_live(
         path, "format text",
         format_text_body(
             formatting, paragraph_index=paragraph_index, find=find,
-            occurrence=occurrence,
+            occurrence=occurrence, verify_text=verify_text,
         ),
     )
 
@@ -1403,6 +1488,7 @@ def format_text_body(
     paragraph_index: int | None = None,
     find: str | None = None,
     occurrence: int = 1,
+    verify_text: str | None = None,
 ):
     """Session-level body factory; see replace_paragraph_text_body."""
     unknown = set(formatting) - _CHAR_KEYS
@@ -1437,6 +1523,8 @@ def format_text_body(
                     f"paragraph_index {paragraph_index} out of range "
                     f"({len(paras)} body paragraphs)"
                 )
+            _stale_guard(session, paras, paragraph_index, verify_text,
+                         "format")
             candidates = [(paras[paragraph_index], paragraph_index)]
         else:
             candidates = []
@@ -1719,8 +1807,10 @@ def set_paragraph_format(
     )
 
 
-def set_paragraph_format_body(indices: list[int], formatting: dict):
-    """Session-level body factory; see replace_paragraph_text_body."""
+def set_paragraph_format_body(indices: list[int], formatting: dict,
+                              verify_texts: list[str | None] | None = None):
+    """Session-level body factory; see replace_paragraph_text_body.
+    verify_texts, when given, is parallel to indices (None entries skip)."""
     unknown = set(formatting) - _PARA_FMT_KEYS_LIVE - _PARA_FMT_UNSUPPORTED_LIVE
     if unknown:
         raise WordMcpError(
@@ -1755,12 +1845,15 @@ def set_paragraph_format_body(indices: list[int], formatting: dict):
         doc = session.doc
         paras = _body_paragraphs(doc)
         applied = []
-        for idx in indices:
+        for pos, idx in enumerate(indices):
             if not 0 <= idx < len(paras):
                 raise TargetNotFound(
                     f"paragraph index {idx} out of range "
                     f"({len(paras)} body paragraphs)"
                 )
+            if verify_texts is not None and pos < len(verify_texts):
+                _stale_guard(session, paras, idx, verify_texts[pos],
+                             "set_paragraph_format")
             p = paras[idx]
             fmt = p.Format
             keys_set = []

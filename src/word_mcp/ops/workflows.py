@@ -178,14 +178,14 @@ WORKFLOWS: dict[str, dict] = {
             "maps old param names to new paths (dot notation into nested "
             "objects like the location object).",
             "Positioning params (after_index / after_anchor / at_end) became "
-            "the Section 6 location object: omit location for document end, "
+            "the v2 location object: omit location for document end, "
             "{'search': {'text': ...}} for anchors, {'paragraph': N} for "
             "indices.",
             "Enumerators (list_*) merged into list_elements(type=...); "
             "validators and checkers merged into validate(checks=[...]); "
             "note/comment/source lifecycles merged into manage_note / "
             "manage_comment / manage_source.",
-            "The MIGRATION_V2 narrative guide (shipping with the v2 docs) "
+            "The narrative guide (docs/MIGRATION_V2.md in the repo) "
             "carries the details, including "
             "the insert_document indexing caveat (v1 after_index counted "
             "paragraphs AND tables; location.paragraph counts paragraphs "

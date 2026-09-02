@@ -53,7 +53,7 @@
         "to_bookmark": "to_bookmark",
         "kind": "kind"
       },
-      "notes": "renamed per the Section 5 verb table; v1 had no occurrence param (first match), v2 search selector defaults occurrence=1"
+      "notes": "renamed to the insert_ verb family; v1 had no occurrence param (acted on first match), the v2 search selector defaults occurrence=1"
     },
     "add_endnote": {
       "to": "manage_note",
@@ -112,7 +112,7 @@
       "params": {
         "after_index": "location.paragraph"
       },
-      "notes": "v1 at_end=true -> location:{position:'end'} or omit location; refines the skeleton's bare identity-params row"
+      "notes": "v1 at_end=true -> location:{position:'end'} or omit location"
     },
     "add_page_break": {
       "to": "insert_break",
@@ -227,7 +227,7 @@
       "params": {
         "rules": "options.brand"
       },
-      "notes": "options.brand takes the v1 rules DICT (the Section 3.3 path sketch does not match v1; flagged in wave_A.md Appendix C)"
+      "notes": "options.brand takes the same rules dict the v1 tool took"
     },
     "check_citation_parity": {
       "to": "validate",
@@ -259,7 +259,7 @@
       "params": {
         "min_dpi": "options.image_resolution.min_dpi"
       },
-      "notes": "v2 home is Wave A's validate multiplex"
+      "notes": "runs as one check inside the validate battery"
     },
     "check_reference_field_integrity": {
       "to": "validate",
@@ -525,7 +525,7 @@
       "params": {
         "which": "id"
       },
-      "notes": "Wave D owns delete_element's schema; v1 which was the read_toc order index, v2 ids come from list_elements(type='toc')"
+      "notes": "v1 which was the read_toc order index; v2 ids come from list_elements(type='toc')"
     },
     "detect_citation_system": {
       "to": "detect_citation_system",
@@ -607,7 +607,7 @@
     "get_comments": {
       "to": "get_comments",
       "params": {},
-      "notes": "identity; keeps the WS-L live route and live='auto' param"
+      "notes": "identity; keeps the live route and the live='auto' param"
     },
     "get_document_info": {
       "to": "get_document_info",
@@ -630,7 +630,7 @@
         "cell": "nested.cell",
         "nested_index": "nested.index"
       },
-      "notes": "absorbed via the nested address object; supersedes the skeleton's illustrative row"
+      "notes": "absorbed via the nested address object"
     },
     "get_outline": {
       "to": "get_outline",
@@ -676,7 +676,7 @@
     "import_table": {
       "to": "import_table",
       "params": {},
-      "notes": "identity; keeps at_end/after_anchor (not in the Section 6.3 location-taker list)"
+      "notes": "identity; keeps at_end/after_anchor (table import does not take the location object)"
     },
     "insert_bibliography": {
       "to": "insert_reference_list",
@@ -995,7 +995,7 @@
       "inject": {
         "watermark": "none"
       },
-      "notes": "matches the skeleton's illustrative row"
+      "notes": "set-to-none is the removal idiom"
     },
     "replace_formatted": {
       "to": "search_and_replace",
@@ -1018,7 +1018,7 @@
       "params": {
         "index": "location.paragraph"
       },
-      "notes": "rename per the Section 5 verb table; expect guard and replaced_text return unchanged."
+      "notes": "renamed to the set_ verb family; expect guard and replaced_text return unchanged"
     },
     "reply_to_comment": {
       "to": "manage_comment",
@@ -1064,7 +1064,7 @@
     "search_and_replace": {
       "to": "search_and_replace",
       "params": {},
-      "notes": "identity; keeps its name per ruling 13.2; gains preview and find_formatting."
+      "notes": "identity; keeps its name; gains preview and find_formatting"
     },
     "search_zotero_library": {
       "to": "search_zotero_library",
@@ -1295,7 +1295,7 @@
       "params": {
         "targets": "options.redaction.targets"
       },
-      "notes": "Wave A owns validate's schema; the redaction check re-scans for the given patterns without changing anything"
+      "notes": "the redaction check re-scans for the given patterns without changing anything"
     },
     "word_count": {
       "to": "word_count",
@@ -1311,7 +1311,7 @@
     "word_live_repair": {
       "to": "live_repair",
       "params": {},
-      "notes": "rename into the live_ namespace per Section 5.3."
+      "notes": "renamed into the live_ namespace"
     }
   }
 }
