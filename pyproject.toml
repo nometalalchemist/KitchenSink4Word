@@ -15,7 +15,7 @@ keywords = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "fastmcp",
+    "fastmcp>=3.4,<4",
     "latex2mathml>=3.81",
     "mathml2omml>=0.0.2",
     "python-docx",

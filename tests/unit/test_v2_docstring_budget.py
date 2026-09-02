@@ -1,18 +1,15 @@
 """v2 docstring budgets, ported from the pptx budget test.
 
-Phase 0 status: the no-em-dash check is ENFORCED now (v1 already passes
-it). The token budget runs against the v1 surface but is expected to fail
-(v1 was not written to the v2 budgets: 95 of 189 descriptions sit outside
-[60, 130] and two exceed even the multiplex cap), so it carries xfail.
-Phase 2 flip: delete the pytest.mark.xfail line and update MULTIPLEX to
-the final v2 multiplex set; nothing else changes.
+Phase 2 status: ENFORCED against the rebuilt v2 surface (the Phase 0
+xfail is gone). MULTIPLEX is the finalized v2 multiplex set; the three
+names not yet registered (apply_edits, get_document_view from the Phase 3
+view layer, enable_tools from the Phase 4 pack wiring) are pre-listed so
+the later phases inherit their cap without touching this file.
 """
 
 from __future__ import annotations
 
 import asyncio
-
-import pytest
 
 from word_mcp import server
 
@@ -34,16 +31,16 @@ def _tools():
     ]
 
 
-# The planned v2 multiplex/high-traffic tools that earn the ~350-token cap
-# (finalized in Phase 2; the v1 names below keep the test meaningful while
-# it runs against the v1 surface).
+# The v2 multiplex/high-traffic tools that earn the ~350-token cap
+# (finalized at the Phase 2 flip; delete_element joined per the Wave D
+# brief and the integration ruling).
 MULTIPLEX = {
     "list_elements", "validate", "manage_note", "manage_comment",
     "manage_source", "modify_table_structure", "com_multi_document",
     "insert_reference_list", "apply_edits", "get_document_view",
     "search_and_replace", "resolve_revisions", "manage_backups",
     "enable_tools", "get_workflows", "diagnose_document",
-    "insert_document", "convert_citation_style",
+    "insert_document", "convert_citation_style", "delete_element",
 }
 
 
@@ -55,11 +52,6 @@ def test_no_em_dashes_in_descriptions():
         assert "—" not in desc, f"{tool.name} description has an em dash"
 
 
-@pytest.mark.xfail(
-    reason="v2 budgets apply from Phase 2 (v1 docstrings predate the "
-    "80-120/350 budget)",
-    strict=False,
-)
 def test_docstring_budget():
     """Every tool description inside 60-130 tokens (chars/4; multiplex
     tools get headroom to ~350)."""

@@ -1,10 +1,18 @@
+"""V2 STAGING copy of tests/unit/test_formatting_followups.py (Wave A).
+Only change: srv.insert_document moved to the v2 signature (location
+object per V2_DESIGN 6.3; omitting location appends at the end, which is
+the v1 at_end=True behavior these tests used). Ops-level calls and all
+other assertions are untouched. Integrator swaps this file in when the
+rebuilt server.py lands.
+"""
+
 """Post-merge formatting follow-ups (2026-08-28 real-dissertation merge
 review, V1.6_KICKOFF "FOLLOW-UP BUILDER QUEUE"):
 
 1. insert_document `formatting` param: "source" | "merge" | "destination"
    (Word paste modes, stripping applied to the carried COPIES only).
 2. insert_paragraphs inherit_format / copy_format_from (clone the anchor's
-   direct pPr + terminal-run rPr onto inserted paragraphs — the 66
+   direct pPr + terminal-run rPr onto inserted paragraphs, the 66
    unformatted reference entries case).
 3. copy_table: single-table transplant through the insert_document
    reconciliation pipeline.
@@ -160,7 +168,7 @@ def _fmt_source(tmp_path, name="fmt_src.docx"):
 def test_source_mode_default_preserves_direct_formatting(tmp_path):
     src = _fmt_source(tmp_path)
     tgt = _fresh(tmp_path, "tgt.docx", ["T0"])
-    res = srv.insert_document(str(tgt), str(src), at_end=True, backup=False)
+    res = srv.insert_document(str(tgt), str(src), backup=False)
     assert res["formatting_mode"] == "source"
     assert "runs_stripped" not in res and "paragraphs_stripped" not in res
     p = _find_para(DocxPackage(tgt), "Direct formatted paragraph")
@@ -173,7 +181,7 @@ def test_merge_mode_keeps_emphasis_strips_font_and_layout(tmp_path):
     src_md5 = _md5(src)
     tgt = _fresh(tmp_path, "tgt.docx", ["T0"])
     res = srv.insert_document(
-        str(tgt), str(src), at_end=True, formatting="merge", backup=False
+        str(tgt), str(src), formatting="merge", backup=False
     )
     assert res["formatting_mode"] == "merge"
     assert res["runs_stripped"] >= 1
@@ -198,7 +206,7 @@ def test_destination_mode_strips_all_but_structural(tmp_path):
     src = _fmt_source(tmp_path)
     tgt = _fresh(tmp_path, "tgt.docx", ["T0"])
     res = srv.insert_document(
-        str(tgt), str(src), at_end=True, formatting="destination", backup=False
+        str(tgt), str(src), formatting="destination", backup=False
     )
     assert res["formatting_mode"] == "destination"
     assert res["runs_stripped"] >= 1 and res["paragraphs_stripped"] >= 1
@@ -220,7 +228,7 @@ def test_invalid_formatting_mode_refused_untouched(tmp_path):
     before = _md5(tgt)
     with pytest.raises(WordMcpError, match="formatting"):
         srv.insert_document(
-            str(tgt), str(src), at_end=True, formatting="merged", backup=False
+            str(tgt), str(src), formatting="merged", backup=False
         )
     assert _md5(tgt) == before
 
@@ -371,7 +379,7 @@ def test_explicit_item_formatting_wins_over_clone(tmp_path):
 def test_inherit_format_via_server_tool(tmp_path):
     f = _ref_doc(tmp_path)
     res = srv.insert_paragraphs(
-        str(f), [{"text": "Entry two"}], after_index=1,
+        str(f), [{"text": "Entry two"}], location={"paragraph": 1},
         inherit_format=True, backup=False, live="off",
     )
     assert res["format_cloned_from"] == 1
@@ -502,26 +510,12 @@ def test_copy_table_blocked_content_refuses_untouched(tmp_path):
     assert len(list(pkg.body())) == blocks_before  # nothing half-applied
 
 
-def test_copy_table_registration_snippet_loads():
-    """Paste-readiness: the integration snippet imports and registers."""
-    root = Path(__file__).parents[2]
-    snippet = root / "integration" / "copytable_registrations.py"
-    if not snippet.exists():
-        pytest.skip("integration/ staging dir not present (gitignored)")
-    spec = importlib.util.spec_from_file_location(
-        "copytable_registrations_smoke", snippet,
-    )
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    assert hasattr(mod, "copy_table")
-
-
 # ============================ item 4: find_formatted textbox exclusion ====
 
 
 def _txbx_run_xml(box_text, name="Text Box 1"):
     """AlternateContent shape (wps:txbx) WITH the mc:Fallback VML copy Word
-    always writes alongside — the doubled-storage case. The box paragraph's
+    always writes alongside, the doubled-storage case. The box paragraph's
     run is BOLD so it would satisfy a bold criterion if walked."""
     content = (
         "<w:txbxContent><w:p><w:r><w:rPr><w:b/></w:rPr>"

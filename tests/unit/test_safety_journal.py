@@ -116,9 +116,9 @@ def inject_run_xml(path, host_text, run_xml):
 
 def doc_with_box(tmp_path, **kw):
     path = new_doc(tmp_path, "box.docx")
-    srv.insert_paragraphs(path, [{"text": "Before the box."}], at_end=True,
+    srv.insert_paragraphs(path, [{"text": "Before the box."}],
                           backup=False)
-    srv.insert_paragraphs(path, [{"text": "Host paragraph."}], at_end=True,
+    srv.insert_paragraphs(path, [{"text": "Host paragraph."}],
                           backup=False)
     inject_run_xml(path, "Host paragraph.", _txbx_xml("Box body text", **kw))
     return path
@@ -142,7 +142,7 @@ def test_textbox_read_modern_dedupes_fallback(tmp_path):
 
 def test_textbox_read_legacy_vml(tmp_path):
     path = new_doc(tmp_path)
-    srv.insert_paragraphs(path, [{"text": "VML host."}], at_end=True,
+    srv.insert_paragraphs(path, [{"text": "VML host."}],
                           backup=False)
     inject_run_xml(path, "VML host.", _vml_xml("Legacy secret"))
     out = tbx.get_textbox_text(DocxPackage(path))
@@ -213,7 +213,6 @@ def build_replace_doc(tmp_path):
             {"text": "no match here."},
             {"text": "final alpha stands."},
         ],
-        at_end=True,
         backup=False,
     )
     # Fragment the first occurrence across runs — matching must still work.
@@ -254,7 +253,7 @@ def test_preview_never_touches_file_or_package(tmp_path):
 def test_preview_chained_items_sequencing(tmp_path):
     """Item 2 must see item 1's output, exactly like the real engine."""
     path = new_doc(tmp_path, "chain.docx")
-    srv.insert_paragraphs(path, [{"text": "cat dog"}], at_end=True,
+    srv.insert_paragraphs(path, [{"text": "cat dog"}],
                           backup=False)
     items = [
         {"find": "cat", "replace": "dog"},
@@ -270,7 +269,7 @@ def test_preview_chained_items_sequencing(tmp_path):
 
 def test_preview_regex_group_expansion(tmp_path):
     path = new_doc(tmp_path, "rx.docx")
-    srv.insert_paragraphs(path, [{"text": "Smith 1999 wrote."}], at_end=True,
+    srv.insert_paragraphs(path, [{"text": "Smith 1999 wrote."}],
                           backup=False)
     out = pv.preview_replace(
         DocxPackage(path),
@@ -282,7 +281,7 @@ def test_preview_regex_group_expansion(tmp_path):
 
 def test_preview_guards(tmp_path):
     path = new_doc(tmp_path, "guard.docx")
-    srv.insert_paragraphs(path, [{"text": "xx yy"}], at_end=True, backup=False)
+    srv.insert_paragraphs(path, [{"text": "xx yy"}], backup=False)
     pkg = DocxPackage(path)
     # Invalid regex raises — the identical error the real run would raise.
     with pytest.raises(WordMcpError):
@@ -309,22 +308,17 @@ def test_preview_guards(tmp_path):
 
 def build_journal_doc(tmp_path):
     path = new_doc(tmp_path, "journal.docx")
-    srv.insert_paragraphs(path, [{"text": "Front matter text here."}],
-                          at_end=True, backup=False)                  # 4 words
-    srv.add_heading(path, "Abstract", 1, at_end=True, backup=False)   # 1
-    srv.insert_paragraphs(path, [{"text": "Short abstract text."}],
-                          at_end=True, backup=False)                  # 3
-    srv.add_heading(path, "Introduction", 1, at_end=True, backup=False)  # 1
+    srv.insert_paragraphs(path, [{"text": "Front matter text here."}], backup=False)                  # 4 words
+    srv.insert_paragraphs(path, [{"text": "Abstract", "heading_level": 1}], backup=False)   # 1
+    srv.insert_paragraphs(path, [{"text": "Short abstract text."}], backup=False)                  # 3
+    srv.insert_paragraphs(path, [{"text": "Introduction", "heading_level": 1}], backup=False)  # 1
     srv.insert_paragraphs(
-        path, [{"text": "This is the body of the paper."}],
-        at_end=True, backup=False)                                    # 7
-    srv.insert_paragraphs(path, [{"text": "Quoted words here."}],
-                          at_end=True, backup=False)                  # 3
+        path, [{"text": "This is the body of the paper."}], backup=False)                                    # 7
+    srv.insert_paragraphs(path, [{"text": "Quoted words here."}], backup=False)                  # 3
     srv.set_paragraph_format(
         path, [index_of(path, "Quoted words here.")],
         {"indent_left_pt": 36, "indent_right_pt": 36}, backup=False)
-    srv.insert_paragraphs(path, [{"text": "Figure 1. A caption."}],
-                          at_end=True, backup=False)                  # 4
+    srv.insert_paragraphs(path, [{"text": "Figure 1. A caption."}], backup=False)                  # 4
     # Style the caption paragraph by raw pStyle (Caption need not be defined).
     pkg = DocxPackage(path)
     from word_mcp.ops.read import body_items, paragraph_text
@@ -337,14 +331,13 @@ def build_journal_doc(tmp_path):
             etree.SubElement(ppr, qn("w:pStyle")).set(qn("w:val"), "Caption")
     pkg.mark_dirty()
     pkg.save(do_backup=False)
-    srv.create_table(path, [["h1", "h2"], ["a b", "c"]], at_end=True,
+    srv.create_table(path, [["h1", "h2"], ["a b", "c"]],
                      backup=False)                                    # 5
-    srv.add_footnote(path, "body", "A footnote note.", backup=False)  # 3
-    srv.add_heading(path, "References", 1, at_end=True, backup=False)  # 1
+    srv.manage_note(path, action="insert", note_type="footnote", text="A footnote note.", location={"search": {"text": "body"}}, backup=False)  # 3
+    srv.insert_paragraphs(path, [{"text": "References", "heading_level": 1}], backup=False)  # 1
     srv.insert_paragraphs(
         path,
-        [{"text": "Hurd, I. (1999). Legitimacy and authority."}],
-        at_end=True, backup=False)                                    # 6
+        [{"text": "Hurd, I. (1999). Legitimacy and authority."}], backup=False)                                    # 6
     return path
 
 
@@ -402,10 +395,9 @@ def build_manuscript(tmp_path):
             {"text": "In my previous work I claimed this."},
             {"text": "As Hurd argues, this is central."},
         ],
-        at_end=True,
         backup=False,
     )
-    srv.add_heading(path, "References", 1, at_end=True, backup=False)
+    srv.insert_paragraphs(path, [{"text": "References", "heading_level": 1}], backup=False)
     srv.insert_paragraphs(
         path,
         [
@@ -416,7 +408,6 @@ def build_manuscript(tmp_path):
             {"text": "Hurd, I., & Lake, D. A. (2005). Jointly written "
                      "piece."},
         ],
-        at_end=True,
         backup=False,
     )
     # Identifying metadata.

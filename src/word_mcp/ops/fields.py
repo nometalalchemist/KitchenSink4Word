@@ -11,7 +11,7 @@ import re
 
 from lxml import etree
 
-from ..core.errors import TargetNotFound, WordMcpError
+from ..core.errors import AmbiguousTarget, TargetNotFound, WordMcpError
 from ..core.package import DocxPackage, qn
 from . import _runmap
 from .read import body_items
@@ -593,3 +593,143 @@ def _ensure_hyperlink_style(pkg: DocxPackage) -> None:
     color.set(qn("w:themeColor"), "hyperlink")
     etree.SubElement(rpr, qn("w:u")).set(qn("w:val"), "single")
     pkg.mark_dirty("word/styles.xml")
+
+
+# ----------------------------------------------------------- delete (v2 ops)
+#
+# v1 had no bookmark or hyperlink deletion path (parity gaps the V2_DESIGN
+# Section 3.2 delete_element multiplex closes). Additive: nothing above
+# this line changed.
+
+
+def delete_bookmark(pkg: DocxPackage, name: str) -> dict:
+    """Remove a bookmark's start/end markers by name; the bookmarked text
+    stays. Word-internal bookmarks (underscore-prefixed: TOC and field
+    plumbing) are refused. The result counts REF/PAGEREF fields left
+    pointing at the removed name (they will show an error on the next
+    field update)."""
+    if name.startswith("_"):
+        raise WordMcpError(
+            f"bookmark {name!r} is Word-internal (TOC/field plumbing); "
+            "deleting it would break generated content"
+        )
+    starts = [
+        b
+        for b in pkg.root().iter(qn("w:bookmarkStart"))
+        if b.get(qn("w:name")) == name
+    ]
+    if not starts:
+        raise TargetNotFound(
+            f"bookmark {name!r} not found (see list_bookmarks)"
+        )
+    ids = {b.get(qn("w:id")) for b in starts}
+    for b in starts:
+        b.getparent().remove(b)
+    for e in list(pkg.root().iter(qn("w:bookmarkEnd"))):
+        if e.get(qn("w:id")) in ids:
+            e.getparent().remove(e)
+    pkg.mark_dirty()
+
+    dangling = 0
+    pat = re.compile(rf"\b(?:PAGEREF|REF)\s+{re.escape(name)}(?=[\s\\]|$)")
+    for it in pkg.root().iter(qn("w:instrText")):
+        if pat.search((it.text or "").strip()):
+            dangling += 1
+    for fs in pkg.root().iter(qn("w:fldSimple")):
+        if pat.search(fs.get(qn("w:instr")) or ""):
+            dangling += 1
+    return {
+        "deleted_bookmark": name,
+        "markers_removed": len(starts),
+        "dangling_references": dangling,
+    }
+
+
+def delete_hyperlink(
+    pkg: DocxPackage,
+    *,
+    anchor_text: str | None = None,
+    url: str | None = None,
+    occurrence: int | None = None,
+) -> dict:
+    """Unwrap one hyperlink: the link wrapper (and its relationship, once
+    unshared) goes, the display text stays in place with the Hyperlink
+    character style stripped. Match by contained text (substring) and/or
+    target URL (exact; internal anchors match as '#name'). More than one
+    match without `occurrence` refuses loudly, listing every candidate."""
+    if anchor_text is None and url is None:
+        raise WordMcpError(
+            "give anchor_text or url (or both) to pick the hyperlink"
+        )
+    rels_part = "word/_rels/document.xml.rels"
+    rid_target: dict[str, str] = {}
+    if pkg.has_part(rels_part):
+        rid_target = {
+            r.get("Id"): r.get("Target") for r in pkg.root(rels_part)
+        }
+    candidates = []
+    for link in pkg.root().iter(qn("w:hyperlink")):
+        text = "".join(t.text or "" for t in link.iter(qn("w:t")))
+        rid = link.get(qn("r:id"))
+        anchor = link.get(qn("w:anchor"))
+        if rid:
+            href = rid_target.get(rid)
+        elif anchor:
+            href = f"#{anchor}"
+        else:
+            href = None
+        if anchor_text is not None and anchor_text not in text:
+            continue
+        if url is not None and href != url:
+            continue
+        candidates.append((link, text, href, rid))
+    if not candidates:
+        raise TargetNotFound(
+            "no hyperlink matched"
+            + (f" text {anchor_text!r}" if anchor_text is not None else "")
+            + (f" url {url!r}" if url is not None else "")
+        )
+    if occurrence is None and len(candidates) > 1:
+        exc = AmbiguousTarget(
+            f"{len(candidates)} hyperlinks matched; pass occurrence "
+            "(1-based, document order)"
+        )
+        exc.matches = [
+            {"occurrence": i + 1, "text": t, "url": h}
+            for i, (_, t, h, _) in enumerate(candidates)
+        ]
+        raise exc
+    pick = 1 if occurrence is None else occurrence
+    if not 1 <= pick <= len(candidates):
+        raise TargetNotFound(
+            f"occurrence {pick} out of range; {len(candidates)} "
+            "hyperlink(s) matched"
+        )
+    link, text, href, rid = candidates[pick - 1]
+    moved = 0
+    for child in list(link):
+        if child.tag == qn("w:r"):
+            rpr = child.find(qn("w:rPr"))
+            if rpr is not None:
+                st = rpr.find(qn("w:rStyle"))
+                if st is not None and st.get(qn("w:val")) == "Hyperlink":
+                    rpr.remove(st)
+                if len(rpr) == 0:
+                    child.remove(rpr)
+        link.addprevious(child)
+        moved += 1
+    link.getparent().remove(link)
+    pkg.mark_dirty()
+
+    if rid:
+        still_used = any(
+            other.get(qn("r:id")) == rid
+            for other in pkg.root().iter(qn("w:hyperlink"))
+        )
+        if not still_used and pkg.has_part(rels_part):
+            rels_root = pkg.root(rels_part)
+            for r in list(rels_root):
+                if r.get("Id") == rid:
+                    rels_root.remove(r)
+                    pkg.mark_dirty(rels_part)
+    return {"deleted_hyperlink": href, "text": text, "unwrapped_runs": moved}

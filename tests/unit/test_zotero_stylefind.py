@@ -1,4 +1,6 @@
-"""ZOTERO TIER-2 + STYLE-AWARE FIND bundle tests.
+"""ZOTERO TIER-2 + STYLE-AWARE FIND bundle tests (v2-staged copy, Wave B:
+add_heading folded into insert_paragraphs heading_level per the 2.4 map;
+everything else unchanged).
 
 The Zotero tests run against a SYNTHETIC zotero.sqlite built here with the
 real Zotero 7 schema (verified against a live database, userdata v125) and
@@ -168,7 +170,6 @@ def cited_doc(tmp_path):
         [{"text": "Opening paragraph before the citation."},
          {"text": "The alliance argument rests on strong evidence."},
          {"text": "Closing paragraph after the citation."}],
-        at_end=True,
         backup=False,
     )
     return str(path)
@@ -384,11 +385,11 @@ def styled_doc(tmp_path):
         [{"text": "The delta model requires sustained attention."},
          {"text": "Alpha beta gamma and beta again in one sentence."},
          {"text": "A completely plain closing paragraph."}],
-        at_end=True,
         backup=False,
     )
-    srv.add_heading(str(path), "Findings Overview", level=1, at_end=True,
-                    backup=False)
+    srv.insert_paragraphs(
+        str(path), [{"text": "Findings Overview", "heading_level": 1}], backup=False,
+    )
     srv.format_text(str(path), {"bold": True}, find="delta model",
                     backup=False)
     srv.format_text(str(path), {"bold": True, "size_pt": 13},
@@ -397,8 +398,8 @@ def styled_doc(tmp_path):
         p["index"] for p in srv.get_text(str(path))
         if "Alpha beta" in p["text"]
     )
-    srv.format_text(str(path), {"italic": True}, paragraph_index=idx,
-                    backup=False)
+    srv.format_text(str(path), {"italic": True},
+                    range={"start": idx, "end": idx}, backup=False)
     return str(path)
 
 

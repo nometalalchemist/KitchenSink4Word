@@ -1,4 +1,10 @@
-"""Regressions for the L5 insane-stress findings."""
+"""Regressions for the L5 insane-stress findings.
+
+V2 STAGED REWRITE (Wave E): apply_style moved to range kwargs; format_text
+paragraph_index moved to single-paragraph range. DO NOT RUN in the wave
+phase; the integrator runs the live rounds after applying the briefs.
+Imports from test_live_core resolve once this file replaces tests/unit's copy.
+"""
 
 import pytest
 
@@ -21,16 +27,18 @@ def _table_doc(tmp_path, name="t.docx"):
     path = tmp_path / name
     srv.create_document(str(path))
     srv.create_table(
-        str(path), [["a", "b"], ["c", "d"], ["e", "f"]],
-        at_end=True, backup=False,
+        str(path), [["a", "b"], ["c", "d"], ["e", "f"]], backup=False,
     )
     return str(path)
 
 
 def test_f5_file_set_cells_refuses_vmerge_continuation(tmp_path):
     path = _table_doc(tmp_path)
-    srv.merge_cells(str(path), 0, start_row=0, end_row=1, start_col=0,
-                    end_col=0, backup=False)
+    srv.modify_table_structure(
+        str(path), 0, action="merge",
+        range={"start_row": 0, "end_row": 1, "start_col": 0, "end_col": 0},
+        backup=False,
+    )
     with pytest.raises(UnsupportedStructure, match="CONTINUATION"):
         srv.set_cells(
             str(path), 0, [{"row": 1, "cell": 0, "text": "invisible"}],
@@ -47,7 +55,7 @@ def test_f5_file_set_cells_refuses_vmerge_continuation(tmp_path):
 def test_f6_file_find_text_refuses_empty_and_empty_matching(tmp_path):
     path = tmp_path / "f.docx"
     srv.create_document(str(path))
-    srv.insert_paragraphs(str(path), [{"text": "abc"}], at_end=True,
+    srv.insert_paragraphs(str(path), [{"text": "abc"}],
                           backup=False)
     with pytest.raises(WordMcpError, match="non-empty"):
         srv.find_text(str(path), "", live="off")
@@ -60,11 +68,13 @@ def test_f7_file_get_text_slice_excludes_sdt(tmp_path):
     srv.create_document(str(path))
     srv.insert_paragraphs(
         str(path),
-        [{"text": "Body zero"}, {"text": "Heading"}, {"text": "Body two"}],
-        at_end=True, backup=False,
+        [{"text": "Body zero"}, {"text": "Heading"}, {"text": "Body two"}], backup=False,
     )
-    srv.apply_style(str(path), [1], "Heading 1", backup=False)
-    srv.insert_toc(str(path), at_start=True, backup=False)
+    srv.apply_style(
+        str(path), style="Heading 1", range={"start": 1, "end": 1},
+        backup=False,
+    )
+    srv.insert_reference_list(str(path), type="toc", backup=False)
     whole = srv.get_text(str(path), live="off")
     assert any(p.get("in_sdt") for p in whole)
     sliced = srv.get_text(str(path), start=0, end=2, live="off")
@@ -86,8 +96,7 @@ def live_doc(tmp_path):
     srv.create_document(str(path))
     srv.insert_paragraphs(
         str(path),
-        [{"text": f"live paragraph {i} qbert."} for i in range(8)],
-        at_end=True, backup=False,
+        [{"text": f"live paragraph {i} qbert."} for i in range(8)], backup=False,
     )
     pythoncom.CoInitialize()
     app = win32com.client.DispatchEx("Word.Application")
@@ -187,7 +196,7 @@ def test_f9_live_format_text_extended_keys(live_doc):
     r = srv.format_text(
         live_doc,
         {"small_caps": True, "char_spacing_pt": 1.5},
-        paragraph_index=1, find="live",
+        range={"start": 1, "end": 1}, find="live",
     )
     assert r["live"] is True
 
@@ -205,7 +214,7 @@ def test_f9_live_format_text_extended_keys(live_doc):
     # LanguageIDFarEast (Word silently ignores them in the latin slot).
     r2 = srv.format_text(
         live_doc, {"language": "fr-FR", "east_asian_language": "ja-JP"},
-        paragraph_index=1, live="force",
+        range={"start": 1, "end": 1}, live="force",
     )
     assert r2["live"] is True
 
@@ -224,11 +233,13 @@ def test_f9_live_format_text_extended_keys(live_doc):
     assert langs["far_east"] == 1041   # ja-JP
     with pytest.raises(WordMcpError, match="no live LCID"):
         srv.format_text(
-            live_doc, {"language": "xx-XX"}, paragraph_index=1, live="force"
+            live_doc, {"language": "xx-XX"}, range={"start": 1, "end": 1},
+            live="force",
         )
-    # ko-KR in the latin slot would be silently ignored by Word — the tool
+    # ko-KR in the latin slot would be silently ignored by Word; the tool
     # must refuse with routing guidance rather than fake success
     with pytest.raises(WordMcpError, match="east_asian_language"):
         srv.format_text(
-            live_doc, {"language": "ko-KR"}, paragraph_index=1, live="force"
+            live_doc, {"language": "ko-KR"}, range={"start": 1, "end": 1},
+            live="force",
         )

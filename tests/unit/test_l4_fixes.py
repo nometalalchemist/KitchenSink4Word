@@ -1,4 +1,10 @@
-"""Regressions for the L4 interaction bug-hunt findings (F1–F11)."""
+"""Regressions for the L4 interaction bug-hunt findings (F1-F11).
+
+V2 STAGED REWRITE (Wave E): apply_style moved to range kwargs; everything
+else in this file already matches the v2 surface. DO NOT RUN in the wave
+phase; the integrator runs the live rounds after applying the briefs.
+Imports from test_live_core resolve once this file replaces tests/unit's copy.
+"""
 
 import subprocess
 import sys
@@ -40,7 +46,6 @@ def plain_doc(tmp_path):
     srv.insert_paragraphs(
         str(path),
         [{"text": f"plain paragraph {i} charlie delta."} for i in range(6)],
-        at_end=True,
         backup=False,
     )
     app = _open_in_new_word(path)
@@ -60,13 +65,17 @@ def test_f1_replace_inside_field_result_terminates(tmp_path):
     path = tmp_path / "field.docx"
     srv.create_document(str(path))
     srv.insert_paragraphs(
-        str(path), [{"text": "Cited here: "}], at_end=True, backup=False
+        str(path), [{"text": "Cited here: "}], backup=False
     )
-    srv.add_source(
-        str(path), tag="hurd99", authors=[{"last": "Hurd", "first": "Ian"}],
+    srv.manage_source(
+        str(path), action="add", tag="hurd99",
+        authors=[{"last": "Hurd", "first": "Ian"}],
         title="Legitimacy", year="1999", source_type="JournalArticle",
     )
-    srv.insert_citation(str(path), tag="hurd99", anchor_text="Cited here: ")
+    srv.insert_citation(
+        str(path), tag="hurd99",
+        location={"search": {"text": "Cited here: "}},
+    )
     app = _open_in_new_word(path)
     app = None
     try:
@@ -94,11 +103,13 @@ def test_f2_paragraph_index_parity_with_sdt_toc(tmp_path):
     srv.insert_paragraphs(
         str(path),
         [{"text": "Alpha bravo charlie."}, {"text": "Heading One"},
-         {"text": "Delta echo foxtrot."}],
-        at_end=True, backup=False,
+         {"text": "Delta echo foxtrot."}], backup=False,
     )
-    srv.apply_style(str(path), [2], "Heading 1", backup=False)
-    srv.insert_toc(str(path), at_start=True, backup=False)
+    srv.apply_style(
+        str(path), style="Heading 1", range={"start": 2, "end": 2},
+        backup=False,
+    )
+    srv.insert_reference_list(str(path), type="toc", backup=False)
     file_read = srv.get_text(str(path), live="off")
     file_idx = {
         p["text"]: p["index"] for p in file_read
@@ -131,10 +142,9 @@ def test_f3_f4_protected_doc_typed_refusal(tmp_path):
     path = tmp_path / "prot.docx"
     srv.create_document(str(path))
     srv.insert_paragraphs(
-        str(path), [{"text": "protected charlie text."}],
-        at_end=True, backup=False,
+        str(path), [{"text": "protected charlie text."}], backup=False,
     )
-    srv.set_document_protection(str(path), edit="readOnly", password="pw1")
+    srv.set_document_protection(str(path), protection="readOnly", password="pw1")
     app = _open_in_new_word(path)
     app = None
     try:
@@ -193,8 +203,7 @@ def test_f6_author_effective_diffs_not_position(tmp_path):
     srv.create_document(str(path))
     srv.insert_paragraphs(
         str(path),
-        [{"text": "early hotel text."}, {"text": "late india text."}],
-        at_end=True, backup=False,
+        [{"text": "early hotel text."}, {"text": "late india text."}], backup=False,
     )
     # pre-existing tracked change LATE in the document by a distinct author
     srv.search_and_replace(
@@ -223,11 +232,11 @@ def test_f7_vmerge_table_typed_refusal(tmp_path):
     path = tmp_path / "vmerge.docx"
     srv.create_document(str(path))
     srv.create_table(
-        str(path), [["a", "b", "c"], ["d", "e", "f"], ["g", "h", "i"]],
-        at_end=True, backup=False,
+        str(path), [["a", "b", "c"], ["d", "e", "f"], ["g", "h", "i"]], backup=False,
     )
-    srv.merge_cells(
-        str(path), 0, start_row=0, end_row=1, start_col=0, end_col=0,
+    srv.modify_table_structure(
+        str(path), 0, action="merge",
+        range={"start_row": 0, "end_row": 1, "start_col": 0, "end_col": 0},
         backup=False,
     )
     app = _open_in_new_word(path)
@@ -251,10 +260,10 @@ def test_f8_tracked_changes_protection_flagged(tmp_path):
     path = tmp_path / "tcprot.docx"
     srv.create_document(str(path))
     srv.insert_paragraphs(
-        str(path), [{"text": "juliet kilo lima."}], at_end=True, backup=False
+        str(path), [{"text": "juliet kilo lima."}], backup=False
     )
     srv.set_document_protection(
-        str(path), edit="trackedChanges", password="pw2"
+        str(path), protection="trackedChanges", password="pw2"
     )
     app = _open_in_new_word(path)
     app = None
@@ -279,8 +288,7 @@ def test_f9_read_only_open_flagged(tmp_path):
     path = tmp_path / "ro.docx"
     srv.create_document(str(path))
     srv.insert_paragraphs(
-        str(path), [{"text": "mike november oscar."}],
-        at_end=True, backup=False,
+        str(path), [{"text": "mike november oscar."}], backup=False,
     )
     pythoncom.CoInitialize()
     app = win32com.client.DispatchEx("Word.Application")
@@ -304,8 +312,7 @@ def test_f10_deleted_text_and_section_break_excluded(tmp_path):
     path = tmp_path / "del.docx"
     srv.create_document(str(path))
     srv.insert_paragraphs(
-        str(path), [{"text": "ordinary prose with no fields"}],
-        at_end=True, backup=False,
+        str(path), [{"text": "ordinary prose with no fields"}], backup=False,
     )
     srv.search_and_replace(
         str(path), [{"find": "ordinary", "replace": "ordinary tracked"}],
@@ -314,7 +321,7 @@ def test_f10_deleted_text_and_section_break_excluded(tmp_path):
     app = _open_in_new_word(path)
     try:
         # default view (Simple Markup): deletion text absent from Range.Text
-        # — nothing may be wrongly subtracted
+        # and nothing may be wrongly subtracted
         live_read = srv.get_text(str(path), live="force")
         texts = [p["text"] for p in live_read]
         assert any("ordinary tracked prose" in t for t in texts), texts

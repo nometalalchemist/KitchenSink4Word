@@ -62,15 +62,14 @@ def build_passing_doc(tmp_path):
         margins_pt={"top": 72, "bottom": 72, "left": 72, "right": 72},
         backup=False,
     )
-    srv.add_heading(path, "Abstract", 1, at_end=True, backup=False)
+    srv.insert_paragraphs(path, [{"text": "Abstract", "heading_level": 1}], backup=False)
     srv.insert_paragraphs(
         path,
-        [{"text": "This dissertation examines compliance."}],
-        at_end=True, backup=False,
+        [{"text": "This dissertation examines compliance."}], backup=False,
     )
-    srv.add_heading(path, "Acknowledgments", 1, at_end=True, backup=False)
+    srv.insert_paragraphs(path, [{"text": "Acknowledgments", "heading_level": 1}], backup=False)
     srv.insert_paragraphs(
-        path, [{"text": "Thanks to the committee."}], at_end=True, backup=False
+        path, [{"text": "Thanks to the committee."}], backup=False
     )
     for t in (
         "Abstract",
@@ -88,8 +87,8 @@ def build_passing_doc(tmp_path):
         if p["text"].strip() and "heading_level" not in p
     ]
     srv.set_paragraph_format(path, body_idx, {"line_spacing": 2.0}, backup=False)
-    srv.set_page_number_format(
-        path, section=0, number_format="decimal", start_at=1, backup=False
+    srv.set_page_numbers(
+        path, section=0, format={"number_format": "decimal", "start_at": 1}, backup=False
     )
     return path
 
@@ -135,7 +134,7 @@ def test_unknown_rule_key_rejected(tmp_path):
 
 def test_margin_and_orientation_violations(tmp_path):
     path = new_doc(tmp_path)
-    srv.insert_paragraphs(path, [{"text": "Body."}], at_end=True, backup=False)
+    srv.insert_paragraphs(path, [{"text": "Body."}], backup=False)
     srv.set_section_properties(
         path, section=0, orientation="landscape", margins_pt={"left": 90},
         backup=False,
@@ -168,7 +167,7 @@ def test_page_size_violation(tmp_path):
 def test_font_and_size_violations(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": "Wrong font here."}], at_end=True, backup=False
+        path, [{"text": "Wrong font here."}], backup=False
     )
     srv.format_text(
         path, {"font": "Arial", "size_pt": 10}, find="Wrong font here.",
@@ -189,7 +188,7 @@ def test_theme_font_reported_not_guessed(tmp_path):
     theme reference; that must land in 'unverified', not in violations."""
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": "Theme font text."}], at_end=True, backup=False
+        path, [{"text": "Theme font text."}], backup=False
     )
     result = cp.check_template_compliance(
         DocxPackage(path), {"fonts": {"allowed": ["Times New Roman"]}}
@@ -205,7 +204,7 @@ def test_theme_font_reported_not_guessed(tmp_path):
 def test_line_spacing_violation(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": "Single spaced paragraph."}], at_end=True, backup=False
+        path, [{"text": "Single spaced paragraph."}], backup=False
     )
     idx = body_index_of(path, "Single spaced paragraph.")
     srv.set_paragraph_format(path, [idx], {"line_spacing": 1.0}, backup=False)
@@ -225,8 +224,8 @@ def test_line_spacing_violation(tmp_path):
 
 def test_heading_skip_and_first_level(tmp_path):
     path = new_doc(tmp_path)
-    srv.add_heading(path, "Intro", 2, at_end=True, backup=False)
-    srv.add_heading(path, "Very Deep", 4, at_end=True, backup=False)
+    srv.insert_paragraphs(path, [{"text": "Intro", "heading_level": 2}], backup=False)
+    srv.insert_paragraphs(path, [{"text": "Very Deep", "heading_level": 4}], backup=False)
     result = cp.check_template_compliance(
         DocxPackage(path),
         {"headings": {"max_skip": 0, "required_first_level": 1}},
@@ -244,8 +243,8 @@ def test_heading_skip_and_first_level(tmp_path):
 
 def test_required_headings_missing_and_out_of_order(tmp_path):
     path = new_doc(tmp_path)
-    srv.add_heading(path, "Acknowledgments", 1, at_end=True, backup=False)
-    srv.add_heading(path, "Abstract", 1, at_end=True, backup=False)
+    srv.insert_paragraphs(path, [{"text": "Acknowledgments", "heading_level": 1}], backup=False)
+    srv.insert_paragraphs(path, [{"text": "Abstract", "heading_level": 1}], backup=False)
     result = cp.check_template_compliance(
         DocxPackage(path),
         {"required_headings_in_order": ["Abstract", "Acknowledgments"]},
@@ -265,8 +264,8 @@ def test_required_headings_missing_and_out_of_order(tmp_path):
 
 def test_page_numbering_rules(tmp_path):
     path = new_doc(tmp_path)
-    srv.set_page_number_format(
-        path, section=0, number_format="lowerRoman", backup=False
+    srv.set_page_numbers(
+        path, section=0, format={"number_format": "lowerRoman"}, backup=False
     )
     result = cp.check_template_compliance(
         DocxPackage(path),
@@ -303,7 +302,7 @@ def test_page_numbering_rules(tmp_path):
 def test_brand_colors(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": "Red alert text."}], at_end=True, backup=False
+        path, [{"text": "Red alert text."}], backup=False
     )
     srv.format_text(path, {"color": "FF0000"}, find="Red alert text.",
                     backup=False)
@@ -331,25 +330,25 @@ def test_brand_colors(tmp_path):
 
 def build_flagged_doc(tmp_path):
     path = new_doc(tmp_path, "flagged.docx")  # no title
-    srv.add_heading(path, "Introduction", 1, at_end=True, backup=False)
-    srv.add_heading(path, "Deep Detail", 3, at_end=True, backup=False)  # skip
-    srv.add_heading(path, "", 2, at_end=True, backup=False)  # empty heading
+    srv.insert_paragraphs(path, [{"text": "Introduction", "heading_level": 1}], backup=False)
+    srv.insert_paragraphs(path, [{"text": "Deep Detail", "heading_level": 3}], backup=False)  # skip
+    srv.insert_paragraphs(path, [{"text": "", "heading_level": 2}], backup=False)  # empty heading
     srv.insert_paragraphs(
-        path, [{"text": "For more, click here today."}], at_end=True,
+        path, [{"text": "For more, click here today."}],
         backup=False,
     )
-    srv.add_hyperlink(path, "click here", "https://example.com", backup=False)
+    srv.insert_hyperlink(path, "click here", "https://example.com", backup=False)
     srv.insert_paragraphs(
-        path, [{"text": "low contrast sample"}], at_end=True, backup=False
+        path, [{"text": "low contrast sample"}], backup=False
     )
     srv.format_text(
         path, {"color": "FFFF00", "highlight": "yellow"},
         find="low contrast sample", backup=False,
     )
     png = make_png(tmp_path / "img.png")
-    srv.add_image(path, str(png), at_end=True, backup=False)
+    srv.insert_image(path, str(png), backup=False)
     srv.create_table(
-        path, [["A", "B"], ["1", "2"]], at_end=True, header_row=False,
+        path, [["A", "B"], ["1", "2"]], header_row=False,
         backup=False,
     )
     return path
@@ -382,19 +381,18 @@ def test_audit_flags_every_category(tmp_path):
 
 def test_audit_clean_document_passes(tmp_path):
     path = new_doc(tmp_path, "clean.docx", title="Accessible Doc")
-    srv.add_heading(path, "Introduction", 1, at_end=True, backup=False)
-    srv.add_heading(path, "Background", 2, at_end=True, backup=False)
+    srv.insert_paragraphs(path, [{"text": "Introduction", "heading_level": 1}], backup=False)
+    srv.insert_paragraphs(path, [{"text": "Background", "heading_level": 2}], backup=False)
     srv.insert_paragraphs(
-        path, [{"text": "Read the full report at the project site."}],
-        at_end=True, backup=False,
+        path, [{"text": "Read the full report at the project site."}], backup=False,
     )
-    srv.add_hyperlink(path, "full report", "https://example.com/report",
+    srv.insert_hyperlink(path, "full report", "https://example.com/report",
                       backup=False)
     png = make_png(tmp_path / "ok.png")
-    srv.add_image(path, str(png), at_end=True, backup=False)
-    srv.set_image_alt_text(path, 0, "Bar chart of compliance results",
+    srv.insert_image(path, str(png), backup=False)
+    srv.set_image(path, 0, alt_text="Bar chart of compliance results",
                            backup=False)
-    srv.create_table(path, [["Name", "Value"], ["x", "1"]], at_end=True,
+    srv.create_table(path, [["Name", "Value"], ["x", "1"]],
                      backup=False)  # header_row defaults to True
     audit = ax.audit_accessibility(DocxPackage(path))
     assert audit["summary"]["pass"] is True, audit["findings"]
@@ -403,7 +401,7 @@ def test_audit_clean_document_passes(tmp_path):
 
 def test_audit_no_heading_one(tmp_path):
     path = new_doc(tmp_path, title="T")
-    srv.add_heading(path, "Only a Subsection", 2, at_end=True, backup=False)
+    srv.insert_paragraphs(path, [{"text": "Only a Subsection", "heading_level": 2}], backup=False)
     audit = ax.audit_accessibility(DocxPackage(path))
     issues = {x["issue"] for x in audit["findings"]["heading_hierarchy"]}
     assert "no_heading_1" in issues
@@ -415,7 +413,7 @@ def test_audit_no_heading_one(tmp_path):
 def test_dpi_low_then_ok(tmp_path):
     path = new_doc(tmp_path)
     png = make_png(tmp_path / "img.png", w=80, h=40)
-    srv.add_image(path, str(png), at_end=True, width_pt=200, backup=False)
+    srv.insert_image(path, str(png), width_pt=200, backup=False)
 
     # 80 px over 200pt (2.778 in) -> 28.8 DPI, way below 300
     res = ax.check_image_resolution(DocxPackage(path), min_dpi=300)
@@ -429,7 +427,7 @@ def test_dpi_low_then_ok(tmp_path):
     assert "28.8" in entry["fix"]
 
     # shrink the displayed size: 80 px over 19pt -> ~303 DPI
-    srv.resize_image(path, 0, width_pt=19, backup=False)
+    srv.set_image(path, 0, width_pt=19, backup=False)
     res2 = ax.check_image_resolution(DocxPackage(path), min_dpi=300)
     (entry2,) = res2["images"]
     assert entry2["status"] == "ok"
@@ -443,8 +441,8 @@ def test_dpi_vector_and_unchecked_formats(tmp_path):
     bmp.write_bytes(b"BM" + b"\x00" * 64)
     emf = tmp_path / "x.emf"
     emf.write_bytes(b"\x01\x00\x00\x00" + b"\x00" * 40)
-    srv.add_image(path, str(bmp), at_end=True, backup=False)
-    srv.add_image(path, str(emf), at_end=True, backup=False)
+    srv.insert_image(path, str(bmp), backup=False)
+    srv.insert_image(path, str(emf), backup=False)
     res = ax.check_image_resolution(DocxPackage(path))
     statuses = {e["status"] for e in res["images"]}
     assert "unchecked (bmp)" in statuses

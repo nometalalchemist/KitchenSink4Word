@@ -30,6 +30,10 @@ def _clean_registry(monkeypatch):
     saved_reg = {p: dict(t) for p, t in packs._REGISTRY.items()}
     saved_en = dict(packs._ENABLED)
     saved_hook = packs._visibility_hook
+    packs._REGISTRY.clear()
+    packs._REGISTRY.update({"lite": {}})
+    packs._ENABLED.clear()
+    packs.set_visibility_hook(None)
     yield
     packs._REGISTRY.clear()
     packs._REGISTRY.update({p: dict(t) for p, t in saved_reg.items()})

@@ -138,7 +138,7 @@ def test_english_only_invariance_against_stats_tokenizer():
 def test_stats_word_count_invariance_and_new_fields(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": "one two three four five"}], at_end=True, backup=False
+        path, [{"text": "one two three four five"}], backup=False
     )
     r = stats.word_count(DocxPackage(path))
     assert r["totals"]["words"] == 5  # unchanged semantics
@@ -149,7 +149,7 @@ def test_stats_word_count_invariance_and_new_fields(tmp_path):
 def test_stats_word_count_reports_cjk(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": "日本語のテキスト"}], at_end=True, backup=False
+        path, [{"text": "日本語のテキスト"}], backup=False
     )
     r = stats.word_count(DocxPackage(path))
     assert r["totals"]["cjk_chars"] == 8
@@ -177,13 +177,12 @@ def test_ref_headings_regex_all_languages():
 def test_journalcount_korean_reference_heading(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": "본문 내용이 여기에 있다."}], at_end=True, backup=False
+        path, [{"text": "본문 내용이 여기에 있다."}], backup=False
     )                                                                # 4 words
-    srv.add_heading(path, "참고문헌", 1, at_end=True, backup=False)  # 1 word
+    srv.insert_paragraphs(path, [{"text": "참고문헌", "heading_level": 1}], backup=False)  # 1 word
     srv.insert_paragraphs(
         path,
-        [{"text": "Hurd, I. (1999). Legitimacy and authority."}],
-        at_end=True, backup=False)                                   # 6 words
+        [{"text": "Hurd, I. (1999). Legitimacy and authority."}], backup=False)                                   # 6 words
     out = jc.word_count_with_exclusions(
         DocxPackage(path), exclude=("references",)
     )
@@ -197,13 +196,12 @@ def test_journalcount_korean_reference_heading(tmp_path):
 
 def test_journalcount_korean_abstract_heading(tmp_path):
     path = new_doc(tmp_path)
-    srv.add_heading(path, "초록", 1, at_end=True, backup=False)      # 1 word
+    srv.insert_paragraphs(path, [{"text": "초록", "heading_level": 1}], backup=False)      # 1 word
     srv.insert_paragraphs(
-        path, [{"text": "이 논문은 무언가를 주장한다."}],
-        at_end=True, backup=False)                                   # 4 words
-    srv.add_heading(path, "서론", 1, at_end=True, backup=False)      # 1 word
+        path, [{"text": "이 논문은 무언가를 주장한다."}], backup=False)                                   # 4 words
+    srv.insert_paragraphs(path, [{"text": "서론", "heading_level": 1}], backup=False)      # 1 word
     srv.insert_paragraphs(
-        path, [{"text": "본문이 이어진다."}], at_end=True, backup=False
+        path, [{"text": "본문이 이어진다."}], backup=False
     )                                                                # 2 words
     out = jc.word_count_with_exclusions(
         DocxPackage(path), exclude=("abstract",)
@@ -216,7 +214,7 @@ def test_journalcount_korean_abstract_heading(tmp_path):
 def test_journalcount_japanese_doc_char_counting(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": "日本語の本文です。"}], at_end=True, backup=False
+        path, [{"text": "日本語の本文です。"}], backup=False
     )                                                       # 8 CJK characters
     out = jc.word_count_with_exclusions(DocxPackage(path), exclude=())
     assert out["total"] == 8
@@ -230,12 +228,10 @@ def test_journalcount_english_numbers_unchanged(tmp_path):
     behavior (the invariance the full suite also enforces)."""
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": "Plain English body text here."}],
-        at_end=True, backup=False)
-    srv.add_heading(path, "References", 1, at_end=True, backup=False)
+        path, [{"text": "Plain English body text here."}], backup=False)
+    srv.insert_paragraphs(path, [{"text": "References", "heading_level": 1}], backup=False)
     srv.insert_paragraphs(
-        path, [{"text": "Author, A. (2020). Title."}],
-        at_end=True, backup=False)
+        path, [{"text": "Author, A. (2020). Title."}], backup=False)
     out = jc.word_count_with_exclusions(
         DocxPackage(path), exclude=("references",)
     )

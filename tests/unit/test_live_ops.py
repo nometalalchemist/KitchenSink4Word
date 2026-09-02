@@ -1,4 +1,7 @@
-"""Live routing layer tests (v2.0 L2).
+"""Live routing layer tests (v2.0 L2). V2 STAGED REWRITE (Wave E): calls
+updated to the v2 surface (location objects, range shapes). DO NOT RUN in the
+wave phase; the integrator runs the live rounds after applying the briefs.
+Imports from test_live_core resolve once this file replaces tests/unit's copy.
 
 A document with known structure is built by the FILE-BASED tools, its
 file-based reads are captured, then it is opened in a spawned visible Word.
@@ -31,7 +34,7 @@ PARAS = [
 
 @pytest.fixture(scope="module")
 def routed_doc(tmp_path_factory):
-    """(path, file_read) — built file-based, then opened in a spawned Word."""
+    """(path, file_read): built file-based, then opened in a spawned Word."""
     if not _word_available():
         pytest.skip("Word not available")
     import pythoncom
@@ -40,11 +43,20 @@ def routed_doc(tmp_path_factory):
     path = tmp_path_factory.mktemp("live_ops") / "routed.docx"
     srv.create_document(str(path))
     srv.insert_paragraphs(
-        str(path), [{"text": t} for t in PARAS], at_end=True, backup=False
+        str(path), [{"text": t} for t in PARAS], backup=False
     )
-    srv.apply_style(str(path), [0, 3], "Heading 1", backup=False)
+    # v2: apply_style takes range/target; [0, 3] is non-contiguous, so one
+    # call per paragraph.
+    srv.apply_style(
+        str(path), style="Heading 1", range={"start": 0, "end": 0},
+        backup=False,
+    )
+    srv.apply_style(
+        str(path), style="Heading 1", range={"start": 3, "end": 3},
+        backup=False,
+    )
     srv.create_table(
-        str(path), [["a", "b"], ["c", "d"]], at_end=True, backup=False
+        str(path), [["a", "b"], ["c", "d"]], backup=False
     )
     file_read = srv.get_text(str(path), live="off")
     file_outline = srv.get_outline(str(path), live="off")
@@ -166,9 +178,10 @@ def test_max_replacements_aborts_atomically(routed_doc):
 def test_insert_and_delete_paragraphs_live(routed_doc):
     path, _, _ = routed_doc
     before = len(srv.get_text(path))
+    # v2: the search selector replaces after_anchor (default position: after)
     r = srv.insert_paragraphs(
         path, [{"text": "LIVE INSERTED A"}, {"text": "LIVE INSERTED B"}],
-        after_anchor="Closing paragraph",
+        location={"search": {"text": "Closing paragraph"}},
     )
     assert r["live"] is True and r["inserted"] == 2
     now = srv.get_text(path)
@@ -205,9 +218,10 @@ def test_set_cells_live(routed_doc):
 @needs_word
 def test_format_text_live_applies_and_reads_back(routed_doc):
     path, _, _ = routed_doc
+    # v2: single-paragraph range replaces paragraph_index
     r = srv.format_text(
         path, {"bold": True, "color": "FF0000"},
-        paragraph_index=5, find="Closing",
+        range={"start": 5, "end": 5}, find="Closing",
     )
     assert r["live"] is True
 
@@ -228,7 +242,7 @@ def test_format_text_live_applies_and_reads_back(routed_doc):
 def test_format_text_rejects_unknown_key(routed_doc):
     path, _, _ = routed_doc
     with pytest.raises(WordMcpError, match="allowed"):
-        srv.format_text(path, {"bolded": True}, paragraph_index=1)
+        srv.format_text(path, {"bolded": True}, range={"start": 1, "end": 1})
 
 
 @live_mark

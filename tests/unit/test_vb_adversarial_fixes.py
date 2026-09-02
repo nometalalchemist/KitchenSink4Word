@@ -1,3 +1,11 @@
+"""V2 STAGING copy of tests/unit/test_vb_adversarial_fixes.py (Wave A).
+Only change: srv.check_defined_terms becomes srv.validate(
+checks=["defined_terms"]) with the results/findings unwrap per the Wave
+A brief. Other waves' tool calls (redact_text, add_bookmark,
+add_cross_reference, apply_style, setup_chapter_headers, com_import_pdf)
+are left at v1 names for their owning waves/integrator to align.
+"""
+
 """Regressions for the Wave B adversarial findings (B1-B8)."""
 
 import pytest
@@ -17,13 +25,13 @@ def test_b1_redaction_counts_attribute_correctly(tmp_path):
     srv.insert_paragraphs(
         str(path),
         [{"text": "secret alpha in plain body text."},
-         {"text": "another paragraph with secret beta."}],
-        at_end=True, backup=False,
+         {"text": "another paragraph with secret beta."}], backup=False,
     )
-    srv.add_bookmark(str(path), name="anchor", anchor_text="plain body",
+    srv.insert_bookmark(str(path), name="anchor", anchor_text="plain body",
                      backup=False)
-    srv.add_cross_reference(
-        str(path), after_anchor="another paragraph", to_bookmark="anchor",
+    srv.insert_cross_reference(
+        str(path), to_bookmark="anchor",
+        location={"search": {"text": "another paragraph"}},
         backup=False,
     )
     r = srv.redact_text(str(path), [{"find": "secret"}], backup=False)
@@ -55,7 +63,7 @@ def test_b2_diagnose_malformed_document_not_ok(tmp_path):
 def test_b3_b4_front_matter_spec_validation(tmp_path):
     path = tmp_path / "b3.docx"
     srv.create_document(str(path))
-    srv.insert_paragraphs(str(path), [{"text": "Body"}], at_end=True,
+    srv.insert_paragraphs(str(path), [{"text": "Body"}],
                           backup=False)
     with pytest.raises(WordMcpError, match="levels"):
         srv.assemble_front_matter(
@@ -97,11 +105,11 @@ def test_b7_shadowed_term_not_counted(tmp_path):
             {"text": '"Agreement" means this document together with all '
                      'exhibits.'},
             {"text": "Nothing here uses the shorter term on its own."},
-        ],
-        at_end=True, backup=False,
+        ], backup=False,
     )
-    r = srv.check_defined_terms(str(path))
-    ubd = [e["term"] for e in r.get("first_use_before_definition", [])]
+    r = srv.validate(str(path), checks=["defined_terms"])
+    findings = r["results"]["defined_terms"]["findings"]
+    ubd = [e["term"] for e in findings.get("first_use_before_definition", [])]
     assert "Agreement" not in ubd, r
 
 
@@ -112,10 +120,9 @@ def test_b8_chapter_headers_skip_front_matter_section(tmp_path):
     srv.create_document(str(path))
     srv.insert_paragraphs(
         str(path),
-        [{"text": "Chapter One"}, {"text": "Chapter body text."}],
-        at_end=True, backup=False,
+        [{"text": "Chapter One"}, {"text": "Chapter body text."}], backup=False,
     )
-    srv.apply_style(str(path), [0], "Heading 1", backup=False)
+    srv.apply_style(str(path), style="Heading 1", range={"start": 0, "end": 0}, backup=False)
     srv.assemble_front_matter(
         str(path),
         {"sections": [

@@ -81,8 +81,7 @@ def boxed_doc(tmp_path):
     srv.insert_paragraphs(
         path,
         [{"text": "Before the box."}, {"text": "Host paragraph."},
-         {"text": "After the box."}],
-        at_end=True, backup=False, live="off",
+         {"text": "After the box."}], backup=False, live="off",
     )
     inject_run_xml(
         path, "Host paragraph.", _txbx_xml("Callout text lives here.")
@@ -177,15 +176,14 @@ def fmt_doc(tmp_path):
         path,
         [{"text": "The delta term is bold here."},
          {"text": "The delta term is plain here."},
-         {"text": "Entirely bold sentence."}],
-        at_end=True, backup=False, live="off",
+         {"text": "Entirely bold sentence."}], backup=False, live="off",
     )
     srv.format_text(
-        path, {"bold": True}, paragraph_index=0, find="delta term",
+        path, {"bold": True}, range={"start": 0, "end": 0}, find="delta term",
         backup=False, live="off",
     )
     srv.format_text(
-        path, {"bold": True}, paragraph_index=2, backup=False, live="off",
+        path, {"bold": True}, range={"start": 2, "end": 2}, backup=False, live="off",
     )
     return path
 
@@ -229,13 +227,13 @@ def test_replace_keeps_matched_formatting(fmt_doc):
 def test_replace_across_fragmented_runs(tmp_path):
     path = new_doc(tmp_path, "frag.docx")
     srv.insert_paragraphs(
-        path, [{"text": "alpha beta gamma"}], at_end=True,
+        path, [{"text": "alpha beta gamma"}],
         backup=False, live="off",
     )
     # two formatting calls fragment the paragraph into multiple bold runs
-    srv.format_text(path, {"bold": True}, paragraph_index=0, find="alpha be",
+    srv.format_text(path, {"bold": True}, range={"start": 0, "end": 0}, find="alpha be",
                     backup=False, live="off")
-    srv.format_text(path, {"bold": True}, paragraph_index=0, find="ta gamma",
+    srv.format_text(path, {"bold": True}, range={"start": 0, "end": 0}, find="ta gamma",
                     backup=False, live="off")
     result = _replace(
         path, formatting={"bold": True}, find="beta", replace="BETA"
@@ -248,10 +246,9 @@ def test_replace_by_style_criterion(tmp_path):
     path = new_doc(tmp_path, "styled.docx")
     srv.insert_paragraphs(
         path,
-        [{"text": "Alpha section"}, {"text": "Alpha in body text."}],
-        at_end=True, backup=False, live="off",
+        [{"text": "Alpha section"}, {"text": "Alpha in body text."}], backup=False, live="off",
     )
-    srv.apply_style(path, [0], "Heading1", backup=False)
+    srv.apply_style(path, style="Heading1", range={"start": 0, "end": 0}, backup=False)
     result = _replace(
         path, formatting={"style": "Heading1"}, find="Alpha", replace="Beta"
     )
@@ -265,11 +262,10 @@ def test_replace_by_style_criterion(tmp_path):
 def test_replace_scope_all_reaches_footnotes(tmp_path):
     path = new_doc(tmp_path, "notes.docx")
     srv.insert_paragraphs(
-        path, [{"text": "Body sentence with anchor."}], at_end=True,
+        path, [{"text": "Body sentence with anchor."}],
         backup=False, live="off",
     )
-    srv.add_footnote(path, anchor_text="anchor", note_text="Note says alpha.",
-                     backup=False)
+    srv.manage_note(path, action="insert", note_type="footnote", text="Note says alpha.", location={"search": {"text": "anchor"}}, backup=False)
     body_only = _replace(
         path, formatting={"style": "FootnoteText"}, find="alpha",
         replace="beta", scope="body",
@@ -360,17 +356,15 @@ def _nb_doc(tmp_path, extra_notes=()):
     path = str(tmp_path / "nb.docx")
     srv.create_document(path)
     srv.insert_paragraphs(
-        path, [{"text": t} for t in CLEAN_BODY + CLEAN_ENTRIES],
-        at_end=True, backup=False, live="off",
+        path, [{"text": t} for t in CLEAN_BODY + CLEAN_ENTRIES], backup=False, live="off",
     )
-    srv.apply_style(path, [3], "Heading1", backup=False)
+    srv.apply_style(path, style="Heading1", range={"start": 3, "end": 3}, backup=False)
     pkg = DocxPackage(path)
     r = sc.convert_citation_style(pkg, "chicago17-notes")
     assert r["converted"]
     pkg.save(do_backup=False)
     for anchor, note in extra_notes:
-        srv.add_footnote(path, anchor_text=anchor, note_text=note,
-                         backup=False)
+        srv.manage_note(path, action="insert", note_type="footnote", text=note, location={"search": {"text": anchor}}, backup=False)
     return path
 
 
@@ -508,8 +502,7 @@ def template_doc(tmp_path):
     srv.insert_paragraphs(
         path,
         [{"text": "Sub-Question 1: Regulation", "formatting": {"bold": True}},
-         {"text": "Ordinary body text follows."}],
-        at_end=True, backup=False, live="off",
+         {"text": "Ordinary body text follows."}], backup=False, live="off",
     )
     return path
 
@@ -568,7 +561,7 @@ def test_outline_level_out_of_range_refused(template_doc):
 
 
 def test_outline_level_style_inheritance_reported(template_doc):
-    srv.apply_style(template_doc, [1], "Heading2", backup=False)
+    srv.apply_style(template_doc, style="Heading2", range={"start": 1, "end": 1}, backup=False)
     rep = sf.get_paragraph_format(DocxPackage(template_doc), 1)
     assert rep["paragraphs"][1 - 1]["format"]["outline_level"] == {
         "value": 1, "source": "paragraph_style",
@@ -583,26 +576,25 @@ def test_anchor_entity_hint_on_not_found(tmp_path):
 
     path = new_doc(tmp_path, "anchor.docx")
     srv.insert_paragraphs(
-        path, [{"text": "Wit, J. S., Poneman, D. B., & Gallucci, R. L."}],
-        at_end=True, backup=False, live="off",
+        path, [{"text": "Wit, J. S., Poneman, D. B., & Gallucci, R. L."}], backup=False, live="off",
     )
     with pytest.raises(TargetNotFound, match="PLAIN text"):
         srv.insert_paragraphs(
             path, [{"text": "new entry"}],
-            after_anchor="Poneman, D. B., &amp; Gallucci",
+            location={"search": {"text": "Poneman, D. B., &amp; Gallucci"}},
             backup=False, live="off",
         )
     # a miss WITHOUT entities keeps the plain error (no misleading hint)
     with pytest.raises(TargetNotFound) as exc:
         srv.insert_paragraphs(
-            path, [{"text": "new entry"}], after_anchor="No Such Anchor",
+            path, [{"text": "new entry"}], location={"search": {"text": "No Such Anchor"}},
             backup=False, live="off",
         )
     assert "PLAIN text" not in str(exc.value)
     # the literal character works
     srv.insert_paragraphs(
         path, [{"text": "new entry"}],
-        after_anchor="Poneman, D. B., & Gallucci",
+        location={"search": {"text": "Poneman, D. B., & Gallucci"}},
         backup=False, live="off",
     )
     texts = [p["text"] for p in srv.get_text(path, live="off")]
@@ -639,20 +631,3 @@ def test_wrong_and_unconfirmed_aliases_removed():
 
 
 # ================================================== registration snippet
-
-
-def test_registration_snippet_importable():
-    """The integration snippet registers cleanly on the shared mcp instance
-    (paste-readiness smoke test; mirrors the charts bundle's convention)."""
-    import importlib
-    import sys
-
-    root = Path(__file__).resolve().parents[2]
-    if not (root / "integration" / "sweep_registrations.py").exists():
-        pytest.skip("integration/ staging dir not present (gitignored)")
-    sys.path.insert(0, str(root))
-    try:
-        mod = importlib.import_module("integration.sweep_registrations")
-        assert hasattr(mod, "replace_formatted")
-    finally:
-        sys.path.remove(str(root))

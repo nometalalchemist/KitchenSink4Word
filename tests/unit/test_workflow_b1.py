@@ -29,11 +29,10 @@ def make_chapter_doc(tmp_path, name="doc.docx", chapters=3):
     path = str(tmp_path / name)
     srv.create_document(path)
     for i in range(1, chapters + 1):
-        srv.add_heading(path, f"Chapter {i}", level=1, at_end=True, backup=False)
+        srv.insert_paragraphs(path, [{"text": f"Chapter {i}", "heading_level": 1}], backup=False)
         srv.insert_paragraphs(
             path,
             [{"text": f"Body text for chapter {i}, long enough to matter."}],
-            at_end=True,
             backup=False,
             live="off",
         )
@@ -128,8 +127,8 @@ def test_front_matter_full_assembly(tmp_path):
 
 def test_front_matter_refuses_existing_roman_then_force(tmp_path):
     path = make_chapter_doc(tmp_path)
-    srv.set_page_number_format(
-        path, section=0, number_format="lowerRoman", backup=False
+    srv.set_page_numbers(
+        path, section=0, format={"number_format": "lowerRoman"}, backup=False
     )
     before = open(path, "rb").read()
     with pytest.raises(WordMcpError, match="front matter appears to exist"):
@@ -146,7 +145,7 @@ def test_front_matter_refuses_existing_roman_then_force(tmp_path):
 
 def test_front_matter_refuses_leading_toc_then_force_skips_toc(tmp_path):
     path = make_chapter_doc(tmp_path)
-    srv.insert_toc(path, at_start=True, update_on_open=False, backup=False)
+    srv.insert_reference_list(path, type="toc", update_on_open=False, backup=False)
     with pytest.raises(WordMcpError, match="front matter appears to exist"):
         edit(path, lambda pkg: fm.assemble_front_matter(pkg, copy.deepcopy(FRONT_SPEC)))
 
@@ -216,7 +215,7 @@ def test_chapter_headers_refused_without_headings(tmp_path):
     path = str(tmp_path / "plain.docx")
     srv.create_document(path)
     srv.insert_paragraphs(
-        path, [{"text": "Just prose, no headings."}], at_end=True,
+        path, [{"text": "Just prose, no headings."}],
         backup=False, live="off",
     )
     with pytest.raises(TargetNotFound, match="no body headings"):
@@ -225,7 +224,7 @@ def test_chapter_headers_refused_without_headings(tmp_path):
 
 def test_chapter_headers_watermark_survives(tmp_path):
     path = make_chapter_doc(tmp_path)
-    srv.add_watermark(path, "DRAFT", backup=False)
+    srv.set_watermark(path, {"text": "DRAFT"}, backup=False)
     result = edit(path, lambda pkg: ch.setup_chapter_headers(pkg, level=1))
     assert result["watermark_preserved_in"], "watermark part should be reported"
 
@@ -241,10 +240,10 @@ def test_chapter_headers_scope_and_validate_gaps(tmp_path):
     # Two sections, each with a level-1 heading.
     path = make_chapter_doc(tmp_path, chapters=1)
     last = srv.get_text(path, live="off")[-1]["index"]
-    srv.add_section_break(path, after_index=last, backup=False)
-    srv.add_heading(path, "Chapter 2", level=1, at_end=True, backup=False)
+    srv.insert_break(path, type="section_next", location={"paragraph": last}, backup=False)
+    srv.insert_paragraphs(path, [{"text": "Chapter 2", "heading_level": 1}], backup=False)
     srv.insert_paragraphs(
-        path, [{"text": "Second chapter body."}], at_end=True,
+        path, [{"text": "Second chapter body."}],
         backup=False, live="off",
     )
     pkg = DocxPackage(path)
