@@ -12,14 +12,16 @@ list_changed notification; 3.0 REMOVED Tool.enable/disable): this module
 now keeps its own per-tool enabled bookkeeping (authoritative for
 surface_report and the informed-approval token math) and mirrors every
 change through an injectable visibility hook. server.py wires the hook to
-the fastmcp 3.x visibility API at Phase 2/4:
-- startup surface: server.disable(names={...}) global transforms, applied
-  before serving (apply_startup_mode);
-- mid-session toggles: fastmcp.server.transforms.visibility
-  enable_components/disable_components(context, names={...}), which send
-  ToolListChangedNotification to the session (verified present in
-  fastmcp 3.4.7). VERIFY in Phase 4 against a real client, mirroring the
-  2.14 verification the pptx build did.
+the fastmcp 3.x visibility API (Phase 4, VERIFIED against an in-process
+fastmcp 3.4.7 client session):
+- startup surface: main() applies apply_startup_mode() to bookkeeping,
+  then ONE global transform, mcp.add_transform(Visibility(False,
+  names=disabled)) (3.4.7 has no server.disable method);
+- mid-session toggles: session-scoped ctx.enable_components /
+  ctx.disable_components(names={...}), whose rules override the global
+  transform (mark-based, later marks win) and send
+  ToolListChangedNotification to the session only (observed on the wire:
+  tools/resources/prompts list_changed all fire per toggle).
 
 Env contract:
 - KS4W_MODE: startup surface for clients without reliable list_changed.
@@ -35,9 +37,10 @@ server.py populates the registry via register(); this module never imports
 FastMCP itself and holds only the Tool objects it is handed (for the
 token-cost math) plus its own enabled flags.
 
-Pack membership is finalized in Phase 4 against the consolidated 108-tool
-surface; until then the registry starts empty and fills as server.py
-registers tools.
+Pack membership was finalized in Phase 4 against the consolidated
+108-tool surface (plus enable_tools/disable_tools, registered under lite
+so they are visible in every mode); server.py's @_tool decorator is the
+single source of membership truth.
 """
 
 from __future__ import annotations
@@ -53,43 +56,38 @@ from .core.errors import WordMcpError
 # core, not a pack. "everything" is a convenience alias for all seven.
 PACK_SUMMARIES: dict[str, str] = {
     "references": (
-        "citations and bibliography: native Word sources (add, edit, list, "
-        "delete), citation insertion and bibliography styles, Zotero "
-        "library search and cite, citation-reference parity checks, "
-        "citation style conversion and system detection, reference field "
-        "integrity"
+        "citations and bibliography: Word-native sources, insert "
+        "citations, bibliography styles, Zotero search/cite, parity "
+        "checks, style conversion/detection"
     ),
     "review": (
-        "tracked changes (read, accept/reject, revision reports and "
-        "analytics), comments (read, add, reply, resolve, whole-document "
-        "and multi-file reports), document compare/combine/merge, "
-        "structured diff, anonymize and deanonymize for blind review"
+        "tracked changes (read, accept/reject, reports), comments (add, "
+        "reply, resolve, reports), structured diff, "
+        "anonymize/deanonymize for review"
     ),
     "academic": (
-        "TOC and index (insert, read, mark entries), captions and caption "
-        "lists, front matter assembly, chapter headers, glossary, template "
-        "and manuscript compliance checks, submission preparation, "
-        "accessibility audit and fixes"
+        "notes (foot/end), TOC, index, captions, cross-references, "
+        "bookmarks, front matter, chapter headers, headers/footers, page "
+        "numbering, sections, styles, word counts, validate batteries, "
+        "submission prep, accessibility"
     ),
     "assembly": (
-        "multi-document work: insert one document into another, split and "
-        "merge documents, move sections, mail merge, fill templates"
+        "multi-document work: insert/split documents, move sections, "
+        "copy tables across files, apply/fill templates, mail merge"
     ),
     "media-forms": (
-        "images (insert, replace, resize, alt text, extraction), charts "
-        "(insert, data update), equations, text boxes, form fields, "
-        "content controls, raw field codes"
+        "images, charts, equations, text boxes, hyperlinks, table "
+        "structure/styling (rows, columns, merges, widths, sort), form "
+        "fields, content controls, field codes"
     ),
     "com-live": (
-        "everything that drives the Word application: PDF import/export, "
-        "document compare/combine via Word, proofing and readability, "
-        "field refresh, live editing of open documents (cursor insert, "
-        "scroll, track-changes toggle, repair)"
+        "drives the Word app: PDF import/export, compare/combine, "
+        "proofing, readability, field refresh, live editing of open "
+        "documents"
     ),
     "protection-io": (
-        "document protection (set, remove, inspect), watermarks, "
-        "redaction with verification, table data import/export, "
-        "CSV/JSON round-trips"
+        "document protection, watermarks, redaction with verification, "
+        "table data import/export (CSV/JSON)"
     ),
 }
 EVERYTHING = "everything"

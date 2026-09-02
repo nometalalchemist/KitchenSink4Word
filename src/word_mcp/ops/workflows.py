@@ -224,13 +224,35 @@ WORKFLOWS: dict[str, dict] = {
 }
 
 
+def _pack_of(tool_name: str) -> str | None:
+    """The owning pack for a non-lite tool, from the live registry
+    (discoverability rule 4: recipes name the packs their steps need)."""
+    from .. import packs
+
+    pack = packs.pack_of(tool_name)
+    return None if pack in (None, "lite") else pack
+
+
+def _packs_required(wf: dict) -> list[str]:
+    return sorted({
+        p for step in wf["steps"]
+        if (p := _pack_of(step["tool"])) is not None
+    })
+
+
 def get_workflows(task: str | None = None) -> dict:
     """No task: list available tasks with summaries. With a task: the
-    recommended tool sequence, one why-line per step, plus notes."""
+    recommended tool sequence, one why-line per step, plus notes. Steps
+    whose tool lives in an optional pack carry that pack's name, and
+    packs_required lists every pack the workflow needs enabled."""
     if task is None:
         return {
             "tasks": [
-                {"task": name, "summary": wf["summary"]}
+                {
+                    "task": name,
+                    "summary": wf["summary"],
+                    "packs_required": _packs_required(wf),
+                }
                 for name, wf in WORKFLOWS.items()
             ],
             "note": "call again with task='<name>' for the step-by-step sequence",
@@ -240,4 +262,19 @@ def get_workflows(task: str | None = None) -> dict:
         raise WordMcpError(
             f"unknown task {task!r}; available tasks: {sorted(WORKFLOWS)}"
         )
-    return {"task": task, **wf}
+    steps = []
+    for step in wf["steps"]:
+        out = dict(step)
+        pack = _pack_of(step["tool"])
+        if pack is not None:
+            out["pack"] = pack
+        steps.append(out)
+    required = _packs_required(wf)
+    result = {"task": task, **wf, "steps": steps}
+    result["packs_required"] = required
+    if required:
+        result["note"] = (
+            f"steps tagged with a pack need enable_tools(packs="
+            f"{required}) first; the rest run from the lite core"
+        )
+    return result

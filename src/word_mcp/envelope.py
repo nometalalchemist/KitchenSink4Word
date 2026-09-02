@@ -25,10 +25,11 @@ now subclasses ToolResult alone (is_error=True at construction) and exposes
 the mapping protocol over structured_content, which preserves both halves
 of the old contract.
 
-Phase 2 wiring note, VERIFY then: whether a tools/call to a
-visibility-disabled tool raises fastmcp NotFoundError in 3.x the way it
-did in 2.14 (DisabledToolSignpost catches it); adjust the middleware's
-except clause if 3.x signals it differently.
+Phase 4 verification (fastmcp 3.4.7, in-process client): a tools/call to
+a visibility-disabled tool has get_tool return None, and the server
+raises NotFoundError("Unknown tool: ...") exactly as 2.14 did, so
+DisabledToolSignpost's except clause holds unchanged; the signpost was
+observed on the wire converting it into the pack-naming ToolError.
 """
 
 from __future__ import annotations

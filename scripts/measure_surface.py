@@ -7,9 +7,9 @@ packs.approx_tokens uses for the informed-approval report), plus the lite
 and full totals. README numbers come from running this, never from
 hand-math.
 
-Until Phase 4 wires pack membership, the packs registry is empty and every
-tool falls under the single "(unpacked v1 surface)" row; the totals are the
-v1 baseline.
+Pack membership is wired (Phase 4); the "(unpacked)" row prints only if
+a registration ever bypasses the packs registry, which the membership
+integrity test forbids.
 
 Run:  .venv/Scripts/python.exe -X utf8 scripts/measure_surface.py
 """

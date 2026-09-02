@@ -28,11 +28,14 @@ Contract for every mutating tool (v1.6 rule carried forward):
 from __future__ import annotations
 
 import functools
+import inspect as _inspect
 import json as _json
 from typing import Any
 
 from fastmcp import FastMCP
+from fastmcp.server.context import Context as _Context
 from fastmcp.server.middleware import Middleware as _FmcpMiddleware
+from fastmcp.server.transforms.visibility import Visibility as _Visibility
 from fastmcp.tools.function_tool import FunctionTool as _FunctionTool
 from fastmcp.tools.tool import ToolResult as _FmcpToolResult
 
@@ -161,12 +164,20 @@ def _tool(pack: str):
     ('lite' = the always-on core)."""
 
     def deco(fn):
-        @functools.wraps(fn)
-        def boundary(*args, **kwargs):
-            try:
-                return fn(*args, **kwargs)
-            except _envelope.CATCHABLE as exc:
-                return _envelope.refuse(exc)
+        if _inspect.iscoroutinefunction(fn):
+            @functools.wraps(fn)
+            async def boundary(*args, **kwargs):
+                try:
+                    return await fn(*args, **kwargs)
+                except _envelope.CATCHABLE as exc:
+                    return _envelope.refuse(exc)
+        else:
+            @functools.wraps(fn)
+            def boundary(*args, **kwargs):
+                try:
+                    return fn(*args, **kwargs)
+                except _envelope.CATCHABLE as exc:
+                    return _envelope.refuse(exc)
 
         tool = _FunctionTool.from_function(boundary)
         mcp.add_tool(tool)
@@ -384,7 +395,9 @@ def create_document(file_path: str, title: str | None = None) -> dict:
     property. Refuses to overwrite an existing file (use copy_document with
     overwrite=True for that). Parent directories are created automatically.
     Populate the document afterward with insert_paragraphs, create_table,
-    define_style, and other tools."""
+    define_style, and other tools.
+    Template-driven builds live in the assembly pack.
+    """
     from pathlib import Path
 
     from docx import Document
@@ -412,6 +425,7 @@ def copy_document(
     dest_path unless overwrite=True; an overwritten destination's previous
     content rotates into its .ks4w-backups prev slot first, so the
     overwrite is undoable via manage_backups restore.
+    Split/merge and multi-document work live in the assembly pack.
     """
     import shutil
     from pathlib import Path
@@ -650,6 +664,7 @@ def diagnose_document(file_path: str) -> dict:
     package's XML, stale while Word holds unsaved changes. Close the
     document first, or use com_validate_opens_clean / live
     get_document_info.
+    The full validate check battery lives in the academic pack.
     """
     from .core.errors import DocumentLocked
 
@@ -820,6 +835,7 @@ def get_outline(file_path: str, live: str = "auto") -> list | dict:
     paragraph indices and outline numbers feed the location object's
     paragraph and outline selectors. Documents open in Word are read live
     (same flat-list shape). Read-only.
+    TOC generation and heading surgery live in the academic pack.
     """
     from .com import live_ops as _lo
 
@@ -858,7 +874,7 @@ def get_styles(file_path: str) -> list:
     return _rd.list_styles(DocxPackage(file_path))
 
 
-@_tool("lite")
+@_tool("academic")
 def word_count(
     file_path: str,
     by_section: bool = True,
@@ -986,12 +1002,11 @@ def list_elements(file_path: str, type: str, filter: dict | None = None) -> dict
     section_blocks | footnotes | endnotes | fields | reference_fields |
     form_fields | content_controls | template_placeholders | index_entries |
     lists | toc. Returns {type, count, items}; each type keeps its v1 item
-    shape, and the ids or indices returned are exactly the handles the
-    matching set_/delete_/manage_ tools accept, making list then act the
-    standard two-step. Highlights per type: tables reports dimensions and
+    shape, and the ids or indices returned are the handles the
+    matching set_/delete_/manage_ tools accept (list then act). Highlights per type: tables reports dimensions and
     the table_index other table tools take; images reports display size and
-    the media target; charts reports series and update support; equations
-    is the only reader of math content; bookmarks excludes internal TOC
+    the media target; charts reports series; equations
+    reads math content; bookmarks excludes internal TOC
     bookmarks; fields covers complex and simple fields with cached results;
     reference_fields inventories Zotero, EndNote, and Mendeley fields and
     flags broken pairs; form_fields and content_controls cover legacy fields
@@ -1002,6 +1017,8 @@ def list_elements(file_path: str, type: str, filter: dict | None = None) -> dict
     "name": "substring"} applies where meaningful; inapplicable filters
     refuse loudly. Read-only, file mode; close documents open in Word
     first.
+    Tools acting on these elements live in packs; enable_tools lists
+    them.
     """
     spec = _ELEMENT_TYPES.get(type)
     if spec is None:
@@ -1938,11 +1955,11 @@ def apply_style(
     """Apply a named style. range={start,end} (locations or bare indices)
     applies a paragraph style to those paragraphs, changing their full look
     (Heading1-9 auto-created); target={search:{text, occurrence?}} applies
-    a character style to the matched text instead. Style type is validated
-    against the target. For an outline level without visual change use
+    a character style to the matched text instead. For an outline level without visual change use
     set_paragraph_format. Auto-backup: prev/anchor slots in .ks4w-backups
     (backup=False skips rotation only); atomic validated save. Refuses
     documents open in Word.
+    Defining new named styles lives in the academic pack.
     """
     if (range is None) == (target is None):
         raise WordMcpError(
@@ -1982,7 +1999,7 @@ def apply_style(
     )
 
 
-@_tool("lite")
+@_tool("academic")
 def define_style(
     file_path: str,
     style_id: str,
@@ -2031,7 +2048,7 @@ def create_table(
     standard location object ({paragraph}, {after_heading}, {outline},
     {search}, {anchor}); omit it to append at the document end; position
     'after' only. To build a table from a CSV or JSON file use
-    import_table. Auto-backup: prev/anchor slots in .ks4w-backups
+    import_table (protection-io pack). Auto-backup: prev/anchor slots in .ks4w-backups
     (backup=False skips rotation only); atomic validated save. Refuses
     documents open in Word.
     """
@@ -2091,6 +2108,7 @@ def get_table(
     picks among several, default 0). Write values with set_cells; reshape
     with modify_table_structure. Read-only; reads the last-saved state of a
     document open in Word.
+    Row/column surgery, styling, and sort: media-forms pack.
     """
     pkg = DocxPackage(file_path)
     if nested is None:
@@ -2114,7 +2132,7 @@ def get_table(
 _MTS_ACTIONS = ("insert", "delete", "merge", "unmerge", "split")
 
 
-@_tool("lite")
+@_tool("media-forms")
 def modify_table_structure(
     file_path: str,
     table_index: int,
@@ -2286,7 +2304,7 @@ def modify_table_structure(
     )
 
 
-@_tool("lite")
+@_tool("media-forms")
 def set_table_properties(
     file_path: str,
     table_index: int,
@@ -2432,7 +2450,7 @@ def set_cells(
     )
 
 
-@_tool("lite")
+@_tool("media-forms")
 def format_cells(
     file_path: str,
     table_index: int,
@@ -2455,7 +2473,7 @@ def format_cells(
     )
 
 
-@_tool("lite")
+@_tool("media-forms")
 def sort_table(
     file_path: str,
     table_index: int,
@@ -3463,7 +3481,7 @@ def insert_break(
     return _edit(file_path, _do, backup=backup)
 
 
-@_tool("lite")
+@_tool("academic")
 def change_heading_level(
     file_path: str,
     delta: int,
@@ -3517,7 +3535,7 @@ def move_section(
     )
 
 
-@_tool("lite")
+@_tool("academic")
 def set_section_properties(
     file_path: str,
     section: int = 0,
@@ -3630,7 +3648,7 @@ def set_textbox_text(
 # ======================================== 2.6 headers, footers, page numbers
 
 
-@_tool("lite")
+@_tool("academic")
 def set_header_footer(
     file_path: str,
     part: str,
@@ -3661,7 +3679,7 @@ def set_header_footer(
     )
 
 
-@_tool("lite")
+@_tool("academic")
 def set_page_numbers(
     file_path: str,
     section: int = 0,
@@ -3961,7 +3979,7 @@ def insert_bookmark(
     )
 
 
-@_tool("lite")
+@_tool("media-forms")
 def insert_hyperlink(
     file_path: str, anchor_text: str, url: str, occurrence: int = 1,
     backup: bool = True,
@@ -4696,7 +4714,106 @@ def live_repair() -> dict:
     return live.live_repair()
 
 
+# ------------------------------------------ tiered loading (Section 14)
+# Registered LAST: enable_tools' docstring carries the pack menu with
+# per-pack token bills computed from the live registry, so every other
+# tool must already be registered when this block runs.
+
+_PENDING_VISIBILITY: list[tuple[set[str], bool]] = []
+
+
+def _record_visibility(names: set[str], enabled: bool) -> None:
+    """packs.py visibility hook: bookkeeping flips queue here; the async
+    enable_tools/disable_tools bodies apply them session-scoped, and
+    main() folds startup flips into the global transform instead."""
+    _PENDING_VISIBILITY.append((set(names), enabled))
+
+
+_packs.set_visibility_hook(_record_visibility)
+
+
+async def _apply_session_visibility(ctx) -> None:
+    """Session-scoped toggles (author ruling 2026-09-02): fastmcp 3.x
+    session visibility rules override the startup global transform
+    (mark-based semantics, later marks win) and send
+    ToolListChangedNotification to this session only. ctx=None
+    (in-process callers, unit tests) drains the queue without applying;
+    packs bookkeeping stays authoritative for surface_report and the
+    DisabledToolSignpost either way."""
+    pending = list(_PENDING_VISIBILITY)
+    _PENDING_VISIBILITY.clear()
+    if ctx is None:
+        return
+    for names, enabled in pending:
+        if enabled:
+            await ctx.enable_components(names=names)
+        else:
+            await ctx.disable_components(names=names)
+
+
+async def enable_tools(
+    packs: list[str], ctx: _Context | None = None
+) -> dict:
+    result = _packs.enable(packs)
+    await _apply_session_visibility(ctx)
+    return result
+
+
+async def disable_tools(
+    packs: list[str], ctx: _Context | None = None
+) -> dict:
+    result = _packs.disable(packs)
+    await _apply_session_visibility(ctx)
+    return result
+
+
+_MENU_LINES = "\n".join(
+    f"- {name} (~{_packs.pack_cost(name) / 1000:.1f}k): "
+    f"{_packs.PACK_SUMMARIES[name]}"
+    for name in _packs.pack_names()
+)
+
+enable_tools.__doc__ = (
+    "Enable optional tool packs mid-session (sessions start lite). "
+    "Idempotent; result reports packs enabled, approx tokens added, "
+    "new total surface. packs = any combination below or "
+    "['everything']; disable_tools reverses it. Packs:\n" + _MENU_LINES
+)
+
+disable_tools.__doc__ = (
+    "Disable previously enabled tool packs for this session and reclaim "
+    "their context; the lite core always stays on. Idempotent. The "
+    "result reports the packs just disabled, the approximate tokens "
+    "removed, and the remaining surface. packs takes the same names as "
+    "enable_tools (its description carries the menu) or ['everything']."
+)
+
+enable_tools = _tool("lite")(enable_tools)
+disable_tools = _tool("lite")(disable_tools)
+
+
+def _startup_disabled_names() -> set[str]:
+    """Tool names hidden at startup under current packs bookkeeping."""
+    return {
+        name
+        for members in _packs.tool_names().values()
+        for name in members
+        if not _packs.is_tool_enabled(name)
+    }
+
+
 def main() -> None:
+    # KS4W_MODE startup surface: bookkeeping first (a typo in the env
+    # fails loudly BEFORE serving), then ONE global visibility transform
+    # hiding every tool not enabled at startup. Session rules laid down
+    # by enable_tools/disable_tools override this transform. Applied
+    # here, not at import, so tests and measure_surface always see the
+    # full registry.
+    _packs.apply_startup_mode()
+    _PENDING_VISIBILITY.clear()  # startup flips ride the global transform
+    disabled = _startup_disabled_names()
+    if disabled:
+        mcp.add_transform(_Visibility(False, names=disabled))
     mcp.run()
 
 
