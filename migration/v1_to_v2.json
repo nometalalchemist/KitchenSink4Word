@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "v1_version": "1.6.0",
+  "v2_version": "2.0.0",
+  "_status": "SKELETON (v2 Phase 0): structure plus illustrative entries only. Phase 5 completes all 189 entries, one per shipped v1.6.0 tool including identity rows; the completeness test in tests/unit/test_v2_migration_map.py flips from xfail to required then.",
+  "_entry_fields": {
+    "to": "v2 tool name",
+    "inject": "literal v2 param values that reproduce the v1 tool's fixed behavior",
+    "params": "old param name -> new param path, dot notation into nested objects like the location object",
+    "notes": "optional free text"
+  },
+  "tools": {
+    "get_text": {"to": "get_text", "params": {}},
+    "copy_table": {"to": "copy_table", "params": {},
+                   "notes": "identity; added day three post-design, rides insert_document's engine"},
+    "replace_paragraph_text": {"to": "set_paragraph_text",
+                               "params": {"paragraph_index": "location.paragraph"},
+                               "notes": "rename per the Section 5 verb table"},
+    "add_list": {"to": "insert_list", "params": {}},
+    "preview_replace": {"to": "search_and_replace", "inject": {"preview": true},
+                        "notes": "absorbed; search_and_replace keeps its name per ruling 13.2"},
+    "get_nested_table": {"to": "get_table",
+                         "params": {"path": "nested"},
+                         "notes": "absorbed via the nested address path"},
+    "add_footnote": {"to": "manage_note",
+                     "inject": {"action": "insert", "note_type": "footnote"},
+                     "params": {"text": "text", "after_paragraph": "location.paragraph"}},
+    "insert_rows": {"to": "modify_table_structure",
+                    "inject": {"action": "insert", "target": "rows"}},
+    "list_images": {"to": "list_elements", "inject": {"type": "images"}},
+    "remove_watermark": {"to": "set_watermark", "inject": {"watermark": "none"}},
+    "batch_apply": {"to": "apply_edits", "params": {},
+                    "notes": "op-type absorption into the batch layer"}
+  }
+}
