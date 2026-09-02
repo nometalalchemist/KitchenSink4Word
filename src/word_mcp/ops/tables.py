@@ -814,6 +814,38 @@ def create_table(
 ) -> dict:
     """Create a table from 2D data. Borders single-line by default; first row
     optionally repeated as header on page breaks."""
+    tbl = build_table_element(data, header_row=header_row, width_pt=width_pt)
+
+    from .text import _body_paragraph, _resolve_anchor
+
+    body = pkg.body()
+    if at_end or (after_index is None and after_anchor is None):
+        sectpr = body.find(qn("w:sectPr"))
+        if sectpr is not None:
+            sectpr.addprevious(tbl)
+        else:
+            body.append(tbl)
+    elif after_anchor is not None:
+        _resolve_anchor(pkg, after_anchor).addnext(tbl)
+    else:
+        _body_paragraph(pkg, after_index).addnext(tbl)
+    # Word requires a paragraph between two tables and at body end; add a
+    # spacer after the table unconditionally (harmless, removable).
+    tbl.addnext(etree.Element(qn("w:p")))
+    pkg.mark_dirty()
+    n_cols = max(len(row) for row in data)
+    return {"created": {"rows": len(data), "columns": n_cols}}
+
+
+def build_table_element(
+    data: list[list[str]],
+    *,
+    header_row: bool = True,
+    width_pt: float | None = None,
+) -> etree._Element:
+    """Build (without inserting) the w:tbl element create_table produces;
+    extracted so the batch layer's markdown table inserts share one
+    construction path."""
     if not data or not data[0]:
         raise WordMcpError("data must be a non-empty 2D list")
     if width_pt is not None and width_pt <= 0:
@@ -855,25 +887,7 @@ def create_table(
                     if rpr.find(qn("w:b")) is None:
                         etree.SubElement(rpr, qn("w:b"))
             tr.append(tc)
-
-    from .text import _body_paragraph, _resolve_anchor
-
-    body = pkg.body()
-    if at_end or (after_index is None and after_anchor is None):
-        sectpr = body.find(qn("w:sectPr"))
-        if sectpr is not None:
-            sectpr.addprevious(tbl)
-        else:
-            body.append(tbl)
-    elif after_anchor is not None:
-        _resolve_anchor(pkg, after_anchor).addnext(tbl)
-    else:
-        _body_paragraph(pkg, after_index).addnext(tbl)
-    # Word requires a paragraph between two tables and at body end; add a
-    # spacer after the table unconditionally (harmless, removable).
-    tbl.addnext(etree.Element(qn("w:p")))
-    pkg.mark_dirty()
-    return {"created": {"rows": len(data), "columns": n_cols}}
+    return tbl
 
 
 def delete_table(pkg: DocxPackage, table_index: int) -> dict:

@@ -46,6 +46,7 @@ from .core.errors import (
 from .core.locate import is_range_spec, resolve_location, resolve_range
 from .core.package import DocxPackage, qn
 from .ops import (
+    batch as _batch,
     bibliography as _bib,
     citecheck as _cc,
     comments as _cm,
@@ -89,6 +90,7 @@ from .ops import (
     styleconvert as _sc2,
     stylefind as _sf,
     textboxes as _tbx,
+    view as _view,
     zoterolib as _zl,
 )
 
@@ -1678,6 +1680,136 @@ def search_and_replace(
             file_path, replacements, scope, max_replacements, track, author
         ),
     )
+
+
+@_tool("lite")
+def get_document_view(
+    file_path: str,
+    scope: dict | None = None,
+    detail: str = "text",
+    include: dict | None = None,
+    stamp_anchors: bool = False,
+) -> dict:
+    """Read the document as an anchored markdown projection, the low-token
+    alternative to get_text for orientation and bulk editing. One block
+    per paragraph, prefixed [hex] with a stable anchor id (from
+    w14:paraId, which survives edits elsewhere in the document); headings
+    carry # prefixes, tables render as pipe tables under [t:hex] with
+    cells addressed t:hex:rNcN (1-based). Anchors work in every location
+    object ({"anchor": "hex"}) and in apply_edits ops. scope:
+    {"outline": "3.2"} for one heading's section, or {"paragraphs":
+    {"start": N, "end": M}} (end exclusive); omit for the whole document.
+    detail: "structure" (headings and counts only), "text" (default),
+    "full" (adds {++ins++}/{--del--} revision markers and [cN] comment
+    refs with an author legend). include: {"tables": false} to skip
+    tables, {"notes": "inline"} to append footnote/endnote text.
+    Documents without paraIds get VOLATILE anchors (flagged in the
+    header) that change with any edit; stamp_anchors=true writes real
+    paraIds so anchors become durable. Stamping is the ONE mutation this
+    tool can make and runs only when explicitly requested, with the
+    normal backup and validated save; plain reads never modify the file.
+    A document open in Word is read from its last saved state.
+    """
+    from .core.errors import DocumentLocked
+
+    if stamp_anchors:
+        probe = None
+        try:
+            probe = DocxPackage(file_path)
+        except DocumentLocked:
+            raise WordMcpError(
+                "stamp_anchors is a mutation and needs the file closed in "
+                "Word; close it and retry, or view without stamping"
+            ) from None
+        needs = any(
+            p.get(qn("w14:paraId")) is None
+            for p in probe.root().iter(qn("w:p"))
+        )
+        del probe
+        if needs:
+            def _do(pkg: DocxPackage) -> dict:
+                res = _view.stamp_anchors(pkg)
+                out = _view.get_document_view(
+                    pkg, scope=scope, detail=detail, include=include
+                )
+                out["stamped"] = res["stamped"]
+                return out
+
+            return _edit(file_path, _do)
+        # everything already stamped: fall through to the pure read
+    try:
+        return _view.get_document_view(
+            DocxPackage(file_path), scope=scope, detail=detail,
+            include=include,
+        )
+    except DocumentLocked:
+        out = _view.get_document_view(
+            _disk_snapshot_pkg(file_path), scope=scope, detail=detail,
+            include=include,
+        )
+        out["live"] = True
+        out["note"] = (
+            "document open in Word: this view reflects the last SAVED "
+            "state; unsaved changes are not shown"
+        )
+        return out
+
+
+@_tool("lite")
+def apply_edits(
+    file_path: str,
+    edits: list[dict],
+    atomic: bool = True,
+    backup: bool = True,
+    live: str = "auto",
+) -> dict:
+    """Apply a batch of anchor-addressed edits in one call: one lock, one
+    backup, one validated save for the whole batch. Anchors come from
+    get_document_view. Ops (each edit is a dict with "op"): replace
+    {anchor, find, text, occurrence?} (occurrence omitted replaces every
+    match in that paragraph); set_text {anchor, text} (whole paragraph);
+    insert {location, markdown} (headings, plain paragraphs, lists, and
+    pipe tables become real Word structures; location is the standard
+    object, e.g. {"anchor": "hex", "position": "after"}); delete {anchor
+    or anchors}; set_style {anchor, style}; format {anchor, formatting,
+    find?, occurrence?}; set_paragraph_format {anchor, format}; set_cell
+    {anchor: "t:hex:rNcN", text}. Every anchor and location is validated
+    against the current file BEFORE anything mutates: one stale anchor
+    refuses the WHOLE batch (STALE_ANCHOR, listing every failed op;
+    re-view and resend). The result's changed map carries per-op results,
+    including fresh durable anchors for inserted paragraphs, so a
+    follow-up batch chains without re-viewing. Ops execute in order; keep
+    deletes last. Three or more edits in one section, use this; otherwise
+    the fine-grained tools. Auto-backup in file mode: prev/anchor slots
+    in .ks4w-backups (backup=False skips rotation only); atomic validated
+    save. A document open in Word is edited live as ONE undo step
+    (markdown lists and tables are file-mode only there).
+    """
+    if atomic is not True:
+        raise WordMcpError(
+            "only atomic=true is supported: the whole batch applies in "
+            "one save or nothing does. Split into separate apply_edits "
+            "calls for independent failure domains."
+        )
+
+    def _file_call() -> dict:
+        return _edit(
+            file_path,
+            lambda pkg: _batch.apply_edits(pkg, edits, atomic=atomic),
+            backup=backup,
+        )
+
+    def _live_call() -> dict:
+        from .com import live_batch as _lb
+
+        snap = _disk_snapshot_pkg(file_path)
+        plans = _batch.validate_edits(snap, edits)
+        n_paras = sum(
+            1 for k, _i, _e in _rd.body_items(snap) if k == "paragraph"
+        )
+        return _lb.apply_edits_live(file_path, edits, plans, n_paras)
+
+    return _route_live(live, _file_call, _live_call)
 
 
 @_tool("lite")

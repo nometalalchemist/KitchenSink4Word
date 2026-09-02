@@ -14,10 +14,11 @@ from __future__ import annotations
 
 from ..core.errors import WordMcpError
 
-# Tools named in steps that are DECLARED but not yet registered: the v2
-# Phase 3 view/batch layer. The registry test (test_absorptions.py) treats
-# these as pending rather than missing; remove entries as the tools land.
-PENDING_TOOLS = {"get_document_view", "apply_edits"}
+# Tools named in steps that are DECLARED but not yet registered. Empty
+# since the Phase 3 view/batch layer landed (get_document_view and
+# apply_edits are registered); the registry test (test_absorptions.py)
+# treats entries here as pending rather than missing.
+PENDING_TOOLS: set[str] = set()
 
 # task -> {summary, steps: [{tool, why, optional?}], notes: [...]}
 WORKFLOWS: dict[str, dict] = {
@@ -198,13 +199,15 @@ WORKFLOWS: dict[str, dict] = {
         "steps": [
             {"tool": "get_document_view",
              "why": "one call returns the text plus stable anchor ids for "
-                    "every block (arrives with the v2 Phase 3 view layer)"},
+                    "every block (scope to one section to save tokens)"},
             {"tool": "apply_edits",
-             "why": "apply the whole edit list in one transaction, "
-                    "addressed by the view's anchors (Phase 3 layer)"},
+             "why": "apply the whole edit list in one transaction (one "
+                    "lock, one backup, one save), addressed by the view's "
+                    "anchors; a stale anchor refuses the whole batch"},
             {"tool": "search_and_replace",
-             "why": "pattern edits in bulk today; preview=true dry-runs the "
-                    "batch and yields the count for max_replacements"},
+             "why": "pattern edits across the document; preview=true "
+                    "dry-runs the batch and yields the count for "
+                    "max_replacements"},
             {"tool": "set_paragraph_text",
              "why": "surgical fallback for single-paragraph rewrites when a "
                     "find string would be unwieldy"},
@@ -212,9 +215,10 @@ WORKFLOWS: dict[str, dict] = {
              "why": "structural check after the pass"},
         ],
         "notes": [
-            "Until the view/batch layer lands, search_and_replace with an "
-            "item list is the batch path; every mutation still auto-backs "
-            "up, so a bad batch rolls back via manage_backups restore.",
+            "Heuristic: three or more text edits in one section, use view "
+            "+ apply_edits; otherwise the fine-grained tools.",
+            "Every mutation still auto-backs up, so a bad batch rolls back "
+            "via manage_backups restore.",
         ],
     },
 }

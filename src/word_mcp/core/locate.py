@@ -9,7 +9,7 @@ before acting:
     {"outline": "3.2"}
     {"bookmark": "methodology_section"}
     {"search": {"text": "specific text", "occurrence": 1, "match_case": false}}
-    {"anchor": "a3f9"}          (stub until the Phase 3 view layer)
+    {"anchor": "a3f9"}          (a get_document_view anchor id)
     {"cursor": true}            (live mode only, via an injected reader)
 
     "position": "before" | "after" | "replace" | "start" | "end"
@@ -641,16 +641,35 @@ def _resolve_search(pkg: DocxPackage, value: Any, position: str) -> ResolvedLoca
     )
 
 
-def _resolve_anchor_stub(value: Any) -> ResolvedLocation:
+def _resolve_anchor(pkg: DocxPackage, value: Any, position: str) -> ResolvedLocation:
+    """The Section 9.4 integration point: anything the view can see, every
+    positional tool can address. Resolution recomputes the anchor map from
+    current package content (ops/view.py has the scheme); a stale anchor
+    raises StaleAnchor (closed code STALE_ANCHOR) with the re-view hint."""
     if not isinstance(value, str) or not value:
         raise WordMcpError(
             "anchor selector takes a get_document_view anchor id (string)"
         )
-    raise WordMcpError(
-        "anchor addressing is not available yet: anchors are issued by "
-        "get_document_view and arrive with the view/batch layer (v2 "
-        "Phase 3). Address by outline, paragraph, bookmark, or search for "
-        "now."
+    from ..ops import view as _view  # lazy, same pattern as _read()
+
+    info = _view.resolve_anchor(pkg, value)
+    if info["kind"] != "paragraph":
+        what = "table cell" if info["kind"] == "cell" else "table"
+        raise UnsupportedStructure(
+            f"anchor {value!r} addresses a {what}; positional tools address "
+            f"body paragraphs. Use the table tools (get_table/set_cells, "
+            f"table index {info['table_index']}) or an apply_edits set_cell "
+            "op instead."
+        )
+    matched = {
+        "paragraph": info["paragraph_index"],
+        "anchor": value,
+        "text": _clip(info["text"]),
+    }
+    if info["volatile"]:
+        matched["volatile"] = True
+    return ResolvedLocation(
+        info["paragraph_index"], position, "anchor", matched
     )
 
 
@@ -763,7 +782,7 @@ def resolve_location(
     if sel == "search":
         return _resolve_search(pkg, value, position)
     if sel == "anchor":
-        return _resolve_anchor_stub(value)
+        return _resolve_anchor(pkg, value, position)
     return _resolve_cursor(pkg, value, position, cursor_reader)
 
 

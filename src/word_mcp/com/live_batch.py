@@ -1,0 +1,295 @@
+"""apply_edits live route: the whole batch inside ONE COM undo group
+(V2_DESIGN 9.4 binding 2: one live session, one run_live call, so the
+entire batch is a single Ctrl+Z step).
+
+Flow: the server validated the batch against a DISK SNAPSHOT of the locked
+file (ops/batch.validate_edits), producing index-based plans; this module
+pre-checks live support for every op (raising BEFORE Word is touched),
+then executes the ops in order against the open document, remapping
+paragraph indices as inserts and deletes shift them.
+
+Live-route limits, stated honestly rather than approximated:
+- Anchors resolve against the last SAVED state (the Wave E caveat: unsaved
+  changes in Word are invisible to the resolver). The replace op verifies
+  the matched text against Word's own range before writing.
+- Markdown lists and pipe tables in insert ops are file-mode only; the
+  batch refuses up front with the close-the-file hint.
+- A mid-batch apply failure leaves the batch partially applied in the
+  OPEN document (nothing is saved); the one undo group means a single
+  Ctrl+Z removes the applied portion.
+
+Bodies are composed from live_ops' session-level body factories (the same
+code the standalone live tools run), plus two small local bodies for the
+replace and set_style ops which have no standalone live tool.
+"""
+
+from __future__ import annotations
+
+import re
+
+from ..core.errors import (
+    TargetNotFound,
+    UnsupportedStructure,
+    WordMcpError,
+)
+from . import live_ops as _lo
+from .live import check_text_safe, run_live
+
+_HEADING_RE = re.compile(r"[Hh]eading\s?([1-9])$")
+
+
+# ------------------------------------------------------------ local bodies
+
+
+def _replace_body(index: int, find: str, new: str, occurrence: int | None):
+    def body(session):
+        doc = session.doc
+        paras = _lo._body_paragraphs(doc)
+        if not 0 <= index < len(paras):
+            raise TargetNotFound(
+                f"paragraph index {index} out of range "
+                f"({len(paras)} body paragraphs)"
+            )
+        p = paras[index]
+        text = _lo._para_text(p)
+        spans = []
+        pos = 0
+        while True:
+            pos = text.find(find, pos)
+            if pos < 0:
+                break
+            spans.append((pos, pos + len(find)))
+            pos += len(find)
+        if not spans:
+            raise TargetNotFound(
+                f"replace: {find!r} not found in the target paragraph "
+                "(the open document may differ from the saved file the "
+                "anchors were resolved against)"
+            )
+        if occurrence is not None:
+            if occurrence > len(spans):
+                raise TargetNotFound(
+                    f"replace: occurrence {occurrence} out of range, "
+                    f"{len(spans)} match(es)"
+                )
+            spans = [spans[occurrence - 1]]
+        base = p.Range.Start
+        for lo_, hi_ in reversed(spans):
+            rng = doc.Range(base + lo_, base + hi_)
+            if rng.Text != find:
+                raise UnsupportedStructure(
+                    "character offsets do not line up with Word's "
+                    "positions in this paragraph (complex fields present); "
+                    "close the document and use the file-based route"
+                )
+            _lo._assign_text(rng, new)
+        return {"replaced": len(spans), "paragraph": index}
+
+    return body
+
+
+def _set_style_body(index: int, style: str):
+    def body(session):
+        doc = session.doc
+        paras = _lo._body_paragraphs(doc)
+        if not 0 <= index < len(paras):
+            raise TargetNotFound(
+                f"paragraph index {index} out of range "
+                f"({len(paras)} body paragraphs)"
+            )
+        rng = doc.Range(paras[index].Range.Start, paras[index].Range.End)
+        tried = [style]
+        m = _HEADING_RE.fullmatch(style)
+        if m and " " not in style:
+            tried.append(f"Heading {m.group(1)}")  # id form -> display name
+        for cand in tried:
+            try:
+                rng.Style = cand
+                return {"styled": 1, "paragraph": index, "style": cand}
+            except Exception:
+                continue
+        raise TargetNotFound(
+            f"style {style!r} does not exist in this document"
+        )
+
+    return body
+
+
+# ---------------------------------------------------------------- specs
+
+
+def _live_spec(edit: dict, plan: dict, i: int) -> dict:
+    """Pre-check one op's live support and pre-validate its params, BEFORE
+    Word is touched. Factories from live_ops are pure until their body
+    runs, so calling them here (with a placeholder index where needed)
+    runs their parameter validation and nothing else."""
+    op = plan["op"]
+    spec: dict = {"op": op, "index": plan.get("index")}
+    if op == "insert":
+        items: list[dict] = []
+        for seg in plan["segments"]:
+            if seg["kind"] != "paragraphs":
+                raise UnsupportedStructure(
+                    f"edit {i} (insert): markdown "
+                    f"{'lists' if seg['kind'] == 'list' else 'tables'} are "
+                    "file-mode only; close the document in Word and resend "
+                    "the batch. Nothing was applied."
+                )
+            for item in seg["items"]:
+                spec_item = {"text": item["text"]}
+                if "level" in item:
+                    spec_item["style"] = f"Heading {item['level']}"
+                items.append(spec_item)
+        spec["items"] = items
+        spec["mode"] = plan["mode"]
+        for item in items:
+            check_text_safe(item["text"])
+    elif op == "delete":
+        spec["indices"] = plan["indices"]
+    elif op == "set_cell":
+        spec.update(
+            {"table_index": plan["table_index"], "row": plan["row"],
+             "col": plan["col"], "text": edit["text"]}
+        )
+        check_text_safe(edit["text"])
+    elif op == "replace":
+        check_text_safe(edit["text"])
+        spec.update(
+            {"find": edit["find"], "text": edit["text"],
+             "occurrence": edit.get("occurrence")}
+        )
+    elif op == "set_text":
+        _lo.replace_paragraph_text_body(0, edit["text"])  # validate only
+        spec["text"] = edit["text"]
+    elif op == "set_style":
+        spec["style"] = edit["style"]
+    elif op == "format":
+        _lo.format_text_body(  # validate only (live key set differs)
+            edit["formatting"], paragraph_index=0,
+            find=edit.get("find"), occurrence=edit.get("occurrence") or 1,
+        )
+        spec.update(
+            {"formatting": edit["formatting"], "find": edit.get("find"),
+             "occurrence": edit.get("occurrence") or 1}
+        )
+    elif op == "set_paragraph_format":
+        _lo.set_paragraph_format_body([0], edit["format"])  # validate only
+        spec["format"] = edit["format"]
+    return spec
+
+
+# ----------------------------------------------------------------- driver
+
+
+def apply_edits_live(
+    path: str, edits: list[dict], plans: list[dict], n_paras: int
+) -> dict:
+    """Execute a pre-validated batch against the OPEN document in one undo
+    group. plans come from ops/batch.validate_edits on the disk snapshot;
+    n_paras is that snapshot's body paragraph count (the index space the
+    plans speak)."""
+    specs = [_live_spec(e, p, i) for i, (e, p) in enumerate(zip(edits, plans))]
+
+    def body(session):
+        # snapshot index -> current index (None = deleted by this batch)
+        pos: list = list(range(n_paras))
+
+        def cur(o: int, i: int) -> int:
+            c = pos[o] if 0 <= o < len(pos) else None
+            if c is None:
+                raise WordMcpError(
+                    f"edit {i}: its target paragraph was deleted by an "
+                    "earlier edit in this batch; the batch stops here "
+                    "(one Ctrl+Z in Word undoes the applied portion). "
+                    "Keep deletes last or in their own batch."
+                )
+            return c
+
+        changed: dict[str, dict] = {}
+        for i, spec in enumerate(specs):
+            op = spec["op"]
+            if op == "insert":
+                k = len(spec["items"])
+                mode = spec["mode"]
+                if mode == "end":
+                    b = _lo.insert_paragraphs_body(spec["items"], at_end=True)
+                    b(session)
+                elif mode == "start":
+                    b = _lo.insert_paragraphs_body(
+                        spec["items"], before_index=0
+                    )
+                    b(session)
+                    pos = [None if c is None else c + k for c in pos]
+                else:
+                    c = cur(spec["index"], i)
+                    if mode == "after":
+                        _lo.insert_paragraphs_body(
+                            spec["items"], after_index=c
+                        )(session)
+                        pos = [None if x is None else x + k if x > c else x
+                               for x in pos]
+                    else:  # before
+                        _lo.insert_paragraphs_body(
+                            spec["items"], before_index=c
+                        )(session)
+                        pos = [None if x is None else x + k if x >= c else x
+                               for x in pos]
+                changed[str(i)] = {
+                    "inserted_paragraphs": k,
+                    "note": ("anchors for live-inserted paragraphs appear "
+                             "on the next view after the document is saved"),
+                }
+            elif op == "delete":
+                currents = sorted(cur(o, i) for o in spec["indices"])
+                runs: list[list[int]] = []
+                for c in currents:
+                    if runs and c == runs[-1][-1] + 1:
+                        runs[-1].append(c)
+                    else:
+                        runs.append([c])
+                deleted = 0
+                for run in reversed(runs):  # bottom-up: indices stay valid
+                    _lo.delete_paragraphs_body(run[0], run[-1])(session)
+                    width = run[-1] - run[0] + 1
+                    pos = [
+                        None if x is None or run[0] <= x <= run[-1]
+                        else x - width if x > run[-1] else x
+                        for x in pos
+                    ]
+                    deleted += width
+                changed[str(i)] = {"deleted": deleted}
+            elif op == "set_cell":
+                changed[str(i)] = {
+                    **_lo.set_cells_body(
+                        spec["table_index"],
+                        [{"row": spec["row"], "cell": spec["col"],
+                          "text": spec["text"]}],
+                    )(session),
+                    "row": spec["row"], "col": spec["col"],
+                }
+            elif op == "replace":
+                changed[str(i)] = _replace_body(
+                    cur(spec["index"], i), spec["find"], spec["text"],
+                    spec["occurrence"],
+                )(session)
+            elif op == "set_text":
+                changed[str(i)] = _lo.replace_paragraph_text_body(
+                    cur(spec["index"], i), spec["text"]
+                )(session)
+            elif op == "set_style":
+                changed[str(i)] = _set_style_body(
+                    cur(spec["index"], i), spec["style"]
+                )(session)
+            elif op == "format":
+                changed[str(i)] = _lo.format_text_body(
+                    spec["formatting"],
+                    paragraph_index=cur(spec["index"], i),
+                    find=spec["find"], occurrence=spec["occurrence"],
+                )(session)
+            else:  # set_paragraph_format
+                changed[str(i)] = _lo.set_paragraph_format_body(
+                    [cur(spec["index"], i)], spec["format"]
+                )(session)
+        return {"applied": len(specs), "changed": changed, "warnings": []}
+
+    return run_live(path, "apply edits", body)

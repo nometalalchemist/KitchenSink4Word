@@ -1020,6 +1020,17 @@ def replace_paragraph_text(
     live has no faithful semantics. Bare fields and content controls inside
     the paragraph are deleted explicitly first (Range.Text assignment
     silently leaves both behind)."""
+    return run_live(
+        path, "replace paragraph text",
+        replace_paragraph_text_body(index, new_text, expect),
+    )
+
+
+def replace_paragraph_text_body(
+    index: int, new_text: str, expect: str | None = None
+):
+    """Session-level body factory; the apply_edits live route composes
+    these inside ONE undo group. Same code the public tool runs."""
     check_text_safe(new_text)
 
     def body(session):
@@ -1088,7 +1099,7 @@ def replace_paragraph_text(
                 )
         return result
 
-    return run_live(path, "replace paragraph text", body)
+    return body
 
 
 def insert_paragraphs(
@@ -1101,6 +1112,27 @@ def insert_paragraphs(
     track: bool = False,
     author: str = "Claude",
 ) -> dict:
+    return run_live(
+        path, "insert paragraphs",
+        insert_paragraphs_body(
+            paragraphs, after_index=after_index, before_index=before_index,
+            after_anchor=after_anchor, at_end=at_end, track=track,
+            author=author,
+        ),
+    )
+
+
+def insert_paragraphs_body(
+    paragraphs: list[dict],
+    *,
+    after_index: int | None = None,
+    before_index: int | None = None,
+    after_anchor: str | None = None,
+    at_end: bool = False,
+    track: bool = False,
+    author: str = "Claude",
+):
+    """Session-level body factory; see replace_paragraph_text_body."""
     targets = [after_index is not None, before_index is not None,
                after_anchor is not None, at_end]
     if sum(targets) != 1:
@@ -1180,7 +1212,7 @@ def insert_paragraphs(
             inserted += 1
         return _tracked_result(session, track, author, {"inserted": inserted})
 
-    return run_live(path, "insert paragraphs", body)
+    return body
 
 
 def delete_paragraphs(
@@ -1190,6 +1222,20 @@ def delete_paragraphs(
     track: bool = False,
     author: str = "Claude",
 ) -> dict:
+    return run_live(
+        path, "delete paragraphs",
+        delete_paragraphs_body(start, end, track=track, author=author),
+    )
+
+
+def delete_paragraphs_body(
+    start: int,
+    end: int | None = None,
+    *,
+    track: bool = False,
+    author: str = "Claude",
+):
+    """Session-level body factory; see replace_paragraph_text_body."""
     def body(session):
         doc = session.doc
         last = start if end is None else end
@@ -1255,7 +1301,7 @@ def delete_paragraphs(
         )
         return _tracked_result(session, track, author, payload)
 
-    return run_live(path, "delete paragraphs", body)
+    return body
 
 
 # ------------------------------------------------------------------ tables
@@ -1268,6 +1314,20 @@ def set_cells(
     track: bool = False,
     author: str = "Claude",
 ) -> dict:
+    return run_live(
+        path, "set cells",
+        set_cells_body(table_index, edits, track=track, author=author),
+    )
+
+
+def set_cells_body(
+    table_index: int,
+    edits: list[dict],
+    *,
+    track: bool = False,
+    author: str = "Claude",
+):
+    """Session-level body factory; see replace_paragraph_text_body."""
     def body(session):
         doc = session.doc
         if not 0 <= table_index < doc.Tables.Count:
@@ -1315,7 +1375,7 @@ def set_cells(
             {"cells_written": applied, "table": table_index},
         )
 
-    return run_live(path, "set cells", body)
+    return body
 
 
 # -------------------------------------------------------------- formatting
@@ -1328,6 +1388,23 @@ def format_text(
     find: str | None = None,
     occurrence: int = 1,
 ) -> dict:
+    return run_live(
+        path, "format text",
+        format_text_body(
+            formatting, paragraph_index=paragraph_index, find=find,
+            occurrence=occurrence,
+        ),
+    )
+
+
+def format_text_body(
+    formatting: dict,
+    *,
+    paragraph_index: int | None = None,
+    find: str | None = None,
+    occurrence: int = 1,
+):
+    """Session-level body factory; see replace_paragraph_text_body."""
     unknown = set(formatting) - _CHAR_KEYS
     if unknown:
         raise WordMcpError(
@@ -1406,7 +1483,7 @@ def format_text(
             else "paragraph has no text to format"
         )
 
-    return run_live(path, "format text", body)
+    return body
 
 
 # -------------------------------------------------------- live-only tools
@@ -1636,6 +1713,14 @@ def set_paragraph_format(
     path: str, indices: list[int], formatting: dict
 ) -> dict:
     """Live paragraph formatting via COM Paragraph.Format properties."""
+    return run_live(
+        path, "set paragraph format",
+        set_paragraph_format_body(indices, formatting),
+    )
+
+
+def set_paragraph_format_body(indices: list[int], formatting: dict):
+    """Session-level body factory; see replace_paragraph_text_body."""
     unknown = set(formatting) - _PARA_FMT_KEYS_LIVE - _PARA_FMT_UNSUPPORTED_LIVE
     if unknown:
         raise WordMcpError(
@@ -1728,4 +1813,4 @@ def set_paragraph_format(
             applied.append({"paragraph": idx, "keys_set": keys_set})
         return {"paragraphs_formatted": len(applied), "applied": applied}
 
-    return run_live(path, "set paragraph format", body)
+    return body

@@ -481,20 +481,24 @@ def test_search_spec_shape(doc):
         resolve_location(doc, {"search": {"text": "x", "match_case": "yes"}})
 
 
-# ------------------------------------------------- anchor and cursor stubs
+# ----------------------------------------------- anchor and cursor selectors
 
 
-def test_anchor_stub_names_phase_3(doc):
-    with pytest.raises(WordMcpError) as ei:
-        resolve_location(doc, {"anchor": "a3f9"})
-    msg = str(ei.value)
-    assert "Phase 3" in msg
-    assert "get_document_view" in msg
+def test_anchor_unresolvable_is_stale_with_review_hint(doc):
+    """An anchor id that matches nothing raises StaleAnchor (closed code
+    STALE_ANCHOR) and points at get_document_view (Phase 3 layer)."""
+    from word_mcp.core.errors import StaleAnchor
+
+    with pytest.raises(StaleAnchor) as ei:
+        resolve_location(doc, {"anchor": "abcdef123456"})
+    assert "get_document_view" in str(ei.value)
 
 
 def test_anchor_bad_shape(doc):
     with pytest.raises(WordMcpError, match="anchor id"):
         resolve_location(doc, {"anchor": 42})
+    with pytest.raises(WordMcpError, match="malformed anchor"):
+        resolve_location(doc, {"anchor": "not-hex!"})
 
 
 def test_cursor_without_reader_refuses(doc):

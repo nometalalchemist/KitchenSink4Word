@@ -85,9 +85,10 @@ V1_TOOLS = frozenset({
     'word_count', 'word_count_with_exclusions', 'word_live_repair'
 })
 
-# v2 targets declared in the map but arriving with the Phase 3 view/batch
-# layer; drop entries here as the tools land.
-PENDING_V2_TARGETS = {"apply_edits", "get_document_view"}
+# v2 targets declared in the map but not yet registered. Empty since the
+# Phase 3 view/batch layer landed (apply_edits and get_document_view are
+# registered); the completeness check is fully live-registry enforced.
+PENDING_V2_TARGETS: set[str] = set()
 
 
 def _load():
