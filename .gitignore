@@ -18,6 +18,7 @@ tests/corpus/*.docx
 
 # Local build-planning notes (project-specific workflow details)
 PLAN.md
+V2_PLAN.md
 dist/
 build/
 BUILD_LOG.md
@@ -34,3 +35,6 @@ integration/
 
 # packed bundles ship as release assets, not commits
 bundle/*.mcpb
+
+# Private brand feedback (outside repo, defensive)
+Brand Feedback/
