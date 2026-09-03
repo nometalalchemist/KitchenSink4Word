@@ -5,7 +5,7 @@ description = "Everything plus the kitchen sink for Microsoft Word - the most co
 readme = "README.md"
 license = "AGPL-3.0-only"
 license-files = ["LICENSE", "NOTICE.md"]
-authors = [{ name = "Nykolus Alvut" }]
+authors = [{ name = "nometalalchemist" }]
 keywords = [
     "mcp", "word", "docx", "ooxml", "claude", "model-context-protocol",
     "live-editing", "citations", "bibliography", "footnotes",
