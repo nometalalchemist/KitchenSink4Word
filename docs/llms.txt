@@ -1,6 +1,6 @@
 # KitchenSink4Word
 
-> Everything plus the kitchen sink for Microsoft Word: the most complete Word (.docx) MCP server available. 182 document operations across 108 tools under one grammar, covering live editing of documents open in Word, native citations and bibliography, merge-aware table surgery, footnotes and endnotes, TOC, tracked-changes authoring, Word-native document compare, protection, redaction, mail merge, and accessibility audits. Engineered not to corrupt: atomic validated saves, automatic backups before every mutation, and published adversarial test evidence.
+> Everything plus the kitchen sink for Microsoft Word: the most complete Word (.docx) MCP server available. 187 document operations across 108 tools under one grammar, covering live editing of documents open in Word, native citations and bibliography, merge-aware table surgery, footnotes and endnotes, TOC, tracked-changes authoring, Word-native document compare, protection, redaction, mail merge, and accessibility audits. Engineered not to corrupt: atomic validated saves, automatic backups before every mutation, and published adversarial test evidence.
 
 This file describes the shipped release: v2.0.0.
 Platform: Windows. File-based tools (the large majority) work without Microsoft Word installed; the com_* and live_* tools use a local Microsoft Word via COM.
@@ -61,9 +61,9 @@ Drives a local Microsoft Word: `com_word_status`, `com_refresh_fields`, `com_exp
 ### protection-io pack (6 tools)
 Protection and data I/O: `set_document_protection`, `get_protection`, `set_watermark`, `redact_text`, `import_table`, `export_table`.
 
-## Consolidated multiplexers (how 182 operations fit in 108 tools)
+## Consolidated multiplexers (how 187 operations fit in 108 tools)
 
-- `list_elements(type=...)`: one tool enumerates every collection (tables, images, charts, footnotes, endnotes, sources, bookmarks, sections, fields, comments, styles, and more) in place of 18 v1 `list_*` tools.
+- `list_elements(type=...)`: one tool enumerates every collection (tables, images, charts, footnotes, endnotes, sources, bookmarks, sections, fields, equations, form fields, content controls, lists, TOC, and more) in place of 18 separate v1 listing tools.
 - `validate(checks=[...])`: one tool runs any of 14 correctness batteries (core, captions, chapter_headers, cross_references, notes, forms, citation_parity, defined_terms, brand, template, reference_fields, image_resolution, accessibility, redaction).
 - `manage_note`, `manage_comment`, `manage_source`, `manage_backups`: lifecycle verbs (insert, edit, delete, and kin) on one object family per tool.
 - `modify_table_structure(action=...)`: insert or delete rows and columns, merge, unmerge, split.

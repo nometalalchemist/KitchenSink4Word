@@ -10,7 +10,7 @@
 [Landing page](https://nometalalchemist.github.io/KitchenSink4Word/) · [llms.txt](https://nometalalchemist.github.io/KitchenSink4Word/llms.txt) (machine-readable capability manifest for agents and LLM crawlers)
 
 **Everything plus the kitchen sink for Microsoft Word.** The most complete
-Word (.docx) MCP server available: **182 document operations** across **108
+Word (.docx) MCP server available: **187 document operations** across **108
 tools**, one consistent grammar, engineered not to corrupt and stress-tested
 against long, heavily formatted real-world documents. Live editing included:
 documents open in Word are edited in place, visibly, with each tool call
@@ -26,7 +26,7 @@ landing as a single Ctrl+Z step.
 
 ## Two numbers that matter
 
-- **182 document operations, 108 tools.** The operation count went up and the
+- **187 document operations, 108 tools.** The operation count went up and the
   tool count came down on purpose. v1 spread similar jobs across many
   competing names; v2 gives each concept exactly one name built from a small
   verb table (`insert_`, `set_`, `manage_`, `list_elements`, `validate`,
@@ -98,20 +98,21 @@ comparison is about what each one can do, not how many names it has:
 Capability survey compiled from public repositories, documentation, and issue
 trackers. Corrections welcome: [open an issue](https://github.com/nometalalchemist/KitchenSink4Word/issues).
 
-## What the 182 operations cover
+## What the 187 operations cover
 
-The full surface spans equations (LaTeX to Word math), native charts, document
-assembly (chapter files into one manuscript), Zotero library citations,
-publication style conversion (8 styles, beta), review-cycle analytics, and
-workflow suites (mail merge, batch operations, redaction, compliance and
-accessibility audits and fixes, submission prep, front matter, diagnostics),
-plus text and formatting, tables (including merge-aware column insert/delete
-and one-call bulk cell edits), footnotes and endnotes (full lifecycle plus
-footnote and endnote conversion), TOC and caption lists, headers, footers, and
-sections, images, bulleted and numbered lists, content controls and fields,
-threaded comments, tracked changes (read, accept and reject by author, and
-writing edits as tracked changes), and Word-COM-backed document compare, field
-refresh, PDF export and import, and open-clean validation on Windows.
+The everyday core covers text and formatting, tables (including merge-aware
+column insert/delete and one-call bulk cell edits), footnotes and endnotes
+(full lifecycle plus footnote and endnote conversion), TOC and caption lists,
+headers, footers, and sections, images, bulleted and numbered lists, content
+controls and fields, threaded comments, and tracked changes (read, accept and
+reject by author, and writing edits as tracked changes). Beyond that the
+surface spans equations (LaTeX to Word math), native charts, document assembly
+(chapter files into one manuscript), Zotero library citations, publication
+style conversion (8 styles, beta), review-cycle analytics, workflow suites
+(mail merge, batch operations, redaction, compliance and accessibility audits
+and fixes, submission prep, front matter, diagnostics), and Word-COM-backed
+document compare, field refresh, PDF export and import, and open-clean
+validation on Windows.
 
 ## What makes it different
 

@@ -15,9 +15,13 @@ computed as the MAX of two independent, committed-source detectors:
   1. SOURCE DISPATCH SCAN: the distinct values of the tool's primary
      dispatch parameter (action / operation / check / direction / type /
      mode / kind), extracted automatically from the tool's own validation
-     code in server.py (the tuple, set, dict, membership test, equality
-     chain, or table lookup the tool checks its dispatch argument
-     against). A single-purpose tool contributes 1.
+     code (the tuple, set, dict, membership test, equality chain, or
+     table lookup the tool checks its dispatch argument against). When a
+     tool passes its dispatch parameter straight through to an ops-module
+     function (e.g. manage_backups -> ops.backups.manage_backups), the
+     scan follows the call and reads the validation there, so dispatch
+     values validated one layer down are still counted. A single-purpose
+     tool contributes 1.
   2. MIGRATION CAPABILITY MAP: the number of distinct injected-argument
      signatures that migration/v1_to_v2.json folds into that tool (each
      is one preserved v1.6 capability). This is the project's vetted,
@@ -74,17 +78,6 @@ def _decorated_with_tool(node: ast.FunctionDef) -> bool:
     return False
 
 
-def _module_values(name: str):
-    """Resolve a module-level constant to string values (tuple/list/set ->
-    elements, dict -> keys)."""
-    val = getattr(server_mod, name, None)
-    if isinstance(val, dict):
-        return [k for k in val.keys() if isinstance(k, str)]
-    if isinstance(val, (tuple, list, set)):
-        return [v for v in val if isinstance(v, str)]
-    return None
-
-
 def _literal_values(node: ast.AST):
     """String values from a tuple/list/set literal or a dict literal's keys."""
     if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
@@ -111,49 +104,51 @@ def _local_map(fn: ast.FunctionDef):
     return out
 
 
-def _resolve(node: ast.AST, local: dict[str, list[str]]):
-    """Resolve a comparator/argument node to a value-set: a literal, a local
-    name, or a module constant."""
-    lit = _literal_values(node)
-    if lit is not None:
-        return lit
-    if isinstance(node, ast.Name):
-        return local.get(node.id) or _module_values(node.id)
-    return None
-
-
-def _dispatch_values(fn: ast.FunctionDef):
-    """Return (param_name, sorted[values]) for the primary dispatch dimension,
-    or None. Unions every signal for each dispatch-named parameter:
+def _scan_param_values(fn: ast.FunctionDef, wanted: tuple[str, ...],
+                       module_obj=server_mod) -> dict[str, set[str]]:
+    """Union every validation signal for each wanted parameter name inside
+    one function:
       - `X in/not in <set|Name>`            (membership tests)
       - `X == "const"` / `"const" == X`     (if/elif dispatch chains)
       - `DICT.get(X)`, `DICT[X]`, `X in DICT` (table-driven dispatch)
-    Picks the dispatch param with the largest value union; ties break by
-    DISPATCH_NAMES priority so `action` beats a minor secondary `type`."""
+    Name comparators resolve against local assignments first, then the
+    given module's constants."""
     local = _local_map(fn)
     found: dict[str, set[str]] = {}
+
+    def module_values(name: str):
+        val = getattr(module_obj, name, None)
+        if isinstance(val, dict):
+            return [k for k in val.keys() if isinstance(k, str)]
+        if isinstance(val, (tuple, list, set)):
+            return [v for v in val if isinstance(v, str)]
+        return None
+
+    def resolve(node: ast.AST):
+        lit = _literal_values(node)
+        if lit is not None:
+            return lit
+        if isinstance(node, ast.Name):
+            return local.get(node.id) or module_values(node.id)
+        return None
 
     def add(param: str, vals):
         if vals:
             found.setdefault(param, set()).update(vals)
 
     for sub in ast.walk(fn):
-        # Membership: X in/not in <set>
+        # Membership: X in/not in <set|Name|DICT>
         if isinstance(sub, ast.Compare) and len(sub.ops) == 1:
             op = sub.ops[0]
             left = sub.left
             comp = sub.comparators[0]
             if isinstance(op, (ast.In, ast.NotIn)) and isinstance(left, ast.Name) \
-                    and left.id in DISPATCH_NAMES:
-                add(left.id, _resolve(comp, local))
-            # X in DICT  ->  dict keys
-            if isinstance(op, (ast.In, ast.NotIn)) and isinstance(comp, ast.Name) \
-                    and isinstance(left, ast.Name) and left.id in DISPATCH_NAMES:
-                add(left.id, local.get(comp.id) or _module_values(comp.id))
+                    and left.id in wanted:
+                add(left.id, resolve(comp))
             # Equality dispatch: X == "const"  /  "const" == X
             if isinstance(op, (ast.Eq,)):
                 for a, b in ((left, comp), (comp, left)):
-                    if isinstance(a, ast.Name) and a.id in DISPATCH_NAMES \
+                    if isinstance(a, ast.Name) and a.id in wanted \
                             and isinstance(b, ast.Constant) \
                             and isinstance(b.value, str):
                         add(a.id, [b.value])
@@ -162,15 +157,84 @@ def _dispatch_values(fn: ast.FunctionDef):
                 and sub.func.attr == "get" and sub.args:
             arg = sub.args[0]
             base = sub.func.value
-            if isinstance(arg, ast.Name) and arg.id in DISPATCH_NAMES \
+            if isinstance(arg, ast.Name) and arg.id in wanted \
                     and isinstance(base, ast.Name):
-                add(arg.id, local.get(base.id) or _module_values(base.id))
+                add(arg.id, resolve(base))
         if isinstance(sub, ast.Subscript) and isinstance(sub.value, ast.Name):
             idx = sub.slice
-            if isinstance(idx, ast.Name) and idx.id in DISPATCH_NAMES:
-                add(idx.id, local.get(sub.value.id)
-                    or _module_values(sub.value.id))
+            if isinstance(idx, ast.Name) and idx.id in wanted:
+                add(idx.id, resolve(sub.value))
 
+    return found
+
+
+def _ops_index():
+    """(module_name -> (ast func map, imported module)) for word_mcp.ops.*,
+    plus the alias map server.py imports them under (backups as _bk, ...)."""
+    import importlib
+
+    tree = ast.parse(SERVER_PY.read_text(encoding="utf-8"))
+    aliases: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module == "ops":
+            for a in node.names:
+                aliases[a.asname or a.name] = a.name
+    modules: dict[str, tuple[dict[str, ast.FunctionDef], object]] = {}
+    for modname in set(aliases.values()):
+        path = SRC / "word_mcp" / "ops" / f"{modname}.py"
+        if not path.exists():
+            continue
+        mtree = ast.parse(path.read_text(encoding="utf-8"))
+        fns = {n.name: n for n in ast.walk(mtree)
+               if isinstance(n, ast.FunctionDef)}
+        modules[modname] = (fns, importlib.import_module(
+            f"word_mcp.ops.{modname}"))
+    return aliases, modules
+
+
+def _delegate_values(fn: ast.FunctionDef, aliases, modules):
+    """Follow calls that pass a dispatch-named parameter through to an
+    ops-module function (positionally or as a keyword) and scan the callee's
+    validation for that parameter. Returns {tool_param: set[values]}."""
+    out: dict[str, set[str]] = defaultdict(set)
+    for sub in ast.walk(fn):
+        if not (isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute)
+                and isinstance(sub.func.value, ast.Name)
+                and sub.func.value.id in aliases):
+            continue
+        modname = aliases[sub.func.value.id]
+        if modname not in modules:
+            continue
+        fns, mod_obj = modules[modname]
+        callee = fns.get(sub.func.attr)
+        if callee is None:
+            continue
+        pos = [a.arg for a in callee.args.args]
+        pairs = []  # (callee_param_name, passed node)
+        for i, arg in enumerate(sub.args):
+            if i < len(pos):
+                pairs.append((pos[i], arg))
+        for kw in sub.keywords:
+            if kw.arg:
+                pairs.append((kw.arg, kw.value))
+        for callee_param, node in pairs:
+            if isinstance(node, ast.Name) and node.id in DISPATCH_NAMES:
+                vals = _scan_param_values(
+                    callee, (callee_param,), mod_obj).get(callee_param)
+                if vals:
+                    out[node.id] |= vals
+    return out
+
+
+def _dispatch_values(fn: ast.FunctionDef, aliases, modules):
+    """Return (param_name, sorted[values]) for the primary dispatch dimension,
+    or None. Unions the tool function's own validation with any validation
+    found by following pass-through calls into ops modules. Picks the
+    dispatch param with the largest value union; ties break by
+    DISPATCH_NAMES priority so `action` beats a minor secondary `type`."""
+    found = _scan_param_values(fn, DISPATCH_NAMES)
+    for param, vals in _delegate_values(fn, aliases, modules).items():
+        found.setdefault(param, set()).update(vals)
     if not found:
         return None
     best = max(found, key=lambda p: (len(found[p]),
@@ -196,6 +260,7 @@ def main() -> None:
         if isinstance(n, ast.FunctionDef) and _decorated_with_tool(n)
     }
     mig = _migration_ops()
+    aliases, modules = _ops_index()
 
     total = 0
     multiplex = 0
@@ -204,7 +269,7 @@ def main() -> None:
     for name in sorted(tool_fns):
         if name in EXCLUDE:
             continue
-        disp = _dispatch_values(tool_fns[name])
+        disp = _dispatch_values(tool_fns[name], aliases, modules)
         scan = len(disp[1]) if disp else 1
         migc = mig.get(name, 1)
         ops = max(scan, migc)
