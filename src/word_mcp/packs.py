@@ -56,38 +56,34 @@ from .core.errors import WordMcpError
 # core, not a pack. "everything" is a convenience alias for all seven.
 PACK_SUMMARIES: dict[str, str] = {
     "references": (
-        "citations and bibliography: Word-native sources, insert "
-        "citations, bibliography styles, Zotero search/cite, parity "
-        "checks, style conversion/detection"
+        "citations and bibliography: Word-native sources, bibliography "
+        "styles, Zotero search/cite, parity checks, style conversion"
     ),
     "review": (
-        "tracked changes (read, accept/reject, reports), comments (add, "
-        "reply, resolve, reports), structured diff, "
-        "anonymize/deanonymize for review"
+        "tracked changes (read, accept/reject), comments (add, reply, "
+        "resolve), reviewer reports, structured diff, anonymize"
     ),
     "academic": (
-        "notes (foot/end), TOC, index, captions, cross-references, "
-        "bookmarks, front matter, chapter headers, headers/footers, page "
-        "numbering, sections, styles, word counts, validate batteries, "
+        "notes, TOC, index, captions, cross-references, bookmarks, "
+        "headers/footers, sections, styles, word counts, validation, "
         "submission prep, accessibility"
     ),
     "assembly": (
         "multi-document work: insert/split documents, move sections, "
-        "copy tables across files, apply/fill templates, mail merge"
+        "copy tables across files, templates, mail merge"
     ),
     "media-forms": (
         "images, charts, equations, text boxes, hyperlinks, table "
-        "structure/styling (rows, columns, merges, widths, sort), form "
-        "fields, content controls, field codes"
+        "structure (merge/split cells, rows, columns, sort), forms, "
+        "content controls, field codes"
     ),
     "com-live": (
         "drives the Word app: PDF import/export, compare/combine, "
-        "proofing, readability, field refresh, live editing of open "
-        "documents"
+        "proofing, readability, live editing of open documents"
     ),
     "protection-io": (
-        "document protection, watermarks, redaction with verification, "
-        "table data import/export (CSV/JSON)"
+        "protection, watermarks, redaction with verification, table "
+        "CSV/JSON import/export"
     ),
 }
 EVERYTHING = "everything"

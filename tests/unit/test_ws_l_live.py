@@ -166,7 +166,11 @@ def test_outline_lvl9_is_body_text(tmp_path):
         ol.set(qn("w:val"), "9")
     pkg.mark_dirty()
     pkg.save(do_backup=False)
-    assert srv.get_outline(path, live="off") == []
+    # No headings: the field-test fix returns the honest fallback dict
+    # (note + flat structure counts) instead of a bare empty list.
+    out = srv.get_outline(path, live="off")
+    assert out["headings"] == []
+    assert out["structure"]["paragraphs"] == 2
 
 
 def test_outline_heading_style_still_detected(tmp_path):

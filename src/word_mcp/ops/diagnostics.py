@@ -324,6 +324,61 @@ def diagnose_document(pkg: DocxPackage) -> dict:
                     f"bookmark name {name!r} is defined {count} times",
                 )
 
+    # ------------------------------------- vertical merge chain integrity
+    def check_table_merges():
+        # A vMerge continuation must sit directly below a cell of the same
+        # grid extent that is part of the chain (restart or continue).
+        # Orphaned continuations render unpredictably in Word and are the
+        # footprint of structural edits that broke a merge (field test,
+        # 2026-09-03).
+        for part in _story_parts(pkg):
+            for t_i, tbl in enumerate(pkg.root(part).iter(qn("w:tbl"))):
+                prev_row: dict[tuple[int, int], str | None] = {}
+                for r_i, tr in enumerate(tbl.findall(qn("w:tr"))):
+                    cur: dict[tuple[int, int], str | None] = {}
+                    pos = 0
+                    trpr = tr.find(qn("w:trPr"))
+                    if trpr is not None:
+                        gb = trpr.find(qn("w:gridBefore"))
+                        if gb is not None:
+                            try:
+                                pos = int(gb.get(qn("w:val"), "0") or 0)
+                            except ValueError:
+                                pos = 0
+                    for tc in tr.findall(qn("w:tc")):
+                        tcpr = tc.find(qn("w:tcPr"))
+                        span = 1
+                        vm = None
+                        if tcpr is not None:
+                            gs = tcpr.find(qn("w:gridSpan"))
+                            if gs is not None:
+                                try:
+                                    span = max(
+                                        1, int(gs.get(qn("w:val"), "1") or 1)
+                                    )
+                                except ValueError:
+                                    span = 1
+                            vme = tcpr.find(qn("w:vMerge"))
+                            if vme is not None:
+                                vm = vme.get(qn("w:val"), "continue")
+                        key = (pos, pos + span)
+                        cur[key] = vm
+                        if vm == "continue" and prev_row.get(key) not in (
+                            "restart", "continue",
+                        ):
+                            add(
+                                "tables",
+                                "warning",
+                                f"table {t_i} row {r_i}: vMerge continuation "
+                                f"at grid column {pos} has no merged cell "
+                                "directly above it (orphaned continuation; "
+                                "a structural edit likely broke the merge "
+                                "chain)",
+                                part,
+                            )
+                        pos += span
+                    prev_row = cur
+
     # -------------------------------------------- revision id duplicates
     def check_revision_ids():
         seen: dict[str, int] = {}
@@ -416,6 +471,7 @@ def diagnose_document(pkg: DocxPackage) -> dict:
     run("styles", check_styles)
     run("numbering", check_numbering)
     run("sdt", check_sdt)
+    run("table_merges", check_table_merges)
     run("bookmarks", check_bookmarks)
     run("revision_ids", check_revision_ids)
     run("images", check_images)

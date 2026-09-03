@@ -32,10 +32,10 @@ landing as a single Ctrl+Z step.
   verb table (`insert_`, `set_`, `manage_`, `list_elements`, `validate`,
   `delete_element`), so an agent picks the right tool the first time and
   carries less schema to do it. Fewer tools, more reach.
-- **Tiered loading: starts at about 7.5k tokens, scales to everything.** A
-  fresh session loads the 28-tool lite core (about 7,500 tokens) and turns on
+- **Tiered loading: starts at about 7.6k tokens, scales to everything.** A
+  fresh session loads the 28-tool lite core (about 7,600 tokens) and turns on
   capability packs only when a task needs them, with one `enable_tools` call.
-  Load every pack and the full surface measures about 26,400 tokens, down from
+  Load every pack and the full surface measures about 26,600 tokens, down from
   about 34,400 in v1.6: roughly 23% less for the whole sink, about 78% less at
   lite start. (All figures are script-measured; see
   [Context cost](#context-cost-measured) below.)
@@ -47,15 +47,15 @@ hand-counted. The lite core loads at startup; the seven packs load on demand.
 
 | Pack | Tools | Approx tokens | What it carries |
 |---|---:|---:|---|
-| **lite** (startup) | 28 | ~7.5k | Everyday reading and editing: text, paragraphs, tables, cells, lists, find and replace, outline, document view, backups, workflow guide, pack toggles |
+| **lite** (startup) | 28 | ~7.6k | Everyday reading and editing: text, paragraphs, tables, cells, lists, find and replace, outline, document view, backups, workflow guide, pack toggles |
 | references | 8 | ~2.4k | Word-native citations and bibliography, Zotero search and cite, parity checks, style conversion and detection |
 | review | 9 | ~1.8k | Tracked changes (read, accept/reject, reports), threaded comments, structured diff, anonymize and deanonymize |
 | academic | 23 | ~5.7k | Footnotes and endnotes, TOC, index, captions, cross-references, front matter, chapter headers, sections, styles, word counts, validation batteries, submission prep, accessibility |
 | assembly | 7 | ~1.7k | Insert and split documents, move sections, copy tables across files, apply and fill templates, mail merge |
-| media-forms | 16 | ~4.0k | Images, charts, equations, text boxes, hyperlinks, table structure and styling, form fields, content controls, field codes |
+| media-forms | 16 | ~4.1k | Images, charts, equations, text boxes, hyperlinks, table structure and styling, form fields, content controls, field codes |
 | com-live | 13 | ~2.1k | Drives a local Microsoft Word: PDF import/export, compare and combine, proofing, readability, field refresh, live editing of open documents |
 | protection-io | 6 | ~1.2k | Document protection, watermarks, redaction with verification, table data import and export |
-| **Full surface** | **110** | **~26.4k** | Everything (108 document tools plus `enable_tools` / `disable_tools`) |
+| **Full surface** | **110** | **~26.6k** | Everything (108 document tools plus `enable_tools` / `disable_tools`) |
 
 ## Quickstart: start lite, enable what you need
 
@@ -72,6 +72,13 @@ Lite-tool refusals name the pack and the exact `enable_tools` call to run, and
 built in. To skip tiering entirely, start the server with `KS4W_MODE=full` and
 every tool is present from the first call.
 
+One client-side caveat: some MCP clients drop a tool's schema when a pack is
+disabled and do not pick it back up on re-enable, even though the server sends
+`tools/list_changed` both ways (observed in Claude Code, 2026-09). If a
+re-enabled tool comes back as "no such tool", refresh the tool list on the
+client side (in Claude Code, a `ToolSearch` call for the tool reloads its
+schema).
+
 ## Why this one (the capability comparison)
 
 Every public Word MCP server was surveyed before building this. The honest
@@ -79,7 +86,7 @@ comparison is about what each one can do, not how many names it has:
 
 | Capability | KitchenSink4Word | GongRzhe Office-Word (2.1k★, archived) | word-mcp-live (195★) | SecurityRonin docx-mcp (43★) |
 |---|---|---|---|---|
-| Tiered context loading (lite core, packs on demand) | ✅ from ~7.5k tokens | ❌ | ❌ | ❌ |
+| Tiered context loading (lite core, packs on demand) | ✅ from ~7.6k tokens | ❌ | ❌ | ❌ |
 | Live editing while the doc is open in Word | ✅ cursor-safe, one Ctrl+Z per call | ❌ | ✅ | ❌ |
 | Table column insert/delete | ✅ merge-aware | ❌ | ❌ | ❌ |
 | Bulk cell edits (one call) | ✅ | ❌ | ❌ | ❌ |
@@ -178,9 +185,9 @@ claude mcp add word -s user -- <absolute-path>\.venv\Scripts\word-mcp.exe
 Almost no MCP server tells you what it costs to load. Here is the bill, from
 `scripts/measure_surface.py`:
 
-- **Lite start:** 28 tools, about 7,500 tokens, loaded when the session opens.
+- **Lite start:** 28 tools, about 7,600 tokens, loaded when the session opens.
 - **Full surface:** 110 tools (108 document tools plus the two pack toggles),
-  about 26,400 tokens with every pack enabled.
+  about 26,600 tokens with every pack enabled.
 - **Versus v1.6:** the old full surface was about 34,400 tokens. v2 is roughly
   23% smaller at full load and about 78% smaller at lite start.
 - Clients that defer tool schemas until first use (for example Claude Code)

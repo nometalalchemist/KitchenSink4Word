@@ -547,7 +547,9 @@ def test_outline_level_null_removes_override(template_doc):
     pkg = DocxPackage(template_doc)
     p = pkg.body().findall(qn("w:p"))[0]
     assert p.find(f"{qn('w:pPr')}/{qn('w:outlineLvl')}") is None
-    assert srv.get_outline(template_doc, live="off") == []
+    # No headings left: get_outline now returns the honest fallback dict
+    # (field-test fix) rather than a bare empty list.
+    assert srv.get_outline(template_doc, live="off")["headings"] == []
 
 
 def test_outline_level_out_of_range_refused(template_doc):

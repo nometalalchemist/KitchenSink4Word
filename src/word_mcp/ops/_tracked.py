@@ -135,7 +135,12 @@ def wrap_paragraph_content_deleted(
     p: etree._Element, *, author: str, rev_id: int, date: str
 ) -> int:
     """Wrap ALL of a paragraph's runs in w:del (grouped by parent so hyperlink
-    contents wrap inside their wrapper). Returns revision elements created."""
+    contents wrap inside their wrapper). Groups also break at any
+    intervening non-run sibling (commentRangeStart/End, bookmarkStart/End),
+    so those markers KEEP their positions relative to the runs they anchor:
+    hoisting runs past a comment range used to leave the range empty and
+    the comment anchor silently orphaned (field test, 2026-09-03).
+    Returns revision elements created."""
     created = 0
     groups: list[list[etree._Element]] = []
     current: list[etree._Element] = []
@@ -144,7 +149,10 @@ def wrap_paragraph_content_deleted(
         parent = r.getparent()
         if etree.QName(parent).localname in ("del", "moveFrom"):
             continue  # already deleted
-        if parent is not current_parent and current:
+        if current and (
+            parent is not current_parent
+            or r.getprevious() is not current[-1]
+        ):
             groups.append(current)
             current = []
         current_parent = parent

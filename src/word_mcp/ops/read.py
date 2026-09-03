@@ -206,18 +206,65 @@ def get_document_info(pkg: DocxPackage) -> dict:
     return info
 
 
-def get_outline(pkg: DocxPackage) -> list[dict]:
+def _toggle_on(rpr: etree._Element | None, tag: str) -> bool:
+    if rpr is None:
+        return False
+    el = rpr.find(qn(tag))
+    if el is None:
+        return False
+    return el.get(qn("w:val"), "1") not in ("0", "false", "none")
+
+
+def _formatted_heading_level(p: etree._Element) -> int | None:
+    """Heuristic heading level for a direct-formatted paragraph (the
+    academic-template pattern: Normal style + bold/centered runs). Level 1
+    for centered bold, 2 for bold, 3 for italic-only short paragraphs."""
+    ppr = p.find(qn("w:pPr"))
+    if ppr is not None and ppr.find(qn("w:numPr")) is not None:
+        return None  # list item, not a heading
+    text = paragraph_text(p).strip()
+    if not text or len(text) > 120 or len(text.split()) > 15:
+        return None
+    if text[-1] in ".,;":
+        return None  # sentence-final punctuation: body prose
+    runs = [
+        r for r in p.iter(qn("w:r"))
+        if run_text(r).strip()
+    ]
+    if not runs:
+        return None
+    all_bold = all(_toggle_on(r.find(qn("w:rPr")), "w:b") for r in runs)
+    all_italic = all(_toggle_on(r.find(qn("w:rPr")), "w:i") for r in runs)
+    if not all_bold and not all_italic:
+        return None
+    centered = False
+    if ppr is not None:
+        jc = ppr.find(qn("w:jc"))
+        centered = jc is not None and jc.get(qn("w:val")) == "center"
+    if all_bold:
+        return 1 if centered else 2
+    return 3
+
+
+def get_outline(
+    pkg: DocxPackage, *, detect_formatted: bool = False
+) -> list[dict]:
     """Headings in document order. Detects BOTH heading systems: built-in
     Heading styles AND w:outlineLvl overrides (direct pPr or inherited
     through the style's basedOn chain — the pattern academic templates use
     on Normal-styled paragraphs, which Word's navigation pane honors).
-    detected_via per entry: "heading_style" | "outline_level"."""
+    detected_via per entry: "heading_style" | "outline_level" |
+    "formatting_heuristic" (with detect_formatted=True, short bold or
+    italic direct-formatted paragraphs join the outline)."""
     style_outline = _style_outline_map(pkg)
     out = []
     for kind, idx, el in body_items(pkg):
         if kind != "paragraph":
             continue
         level, via = _outline_level_detected(el, style_outline)
+        if level is None and detect_formatted:
+            level = _formatted_heading_level(el)
+            via = "formatting_heuristic" if level is not None else None
         if level is not None:
             text = paragraph_text(el).strip()
             if text:
@@ -230,6 +277,45 @@ def get_outline(pkg: DocxPackage) -> list[dict]:
                     }
                 )
     return out
+
+
+def get_outline_report(
+    pkg: DocxPackage, *, detect_formatted: bool = False
+) -> list | dict:
+    """get_outline for the tool surface: same flat list when headings are
+    found; when nothing is detected, a dict with an honest note plus flat
+    structure counts instead of a bare empty list (field test,
+    2026-09-03)."""
+    out = get_outline(pkg, detect_formatted=detect_formatted)
+    if out:
+        return out
+    n_paras = n_tables = n_words = 0
+    for kind, _idx, el in body_items(pkg):
+        if kind == "paragraph":
+            n_paras += 1
+            n_words += len(paragraph_text(el).split())
+        else:
+            n_tables += 1
+    return {
+        "headings": [],
+        "note": (
+            "0 headings detected via Heading styles or outlineLvl; the "
+            "document may use direct formatting (bold/centered Normal "
+            "paragraphs) for structure"
+            + (
+                ""
+                if detect_formatted
+                else ". Re-run with detect_formatted=true for a heuristic "
+                "scan, or use set_paragraph_format's outline_level to tag "
+                "the headings durably"
+            )
+        ),
+        "structure": {
+            "paragraphs": n_paras,
+            "tables": n_tables,
+            "approx_words": n_words,
+        },
+    }
 
 
 def _textbox_entries(pkg: DocxPackage) -> list[dict]:
@@ -442,7 +528,7 @@ def get_comments(pkg: DocxPackage, *, author: str | None = None) -> list[dict]:
     if not pkg.has_part("word/comments.xml"):
         return []
     # Anchored text: map comment id -> text between commentRangeStart/End.
-    anchors = _comment_anchors(pkg)
+    anchors, deleted_anchors = _comment_anchors(pkg)
     # Threading + resolved state from commentsExtended (matched via paraId of
     # the comment's last paragraph).
     para_meta = _comments_extended(pkg)
@@ -458,6 +544,12 @@ def get_comments(pkg: DocxPackage, *, author: str | None = None) -> list[dict]:
             "text": "\n".join(paragraph_text(p) for p in c.findall(qn("w:p"))).strip(),
             "anchored_text": anchors.get(cid, ""),
         }
+        # Anchor range fully inside a pending tracked deletion: report the
+        # deleted text plus an honest flag instead of a bare empty string
+        # (field test, 2026-09-03).
+        if not entry["anchored_text"] and deleted_anchors.get(cid):
+            entry["anchored_text"] = deleted_anchors[cid]
+            entry["anchor_deleted"] = True
         paras = c.findall(qn("w:p"))
         last_para_id = paras[-1].get(qn("w14:paraId")) if paras else None
         meta = para_meta.get(last_para_id, {})
@@ -478,9 +570,15 @@ def get_comments(pkg: DocxPackage, *, author: str | None = None) -> list[dict]:
     return out
 
 
-def _comment_anchors(pkg: DocxPackage) -> dict[str, str]:
-    """comment id -> plain text spanned by its commentRangeStart/End."""
+def _comment_anchors(
+    pkg: DocxPackage,
+) -> tuple[dict[str, str], dict[str, str]]:
+    """(comment id -> visible text spanned by its commentRangeStart/End,
+    comment id -> tracked-DELETED text in that span). The second map lets
+    get_comments report an anchor that survives only inside a pending
+    tracked deletion instead of returning an empty string."""
     anchors: dict[str, list[str]] = {}
+    deleted: dict[str, list[str]] = {}
     open_ids: set[str] = set()
     root = pkg.root()
     for el in root.iter():
@@ -495,7 +593,15 @@ def _comment_anchors(pkg: DocxPackage) -> dict[str, str]:
             if text:
                 for cid in open_ids:
                     anchors[cid].append(text)
-    return {cid: "".join(parts) for cid, parts in anchors.items()}
+            else:
+                del_text = run_text(el, include_deleted=True)
+                if del_text:
+                    for cid in open_ids:
+                        deleted.setdefault(cid, []).append(del_text)
+    return (
+        {cid: "".join(parts) for cid, parts in anchors.items()},
+        {cid: "".join(parts) for cid, parts in deleted.items()},
+    )
 
 
 def _comments_extended(pkg: DocxPackage) -> dict[str, dict]:

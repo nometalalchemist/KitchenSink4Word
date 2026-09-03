@@ -574,6 +574,28 @@ def get_document_view(
             lines.extend(_table_lines(el, t_anchor[idx], idx))
             blocks += 1
 
+    # ----- structure mode with no headings: flat fallback, never emptiness
+    if detail == "structure" and blocks == 0:
+        n_paras = len(amap["paragraphs"])
+        n_tables = len(amap["tables"])
+        n_words = sum(
+            len(_rd.paragraph_text(el).split())
+            for kind, _i, el in amap["items"]
+            if kind == "paragraph"
+        )
+        lines.append(
+            "No headings detected (no Heading styles or outlineLvl); the "
+            "document may use direct formatting for structure. Flat "
+            f"structure: {n_paras} paragraphs, ~{n_words} words, "
+            f"{n_tables} tables. Try get_outline with "
+            "detect_formatted=true, or detail='text' for the full view."
+        )
+        out_note = (
+            "no headings detected; flat structure counts reported instead"
+        )
+    else:
+        out_note = None
+
     # ----- notes
     if detail != "structure" and notes_mode == "inline":
         notes = []
@@ -592,6 +614,8 @@ def get_document_view(
         "anchor_mode": mode,
         "detail": detail,
     }
+    if out_note:
+        out["note"] = out_note
     if volatile_count:
         out["volatile_anchors"] = volatile_count
     return out

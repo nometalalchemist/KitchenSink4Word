@@ -310,7 +310,13 @@ def parse_markdown(markdown: str) -> list[dict]:
             m = _MD_NUMBER.match(line)
             kind = "number" if m else None
         if m:
-            level = min(8, len(m.group(1)) // 2)
+            level = len(m.group(1)) // 2
+            if level > 8:
+                raise WordMcpError(
+                    f"markdown list item indented to nesting level {level}; "
+                    "Word (and insert_list) cap list nesting at level 8 "
+                    "(9 levels, 2 spaces of indent per level)"
+                )
             item = (m.group(2).strip(), level)
             if segments and segments[-1]["kind"] == "list" \
                     and segments[-1]["list_kind"] == kind:

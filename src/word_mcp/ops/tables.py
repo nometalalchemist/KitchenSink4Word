@@ -142,6 +142,9 @@ def _table_model(tbl: etree._Element) -> tuple[list[etree._Element], list[list[C
 def _cell_set_text(tc: etree._Element, text: str) -> None:
     """Replace a cell's content with `text` ('\n' = paragraph break), keeping
     the first paragraph's properties and first run's formatting."""
+    from .text import _check_storable_text
+
+    _check_storable_text(text, "cell text")
     paras = tc.findall(qn("w:p"))
     template_ppr = None
     template_rpr = None
@@ -381,10 +384,20 @@ def insert_columns(
             if a:
                 _set_row_zone(tbl, tr, "after", a)
     pkg.mark_dirty()
-    return {"inserted_at": at, "count": count}
+    result = {"inserted_at": at, "count": count}
+    if count > _LARGE_INSERT_WARN:
+        result["warning"] = (
+            f"inserted {count} columns in one call; operations above "
+            f"{_LARGE_INSERT_WARN} columns produce very large documents "
+            "and slow every subsequent read and save"
+        )
+    return result
 
 
 # --------------------------------------------------------------------- row ops
+
+
+_LARGE_INSERT_WARN = 1000
 
 
 def insert_rows(
@@ -397,10 +410,13 @@ def insert_rows(
 ) -> dict:
     """Insert rows before row `at` (at = row count appends). Structure
     (cell count, gridSpans, widths, cell formatting) is copied from
-    `copy_format_from` (default: the row at/above the insertion point);
-    vertical-merge markers are stripped so new rows stand alone."""
+    `copy_format_from` (default: the row at/above the insertion point).
+    New rows normally stand alone (vertical-merge markers stripped), but a
+    row inserted INSIDE an existing vertical merge joins it: its cells at
+    the merged columns get vMerge continue, so the chain below is never
+    orphaned (field test, 2026-09-03)."""
     tbl = _find_table(pkg, table_index)
-    rows = tbl.findall(qn("w:tr"))
+    rows, model = _table_model(tbl)
     if not 0 <= at <= len(rows):
         raise TargetNotFound(f"row position {at} out of range 0..{len(rows)}")
     template_i = (
@@ -412,11 +428,27 @@ def insert_rows(
         raise TargetNotFound(f"copy_format_from {template_i} out of range")
     template = rows[template_i]
 
+    # Grid ranges where the insertion point sits INSIDE a vertical merge:
+    # the row above belongs to a chain that the row at `at` continues.
+    # New cells covering exactly those ranges must continue the chain.
+    inside_merge: set[tuple[int, int]] = set()
+    if 0 < at < len(rows):
+        above = {
+            (s.grid_start, s.grid_end): s.vmerge for s in model[at - 1]
+        }
+        for s in model[at]:
+            if s.vmerge == "continue" and above.get(
+                (s.grid_start, s.grid_end)
+            ) in ("restart", "continue"):
+                inside_merge.add((s.grid_start, s.grid_end))
+
+    template_spans = model[template_i]
+    cells_continued = 0
     new_rows = []
     for _ in range(count):
         tr = copy.deepcopy(template)
         # Strip row-level height/header repeat? Keep them: format copy.
-        for tc in tr.findall(qn("w:tc")):
+        for tc, span in zip(tr.findall(qn("w:tc")), template_spans):
             tcpr = tc.find(qn("w:tcPr"))
             if tcpr is not None:
                 vm = tcpr.find(qn("w:vMerge"))
@@ -424,6 +456,10 @@ def insert_rows(
                     tcpr.remove(vm)
             # Empty the content but keep paragraph formatting of first para.
             _cell_set_text(tc, "")
+            if (span.grid_start, span.grid_end) in inside_merge:
+                vm = etree.SubElement(_tcpr(tc), qn("w:vMerge"))
+                vm.set(qn("w:val"), "continue")
+                cells_continued += 1
         new_rows.append(tr)
 
     if at >= len(rows):
@@ -433,7 +469,21 @@ def insert_rows(
         for tr in reversed(new_rows):
             rows[at].addprevious(tr)
     pkg.mark_dirty()
-    return {"inserted_rows_at": at, "count": count}
+    result = {"inserted_rows_at": at, "count": count}
+    if cells_continued:
+        result["cells_continued_vertical_merges"] = cells_continued
+        result["note"] = (
+            "the insertion point lies inside a vertical merge; the new "
+            "rows' cells at the merged columns joined the merge (vMerge "
+            "continue) so the chain below stays intact"
+        )
+    if count > _LARGE_INSERT_WARN:
+        result["warning"] = (
+            f"inserted {count} rows in one call; operations above "
+            f"{_LARGE_INSERT_WARN} rows produce very large documents and "
+            "slow every subsequent read and save"
+        )
+    return result
 
 
 def delete_rows(pkg: DocxPackage, table_index: int, start: int, end: int | None = None) -> dict:
@@ -748,12 +798,44 @@ def merge_cells(
 
     _cell_set_text(kept_cells[0], "\n".join(collected_text))
     pkg.mark_dirty()
-    return {
+
+    # Absorbing an existing vertical merge can EXTEND the result past the
+    # requested range: a pre-existing continuation chain hanging below
+    # end_row now continues the new merge. Report the actual extent.
+    actual_end = end_row
+    if end_row > start_row:
+        _rows2, model2 = _table_model(tbl)
+        for r_j in range(end_row + 1, len(model2)):
+            cont = next(
+                (
+                    s
+                    for s in model2[r_j]
+                    if s.grid_start == start_col
+                    and s.grid_end == end_col + 1
+                    and s.vmerge == "continue"
+                ),
+                None,
+            )
+            if cont is None:
+                break
+            actual_end = r_j
+    result = {
         "merged": {
-            "rows": [start_row, end_row],
+            "rows": [start_row, actual_end],
             "grid_cols": [start_col, end_col],
         }
     }
+    if actual_end != end_row:
+        result["requested"] = {
+            "rows": [start_row, end_row],
+            "grid_cols": [start_col, end_col],
+        }
+        result["note"] = (
+            "the requested range overlapped an existing vertical merge "
+            "whose continuation cells extend below it; the resulting merge "
+            f"absorbed them and runs to row {actual_end}"
+        )
+    return result
 
 
 def unmerge_cells(pkg: DocxPackage, table_index: int, *, row: int, cell: int) -> dict:

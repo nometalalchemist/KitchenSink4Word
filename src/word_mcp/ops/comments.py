@@ -99,6 +99,35 @@ def _ensure_part(pkg: DocxPackage, part: str) -> None:
         pkg.mark_dirty(rels_part)
 
 
+def _ensure_comment_style(pkg: DocxPackage) -> None:
+    """Define the CommentReference character style if the document lacks it.
+    _build_comment's reference run cites it; without the definition Word
+    silently falls back to Normal (diagnose_document flagged this; field
+    test, 2026-09-03)."""
+    if not pkg.has_part("word/styles.xml"):
+        return
+    root = pkg.root("word/styles.xml")
+    for s in root.findall(qn("w:style")):
+        if s.get(qn("w:styleId")) == "CommentReference":
+            return
+        name = s.find(qn("w:name"))
+        if name is not None and name.get(qn("w:val")) == "annotation reference":
+            return
+    style = etree.SubElement(root, qn("w:style"))
+    style.set(qn("w:type"), "character")
+    style.set(qn("w:styleId"), "CommentReference")
+    etree.SubElement(style, qn("w:name")).set(
+        qn("w:val"), "annotation reference"
+    )
+    etree.SubElement(style, qn("w:uiPriority")).set(qn("w:val"), "99")
+    etree.SubElement(style, qn("w:semiHidden"))
+    etree.SubElement(style, qn("w:unhideWhenUsed"))
+    rpr = etree.SubElement(style, qn("w:rPr"))
+    etree.SubElement(rpr, qn("w:sz")).set(qn("w:val"), "16")
+    etree.SubElement(rpr, qn("w:szCs")).set(qn("w:val"), "16")
+    pkg.mark_dirty("word/styles.xml")
+
+
 def _next_comment_id(pkg: DocxPackage) -> int:
     if not pkg.has_part("word/comments.xml"):
         return 0
@@ -192,6 +221,7 @@ def add_comment(
     """Comment on `anchor_text` (the commented range in the body)."""
     for part in _PARTS:
         _ensure_part(pkg, part)
+    _ensure_comment_style(pkg)
     seen = 0
     target = None
     for p in pkg.root().iter(qn("w:p")):
@@ -249,6 +279,7 @@ def reply_to_comment(
         )
     for part in _PARTS:
         _ensure_part(pkg, part)
+    _ensure_comment_style(pkg)
     cid = _next_comment_id(pkg)
     para_id = _build_comment(
         pkg, cid, author, initials or _default_initials(author), text

@@ -24,7 +24,7 @@ from ..core.package import DocxPackage, qn
 from . import _runmap
 from .read import paragraph_text, run_text
 
-_BAD_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+_BAD_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
 # sdtPr children that mark control types we must not touch as form fields
 # (galleries, TOC wrappers, citations, pictures, group/equation controls).

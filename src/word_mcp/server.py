@@ -495,6 +495,16 @@ def copy_document(
     file_path = check_path(file_path, "copy source (read)")
     dest_path = check_path(dest_path, "copy destination")
     dest = Path(dest_path)
+    try:
+        same = Path(file_path).resolve() == dest.resolve()
+    except OSError:  # pragma: no cover
+        same = str(Path(file_path)) == str(dest)
+    if same:
+        raise WordMcpError(
+            "source and destination are the same file; a self-copy is a "
+            "no-op at best and data loss at worst. Give dest_path a "
+            "different name."
+        )
     overwrote = False
     if dest.exists():
         if not overwrite:
@@ -547,26 +557,26 @@ def insert_document(
     backup: bool = True,
 ) -> dict:
     """Insert the ENTIRE body of source_path into target_path at one position,
-    with full resource reconciliation: the document-assembly tool for
-    merging chapter files into one manuscript. Position via the standard
-    location object (paragraph, after_heading, outline, bookmark, search,
-    anchor); omit location to append at the end. Text selectors refuse on
-    multiple matches and list every location; prefer outline or paragraph.
-    Carried: tables, images, charts, hyperlinks, lists (fresh numbering),
-    footnotes and endnotes (new ids), bookmarks (remapped, collisions
-    renamed and reported), tracked changes, equations. Styles reconcile BY
-    NAME (the target wins on a match; unmatched styles are cloned in with
-    dependency chains). The source's section setup is never carried;
-    mid-content section breaks and comment references are stripped and
-    reported. OLE objects, ActiveX, subdocuments, and altChunks refuse the
-    whole insertion; nothing is half-applied. formatting mirrors Word's
-    paste modes: 'source' keeps direct formatting; 'merge' keeps emphasis
-    but strips font/size/color/spacing/indent overrides; 'destination'
-    strips all but structural properties. Returns per-resource counts,
-    style remaps, bookmark renames, and the occupied range. The source file
-    is never modified. Auto-backup: prev/anchor slots in .ks4w-backups
-    (backup=False skips rotation only); atomic validated save. Refuses
-    documents open in Word.
+    with full resource reconciliation: the chapter-merge tool. Position
+    via the standard location object (paragraph, after_heading, outline,
+    bookmark, search, anchor) plus optional position 'before'|'after'
+    (default 'after' the resolved paragraph); omit location to append at
+    the end. Carried: tables, images, charts, hyperlinks, lists (fresh
+    numbering), footnotes/endnotes (new ids), bookmarks (remapped,
+    collisions renamed), tracked changes, equations. Styles reconcile BY
+    NAME (target wins on a match; unmatched styles are cloned in). The
+    source's section setup is never carried; mid-content section breaks
+    and comment references are stripped and reported.
+    OLE/ActiveX/subdocuments/altChunks refuse the whole insertion (nothing
+    half-applied). formatting mirrors Word's paste modes: 'source' keeps
+    direct formatting; 'merge' keeps emphasis but strips
+    font/size/color/spacing/indent overrides; 'destination' strips all but
+    structural properties. With 'source', properties inherited from the
+    source's document defaults become explicit when the files' defaults
+    differ (reported under document_defaults), so carried text keeps its
+    source spacing. The source file is never modified. Auto-backup:
+    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
+    atomic validated save. Refuses documents open in Word.
     """
 
     def _do(pkg: DocxPackage) -> dict:
@@ -597,9 +607,9 @@ def insert_document(
             )
         if r.position == "before":
             if item_index == 0:
-                raise WordMcpError(
-                    "position 'before' the first body item is not "
-                    "supported; use position 'after' or omit location"
+                return _asm.insert_document(
+                    pkg, source_path, before_first=True,
+                    formatting=formatting,
                 )
             item_index -= 1
         return _asm.insert_document(
@@ -890,21 +900,25 @@ def find_text(
 
 
 @_tool("lite")
-def get_outline(file_path: str, live: str = "auto") -> list | dict:
-    """List every heading with its body paragraph index and level. Detects both
-    heading systems: built-in Heading styles AND w:outlineLvl overrides
-    (direct or style-inherited, the academic-template pattern on
-    Normal-styled paragraphs); detected_via on each entry names which. The
-    paragraph indices and outline numbers feed the location object's
-    paragraph and outline selectors. Documents open in Word are read live
-    (same flat-list shape). Read-only.
-    TOC generation and heading surgery live in the academic pack.
+def get_outline(
+    file_path: str, detect_formatted: bool = False, live: str = "auto"
+) -> list | dict:
+    """List every heading with its paragraph index and level. Detects
+    Heading styles AND w:outlineLvl overrides (direct or style-inherited);
+    detected_via names which. detect_formatted=True adds a heuristic scan
+    for direct-formatted headings (short bold/centered paragraphs). When
+    nothing is detected, returns a note plus flat structure counts, not an
+    empty list. The indices feed the location object's paragraph and
+    outline selectors. Open documents are read live. Read-only. TOC
+    generation and heading surgery: academic pack.
     """
     from .com import live_ops as _lo
 
     return _route_live(
         live,
-        lambda: _rd.get_outline(DocxPackage(file_path)),
+        lambda: _rd.get_outline_report(
+            DocxPackage(file_path), detect_formatted=detect_formatted
+        ),
         lambda: _lo.get_outline(file_path),
     )
 
@@ -1454,12 +1468,12 @@ def insert_paragraphs(
 ) -> dict:
     """Insert paragraphs (items {text, style?, formatting?, heading_level?})
     at a location object (omitted = document end). heading_level 1-9 makes
-    the item a heading. inherit_format/copy_format_from clone neighbor
-    formatting (file mode only); track records insertions by author.
-    Auto-backup in file mode: prev/anchor slots in .ks4w-backups
-    (backup=False skips rotation only); atomic validated save. Documents
-    open in Word are edited live; a stale text-selector target (unsaved
-    changes moved it) refuses: save in Word, retry.
+    the item a heading (off by one from outline_level 0-8: level 1 =
+    outline 0). inherit_format/copy_format_from clone neighbor formatting
+    minus outline level (file mode only); track records insertions by
+    author. Auto-backup in file mode; atomic validated save. Open
+    documents are edited live; a stale text-selector target refuses:
+    save in Word, retry.
     """
     from .com import live_ops as _lo
 
@@ -2014,28 +2028,51 @@ def format_text(
 
 @_tool("lite")
 def set_paragraph_format(
-    file_path: str, indices: list[int], formatting: dict, backup: bool = True,
-    live: str = "auto",
+    file_path: str, indices: list[int] | None = None,
+    formatting: dict | None = None, start: int | None = None,
+    end: int | None = None, backup: bool = True, live: str = "auto",
 ) -> dict:
-    """Set paragraph formatting on a batch of paragraphs (0-based indices).
-    Keys: alignment, space_before_pt, space_after_pt, line_spacing,
-    indent_left_pt, indent_right_pt, first_line_indent_pt, keep_with_next,
-    outline_level. outline_level (0-8; null removes) sets w:outlineLvl
-    without changing the look. Auto-backup in file mode: prev/anchor slots
-    in .ks4w-backups (backup=False skips rotation only); atomic validated
-    save. Documents open in Word are edited live (shading, borders,
-    tab_stops refused live).
+    """Set paragraph formatting on a batch: indices (0-based list) OR
+    start/end (inclusive range), exactly one form. Keys: alignment,
+    space_before_pt, space_after_pt, line_spacing, indent_left_pt,
+    indent_right_pt, first_line_indent_pt, keep_with_next, outline_level;
+    numbers are range-checked to Word's limits. outline_level (0-8; null
+    removes) never changes the look; it is off by one from heading_level
+    1-9. Auto-backup; atomic validated save. Open documents edited live
+    (shading, borders, tab_stops refused live).
     """
     from .com import live_ops as _lo
 
+    if formatting is None:
+        raise WordMcpError("formatting is required")
+    if (indices is None) == (start is None):
+        raise WordMcpError(
+            "give exactly one addressing form: indices=[...] or start "
+            "(with optional end)"
+        )
+    if indices is not None and end is not None:
+        raise WordMcpError("end goes with start, not with indices")
+    if indices is None:
+        e = start if end is None else end
+        if (
+            isinstance(start, bool) or not isinstance(start, int)
+            or isinstance(e, bool) or not isinstance(e, int) or e < start
+        ):
+            raise WordMcpError(
+                "start/end must be integers with end >= start "
+                f"(got start={start!r}, end={end!r})"
+            )
+        indices = list(range(start, e + 1))
+    _tx.validate_paragraph_numeric(formatting)
+    idx = indices
     return _route_live(
         live,
         lambda: _edit(
             file_path,
-            lambda pkg: _tx.set_paragraph_format(pkg, indices, formatting),
+            lambda pkg: _tx.set_paragraph_format(pkg, idx, formatting),
             backup=backup,
         ),
-        lambda: _lo.set_paragraph_format(file_path, indices, formatting),
+        lambda: _lo.set_paragraph_format(file_path, idx, formatting),
     )
 
 
@@ -2201,8 +2238,8 @@ def get_table(
     among body-level tables in document order. For a table nested inside a
     cell, pass nested={row, cell, index} addressing the host cell (index
     picks among several, default 0). Write values with set_cells; reshape
-    with modify_table_structure. Read-only; reads the last-saved state of a
-    document open in Word.
+    with modify_table_structure (media-forms pack). Read-only; reads the
+    last-saved state of a document open in Word.
     Row/column surgery, styling, and sort: media-forms pack.
     """
     pkg = DocxPackage(file_path)
@@ -2247,22 +2284,27 @@ def modify_table_structure(
     backup: bool = True,
 ) -> dict:
     """All grid-shape changes to one table, discriminated by action.
-    action='insert' with target='rows'|'columns': insert count rows or grid
-    columns before position at (at = current count appends); rows can copy
-    structure and formatting from an existing row (copy_format_from),
-    columns take width_pt. action='delete' with target='rows' (start..end
-    inclusive; vertical merges are re-rooted, not broken) or
-    target='columns' (columns=[0-based grid indices]; merged cells shrink
-    and the grid stays consistent). action='merge': merge the rectangle
-    range={start_row, end_row, start_col, end_col} (grid coordinates,
-    inclusive). action='unmerge': split the merged cell at row/cell back
-    into single cells (horizontal and vertical). action='split': split the
-    table into two at at_row (that row starts the new table). Each action
-    reads only its own parameters; extras are refused. table_index is
-    0-based among body-level tables. Cell values are written with
-    set_cells, persistent attributes with set_table_properties.
-    Auto-backup: prev/anchor slots in .ks4w-backups (backup=False skips
-    rotation only); atomic validated save. Refuses documents open in Word.
+    action='insert' with target='rows'|'columns': insert count rows or
+    grid columns before position at (at = current count appends); rows
+    copy structure from copy_format_from, columns take width_pt; rows
+    inserted inside a vertical merge JOIN it (vMerge continue) so the
+    chain below stays intact. action='delete' with target='rows'
+    (start..end inclusive; vertical merges re-rooted, not broken) or
+    target='columns' (columns=[0-based grid indices]; merged cells
+    shrink). action='merge': merge the rectangle range={start_row,
+    end_row, start_col, end_col} (grid coordinates, inclusive). Merged
+    cells' text CONCATENATES into the top-left cell (newline-joined, as
+    Word does); duplicates need a set_cells cleanup. A merge overlapping
+    an existing vertical merge absorbs it and can extend past the
+    request; the result reports requested and actual ranges.
+    action='unmerge': split the merged cell at row/cell back into single
+    cells; LOSSY for text (content stays in the first cell, released
+    cells come back empty). action='split': split the table into two at
+    at_row. Each action reads only its own parameters; extras are
+    refused. table_index is 0-based among body-level tables. Cell values:
+    set_cells; persistent attributes: set_table_properties. Auto-backup:
+    prev/anchor slots in .ks4w-backups; atomic validated save. Refuses
+    documents open in Word.
     """
     if action not in _MTS_ACTIONS:
         raise WordMcpError(
@@ -3288,10 +3330,11 @@ def get_comments(
     file_path: str, author: str | None = None, live: str = "auto"
 ) -> list | dict:
     """Comments with authors, anchored text, threading, and resolved state,
-    optionally filtered by author. Documents open in Word are read live
-    (same entry shape; live ids are the comment's position, not the XML
-    id). Manage threads with manage_comment; comment_report builds the
-    whole-document reviewer matrix. Read-only.
+    optionally filtered by author. An anchor sitting inside a pending
+    tracked deletion reports the deleted text with anchor_deleted=true.
+    Documents open in Word are read live (same entry shape; live ids are
+    the comment's position, not the XML id). Manage threads with
+    manage_comment; comment_report builds the reviewer matrix. Read-only.
     """
     from .com import live_ops as _lo
 
@@ -4883,11 +4926,18 @@ _MENU_LINES = "\n".join(
     for name in _packs.pack_names()
 )
 
+_TASK_MAP = (
+    "Task map: cell merges, tables, images, forms -> media-forms; "
+    "tracked changes, comments -> review; citations -> references; TOC, "
+    "notes -> academic; document merge -> assembly; PDF, live Word -> "
+    "com-live; redaction -> protection-io."
+)
+
 enable_tools.__doc__ = (
     "Enable optional tool packs mid-session (sessions start lite). "
-    "Idempotent; result reports packs enabled, approx tokens added, "
-    "new total surface. packs = any combination below or "
-    "['everything']; disable_tools reverses it. Packs:\n" + _MENU_LINES
+    "Idempotent; reports tokens added. packs = names below or "
+    "['everything']; disable_tools reverses it. " + _TASK_MAP
+    + "\nPacks:\n" + _MENU_LINES
 )
 
 disable_tools.__doc__ = (

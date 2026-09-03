@@ -25,13 +25,14 @@ A session starts with the 28-tool lite core and enables the rest by pack, on dem
 - Lite-tool refusals for out-of-scope work name the pack and the exact `enable_tools` call to run.
 - `get_workflows` recipes name the packs each workflow requires.
 - To load everything up front, start the server with `KS4W_MODE=full`.
+- Caveat: some MCP clients drop tool schemas on pack disable and do not re-register them on re-enable despite `tools/list_changed`; if a re-enabled tool reports "no such tool", refresh the client's tool list (Claude Code: a ToolSearch call reloads the schema).
 
 ## Context cost (measured)
 
 Published because almost no MCP server tells you what it costs to load. Figures come from `scripts/measure_surface.py`:
 
-- Lite core, loaded at session start: 28 tools, about 7,500 tokens.
-- Full surface, every pack enabled: 110 tools (108 document tools plus `enable_tools` / `disable_tools`), about 26,400 tokens.
+- Lite core, loaded at session start: 28 tools, about 7,600 tokens.
+- Full surface, every pack enabled: 110 tools (108 document tools plus `enable_tools` / `disable_tools`), about 26,600 tokens.
 - Versus v1.6 (about 34,400 tokens for the old full surface): roughly 23% less at full load, about 78% less at lite start.
 - Clients that defer tool schemas until use (for example Claude Code) pay close to zero until a tool is actually called.
 

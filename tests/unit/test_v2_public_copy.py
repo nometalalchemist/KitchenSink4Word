@@ -59,7 +59,7 @@ def test_published_numbers_match_scripts():
                        ("index.html", index)):
         assert str(n_ops) in text, f"{name} is missing the operations count"
         assert str(docs) in text, f"{name} is missing the tool count"
-        assert ("7.5k" in text or "7,500" in text), (
+        assert ("7.6k" in text or "7,600" in text), (
             f"{name} is missing the lite token figure"
         )
 
@@ -170,13 +170,13 @@ def test_i18n_dictionaries_carry_current_figures():
         return [base] + [base.replace(",", s)
                          for s in (".", " ", " ", " ")]
 
-    sep = forms_of("7,500")
-    full = forms_of("26,400")
+    sep = forms_of("7,600")
+    full = forms_of("26,600")
     old = forms_of("34,400")
     for i, lang in enumerate(langs):
         block = text[spans[i]:spans[i + 1]]
         assert "187" in block, f"i18n {lang}: operations count 187 missing"
-        for name, forms in (("lite 7.5k", sep), ("full 26.4k", full),
+        for name, forms in (("lite 7.6k", sep), ("full 26.6k", full),
                             ("v1.6 34.4k", old)):
             assert any(f in block for f in forms), (
                 f"i18n {lang}: {name} figure missing in all accepted formats"
