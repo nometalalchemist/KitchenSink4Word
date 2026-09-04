@@ -175,12 +175,12 @@ def test_i18n_dictionaries_carry_current_figures():
                          for s in (".", " ", " ", " ")]
 
     sep = forms_of("7,600")
-    full = forms_of("26,600")
+    full = forms_of("26,700")
     old = forms_of("34,400")
     for i, lang in enumerate(langs):
         block = text[spans[i]:spans[i + 1]]
         assert "219" in block, f"i18n {lang}: operations count 219 missing"
-        for name, forms in (("lite 7.6k", sep), ("full 26.6k", full),
+        for name, forms in (("lite 7.6k", sep), ("full 26.7k", full),
                             ("v1.6 34.4k", old)):
             assert any(f in block for f in forms), (
                 f"i18n {lang}: {name} figure missing in all accepted formats"

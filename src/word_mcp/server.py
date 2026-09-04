@@ -775,14 +775,14 @@ def get_text(
     textbox: bool | dict | None = None,
     live: str = "auto",
 ) -> list | dict:
-    """Read body paragraphs as [{index, text, style, ...}] with each
-    paragraph's effective style. start/end slice by paragraph index
-    (0-based, end EXCLUSIVE); contains filters. include_textboxes=True
-    appends text-box content as labeled extra entries without touching body
-    indices; textbox=true (or {"index": n}) returns ONLY text-box content,
-    with the box_index set_textbox_text takes; both file-mode only.
-    Documents open in Word are read live, same body shape. Equations are
-    read via list_elements type='equations'. Read-only.
+    """Read body paragraphs as [{index, text, style, ...}] with effective
+    styles. start/end slice by paragraph index (0-based, end EXCLUSIVE);
+    contains filters. include_textboxes=True appends text-box content as
+    labeled extras, body indices untouched; textbox=true (or {"index": n})
+    returns ONLY text-box content, with the box_index set_textbox_text
+    takes; file-mode only. Open documents are read live, same shape.
+    Equations are read via list_elements type='equations'. Read-only.
+    For orientation, use get_document_view.
     """
     from .com import live_ops as _lo
 
@@ -856,11 +856,11 @@ def find_text(
     """Find text in paragraphs and table cells; returns locations plus
     context. include_textboxes=True also searches text-box content as
     labeled matches; file-mode only. Pass formatting={...} (bold, font,
-    size_pt, color, highlight, style) to search by EFFECTIVE formatting:
-    resolved through run, character style, style chain, and defaults;
-    query=None returns every formatted stretch; scope 'body' or 'all';
-    file-mode, no regex. Plain queries search open documents live (same
-    shape, 500-match cap). Read-only.
+    size_pt, color, ...) to search by EFFECTIVE formatting: resolved
+    through run, style chain, and defaults; query=None returns every
+    formatted stretch; scope 'body' or 'all'; file-mode, no regex. Plain
+    queries search open documents live (same shape, 500-match cap).
+    Read-only. To read a known range, use get_text.
     """
     from .com import live_ops as _lo
 
@@ -1086,13 +1086,13 @@ def list_elements(file_path: str, type: str, filter: dict | None = None) -> dict
     images | charts | equations | bookmarks | sources | sections |
     section_blocks | footnotes | endnotes | fields | reference_fields |
     form_fields | content_controls | template_placeholders | index_entries |
-    lists | toc. Returns {type, count, items}; each type keeps its v1 item
-    shape, and the ids or indices returned are the handles the
-    matching set_/delete_/manage_ tools accept (list then act). Highlights per type: tables reports dimensions and
-    the table_index other table tools take; images reports display size and
-    the media target; charts reports series; equations
-    reads math content; bookmarks excludes internal TOC
-    bookmarks; fields covers complex and simple fields with cached results;
+    lists | toc. Returns {type, count, items}; the ids or indices
+    returned are the handles the matching set_/delete_/manage_ tools
+    accept (list then act). Highlights per type: tables reports
+    dimensions and the table_index other table tools take; images reports
+    display size and the media target; charts reports series; equations
+    reads math content; bookmarks excludes internal TOC bookmarks; fields
+    covers complex and simple fields with cached results;
     reference_fields inventories Zotero, EndNote, and Mendeley fields and
     flags broken pairs; form_fields and content_controls cover legacy fields
     and SDTs; template_placeholders lists {{name}} and MERGEFIELD keys for
@@ -1103,7 +1103,7 @@ def list_elements(file_path: str, type: str, filter: dict | None = None) -> dict
     refuse loudly. Read-only, file mode; close documents open in Word
     first.
     Tools acting on these elements live in packs; enable_tools lists
-    them.
+    them. To locate a string, use find_text.
     """
     spec = _ELEMENT_TYPES.get(type)
     if spec is None:
@@ -1476,12 +1476,12 @@ def insert_paragraphs(
 ) -> dict:
     """Insert paragraphs (items {text, style?, formatting?, heading_level?})
     at a location object (omitted = document end). heading_level 1-9 makes
-    the item a heading (off by one from outline_level 0-8: level 1 =
-    outline 0). inherit_format/copy_format_from clone neighbor formatting
-    minus outline level (file mode only); track records insertions by
+    the item a heading (level 1 = outline 0).
+    inherit_format/copy_format_from clone neighbor formatting minus
+    outline level (file mode only); track records insertions by
     author. Auto-backup in file mode; atomic validated save. Open
     documents edit live, serialized; a stale text-selector target
-    refuses: save in Word, retry.
+    refuses: save in Word, retry. For batches, use apply_edits.
     """
     from .com import live_ops as _lo
 
@@ -1613,11 +1613,10 @@ def delete_paragraphs(
     defaults to start) or by range={start, end} location objects. Refuses
     ranges that cut through a field or carry a section break; deleting
     every paragraph leaves one empty one behind. track records tracked
-    deletions by author instead of removing. Auto-backup in file mode:
-    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
-    atomic validated save. Documents open in Word are edited live
-    (serialized), unsaved
-    until the user saves.
+    deletions by author instead of removing. Auto-backup in file mode
+    (backup=False skips rotation); atomic validated save. Documents open
+    in Word are edited live (serialized), unsaved until the user saves.
+    For batches, use apply_edits.
     """
     from .com import live_ops as _lo
 
@@ -1670,9 +1669,9 @@ def set_paragraph_text(
     {outline: ...}). Indices shift after edits, so pass expect (a substring
     the target must contain) to refuse instead of hitting the wrong
     paragraph; verify the returned replaced_text. Auto-backup in file
-    mode: prev/anchor slots (backup=False skips rotation); atomic
-    validated save. Edits go live on open documents (serialized);
-    tracked-revision paragraphs refuse live.
+    mode (backup=False skips rotation); atomic validated save. Edits go
+    live on open documents (serialized); tracked-revision paragraphs
+    refuse live. For batches, use apply_edits.
     """
     from .com import live_ops as _lo
 
@@ -1723,10 +1722,10 @@ def search_and_replace(
     would be unwieldy. Live edits appear immediately as one Ctrl+Z step,
     unsaved until the user saves; the live result adds live:true and skip
     counters, and literal finds beyond Word's ~255-char limit are handled
-    automatically. Auto-backup in file mode: prev/anchor slots in
-    .ks4w-backups (backup=False skips rotation only); atomic validated
-    save. Documents open in Word edit live, serialized; tracked replaces
-    never re-match their own markup.
+    automatically. Auto-backup in file mode (backup=False skips
+    rotation); atomic validated save. Documents open in Word edit live,
+    serialized; tracked replaces never re-match their own markup. For
+    anchor-scoped edits, use apply_edits.
     """
     from .com import live_ops as _lo
 
@@ -1835,6 +1834,8 @@ def get_document_view(
     tool can make and runs only when explicitly requested, with the
     normal backup and validated save; plain reads never modify the file.
     A document open in Word is read from its last saved state.
+    To locate a string, use find_text; to enumerate collections, use
+    list_elements.
     """
     from .core.errors import DocumentLocked
 
@@ -1891,13 +1892,12 @@ def apply_edits(
 ) -> dict:
     """Apply a batch of anchor-addressed edits in one call: one lock,
     backup, and validated save for the whole batch. Anchors come from
-    get_document_view. Ops (each edit is a dict with "op"): replace
-    {anchor, find, text, occurrence?} (occurrence omitted = every
-    match); set_text {anchor, text} (whole paragraph);
-    insert {location, markdown} (headings, plain paragraphs, lists, and
-    pipe tables become real Word structures; location is the standard
-    object, e.g. {"anchor": "hex", "position": "after"}); delete {anchor
-    or anchors}; set_style {anchor, style}; format {anchor, formatting,
+    get_document_view. Ops (each edit has "op"): replace {anchor, find,
+    text, occurrence?} (omitted = every match); set_text {anchor, text}
+    (whole paragraph); insert {location, markdown} (headings, plain
+    paragraphs, lists, and pipe tables become real Word structures;
+    location is the standard object); delete {anchor or anchors};
+    set_style {anchor, style}; format {anchor, formatting,
     find?, occurrence?}; set_paragraph_format {anchor, format}; set_cell
     {anchor: "t:hex:rNcN", text}. The whole batch validates BEFORE
     anything mutates, against BATCH-START text (never reference text an
@@ -1910,6 +1910,8 @@ def apply_edits(
     step: serialized, validated before any write, rolled back on
     mid-batch failure. Markdown lists/tables are file-mode only there;
     stale targets refuse: com_save_document first, re-view, resend.
+    Use this when a change needs two or more edits; for one edit use
+    the matching standalone tool.
     """
     if atomic is not True:
         raise WordMcpError(
@@ -1954,9 +1956,9 @@ def format_text(
     small_caps, char_spacing_pt, language, east_asian_language, and more.
     case: upper | lower | title | sentence. Target: range={start,end},
     find, or both; one of formatting or case per call. Auto-backup in
-    file mode: prev/anchor slots (backup=False skips rotation); atomic
-    validated save. Formatting goes live on open documents (serialized);
-    case is file-mode only.
+    file mode (backup=False skips rotation); atomic validated save.
+    Formatting goes live on open documents (serialized); case is
+    file-mode only. For batches, use apply_edits.
     """
     from .com import live_ops as _lo
 
@@ -2044,11 +2046,11 @@ def set_paragraph_format(
     """Set paragraph formatting on a batch: indices (0-based list) OR
     start/end (inclusive range), exactly one form. Keys: alignment,
     space_before_pt, space_after_pt, line_spacing, indent_left_pt,
-    indent_right_pt, first_line_indent_pt, keep_with_next, outline_level;
-    numbers are range-checked to Word's limits. outline_level (0-8; null
-    removes) never changes the look; it is off by one from heading_level
-    1-9. Auto-backup; atomic validated save. Open documents edited live
-    (serialized; shading/borders/tab_stops refused live).
+    indent_right_pt, first_line_indent_pt, keep_with_next, outline_level.
+    outline_level (0-8; null removes) never changes the look; it is off
+    by one from heading_level 1-9. Auto-backup; atomic validated save.
+    Open documents edited live (serialized; shading/borders/tab_stops
+    refused live). For batches, use apply_edits.
     """
     from .com import live_ops as _lo
 
@@ -2097,9 +2099,9 @@ def apply_style(
     applies a paragraph style to those paragraphs, changing their full look
     (Heading1-9 auto-created); target={search:{text, occurrence?}} applies
     a character style to the matched text instead. For an outline level without visual change use
-    set_paragraph_format. Auto-backup: prev/anchor slots in .ks4w-backups
-    (backup=False skips rotation only); atomic validated save. Refuses
-    documents open in Word.
+    set_paragraph_format. Auto-backup (backup=False skips rotation);
+    atomic validated save. Refuses documents open in Word. For batches,
+    use apply_edits.
     Defining new named styles lives in the academic pack.
     """
     if (range is None) == (target is None):
@@ -2522,9 +2524,9 @@ def set_cells(
     a 2D block. nested={row, cell, index} targets a table nested in that
     host cell (edits mode only). track records tracked changes by author.
     Live mode (plain edits only) refuses vertical merges; file mode is
-    merge-aware. Auto-backup in file mode: prev/anchor slots
-    (backup=False skips rotation); atomic validated save. Documents open
-    in Word edit live, serialized.
+    merge-aware. Auto-backup in file mode (backup=False skips rotation);
+    atomic validated save. Documents open in Word edit live, serialized.
+    For batches, use apply_edits.
     """
     if (edits is None) == (block is None):
         raise WordMcpError(
