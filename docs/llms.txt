@@ -1,114 +1,152 @@
 # KitchenSink4Word
 
-> Everything plus the kitchen sink for Microsoft Word: the most complete Word (.docx) MCP server available. 189 tools covering live editing of documents open in Word, native citations and bibliography, merge-aware table surgery, footnotes and endnotes, TOC, tracked-changes authoring, Word-native document compare, protection, redaction, mail merge, and accessibility audits. Engineered not to corrupt: atomic validated saves, automatic backups before every mutation, and published adversarial test evidence.
+> Word (.docx) MCP server for agents. 219 operations across 108 tools, one verb
+> grammar. Windows, stdio. Every mutation is preceded by an automatic backup and
+> committed by an atomic verified save.
 
-This file describes the shipped release: v1.6.0 on PyPI (as of 2026-08-31).
-Platform: Windows. File-based tools (the large majority) work without Microsoft Word installed; the com_* and live_* tools use a local Microsoft Word via COM.
-MCP transport: stdio.
+Release: v2.0.0
+MCP registry name: io.github.nometalalchemist/kitchensink4word
+Transport: stdio. Platform: Windows.
+File-mode tools run without Microsoft Word installed. The `com_*` and `live_*`
+tools drive a local Microsoft Word through COM.
 
-## Install
+This document is written for the agent that will call these tools. Every line
+below is a behavior you can rely on without testing it first.
 
+## 1. Token economics
+
+- Session start loads 28 tools, about 7,600 tokens. Nothing else is on the wire until you ask for it.
+- `enable_tools(["<pack>"])` adds a pack mid-session. `disable_tools([...])` removes one. Both take effect on the next `tools/list`, announced by `tools/list_changed`.
+- Pack costs, from `scripts/measure_surface.py`: references 8 tools / 2.4k, review 9 / 1.8k, academic 23 / 5.7k, assembly 7 / 1.7k, media-forms 16 / 4.1k, com-live 13 / 2.2k, protection-io 6 / 1.2k.
+- Everything enabled: 110 tools (108 document tools plus the two pack toggles), about 26,600 tokens.
+- Set `KS4W_MODE=full` at server start to skip tiering and load every pack at startup.
+- A lite tool asked for out-of-scope work returns the pack name and the exact `enable_tools` call to run. You never have to guess which pack holds a capability.
+- `get_workflows` recipes name the packs each recipe needs before its first step.
+- Clients that defer tool schemas until first call pay close to zero at startup.
+- Client caveat: some clients drop a disabled tool's schema and do not re-register it on re-enable. If a re-enabled tool reports "no such tool", refresh the client's tool list.
+
+## 2. Behavioral contracts
+
+- Backup before mutation: every file mutation writes a backup into bounded rotating slots first. `manage_backups` lists, restores, and prunes them.
+- Atomic verified save: the write goes to a temporary file, the result is re-opened and validated, then swapped in. A failed operation leaves the original byte-identical.
+- Untouched content passes through byte-identical, including equations, textboxes, content controls, and every part the call did not address.
+- Batches are all-or-nothing: `apply_edits` validates the whole batch first, applies every edit in one save, or mutates nothing. One refusal carries every failing operation with its index, its address, and its reason, so the batch is corrected once and resent whole.
+- Closed error vocabulary: every refusal is `{ok: false, error: {code, message, hint}}`. `code` is one of 13 values: `AMBIGUOUS_LOCATION`, `NOT_FOUND`, `STALE_ANCHOR`, `RANGE_OUT_OF_BOUNDS`, `DOCUMENT_LOCKED`, `APP_NOT_RUNNING`, `APP_BUSY`, `APP_BLOCKED`, `PROTECTED_VIEW`, `VALIDATION_FAILED`, `UNSUPPORTED_CONTENT`, `CONFLICT`, `BAD_PARAMS`. Branch on `code`, never on message text.
+- Refusals ride the wire with `isError=true`. A refusal never arrives as a success.
+- `hint` carries the next call to make, not a restatement of the failure.
+- COM access is serialized: concurrent tool calls against one Word instance are queued, so two agents working at once cannot interleave writes into the same document.
+- Pending Word dialogs are detected at the OS window level, not inferred from a timeout. `com_word_status` reports the dialog a human has to dismiss.
+- File-mode tools refuse a document that is open in Word and name the `live_*` or `com_*` route that handles the open case.
+- Live edits land as one Ctrl+Z step per tool call and leave the user's cursor and selection where they were.
+- Tracked-changes authoring is a parameter, not a mode: pass `track=true` and an author name to a text mutation and the edit is written as a revision.
+- Test evidence for v2.0.0: 1,324 tests, adversarial rounds driven through the raw MCP stdio transport, zero corruptions, outputs verified by opening them in invisible Word and failing on any repair prompt.
+
+## 3. Addressing model
+
+- Positional tools take one `location` object. Forms: `paragraph` index, `after_heading`, `outline` path, `bookmark`, `search` text, `anchor`, `cursor`. A position modifier selects placement relative to the resolved target.
+- `get_document_view` returns content with stable anchors. Anchors survive edits made elsewhere in the document. Feed them straight back into `apply_edits`.
+- An anchor that no longer resolves returns `STALE_ANCHOR` and the view call to re-run. It never falls back to a nearby target.
+- Text that matches more than one place returns `AMBIGUOUS_LOCATION` and lists every candidate with the address that would disambiguate it. The wrong target is never silently edited.
+- An index past the end returns `RANGE_OUT_OF_BOUNDS` with the valid range.
+- `list_elements(type=...)` enumerates any collection and returns each element with the address its own editing tools accept.
+- Read once, edit in bulk: one `get_document_view` plus one `apply_edits` replaces a read-modify-verify loop per edit.
+
+## 4. Recipes
+
+`get_workflows()` returns the recipe list. `get_workflows("<name>")` returns ordered steps, the tool for each step, why the step exists, the packs required, and the documented traps for that sequence.
+
+- `process-feedback`: reviewer revisions and comments, end to end, ending in a validation pass.
+- `prepare-submission`: validate, count, clean, optionally anonymize, then re-validate because the cleanup is itself a mutation.
+- `format-citations`: change citation style without splitting a reference manager's bibliography.
+- `build-from-template`: template to filled document.
+- `heavy-editing`: sustained editing on a dated copy at file-mode speed while the user keeps the original open in Word.
+- `live-editing`: editing a document open in Word, including the save-then-view ordering trap.
+- `bulk-edit`: many addressed edits in one atomic pass.
+- `comment-partner`: the human leaves a Word comment addressed to the AI, the agent reads the anchored context, makes the fix as a tracked change, saves, then replies and resolves. Preview recipe on shipped tools.
+- `migrate-from-v1`: every v1.6 tool name mapped to its v2 home, returned in-session. Same data as `migration/v1_to_v2.json`; the prose version is `docs/MIGRATION_V2.md`.
+
+## 5. Documented refusals
+
+These are contracts. Handle them; do not retry blindly.
+
+- Ambiguous target: refuses and lists the candidates with their addresses.
+- File-mode tool against a document open in Word: refuses and names the live route.
+- Word held behind a modal dialog: `APP_BLOCKED`, with the dialog reported. A human dismisses it; `live_repair` clears crashed-client state.
+- Word busy with another call: `APP_BUSY`. Retry after the in-flight call returns.
+- Protected View: `PROTECTED_VIEW`. The file has to be trusted in Word first.
+- Password-protected or structurally unsupported content: `UNSUPPORTED_CONTENT` instead of a partial write.
+- Existing destination path: `CONFLICT` unless overwrite was requested.
+- Sandbox mode, when enabled: paths outside the configured roots refuse with `BAD_PARAMS`.
+- `diagnose_document` reads saved XML and has no live route. Save first; `com_validate_opens_clean` checks the open copy instead.
+- A view taken before `com_save_document` does not see unsaved live edits. Save, then view, then edit.
+
+## 6. Inventory: 219 operations, 108 tools, 8 packs
+
+### lite core: 28 tools, 75 operations, loaded at startup
+`create_document`, `copy_document`, `get_document_info`, `get_document_view`, `get_outline`, `get_text`, `find_text`, `search_and_replace`, `insert_paragraphs`, `delete_paragraphs`, `set_paragraph_text`, `set_paragraph_format`, `format_text`, `apply_style`, `insert_list`, `insert_break`, `create_table`, `get_table`, `set_cells`, `delete_table`, `delete_element`, `list_elements`, `apply_edits`, `diagnose_document`, `manage_backups`, `get_workflows`, `enable_tools`, `disable_tools`.
+
+### references: 8 tools, 9 operations
+`insert_citation`, `manage_source`, `set_bibliography_style`, `insert_zotero_citation`, `search_zotero_library`, `convert_citation_style`, `detect_citation_system`, `parse_references`.
+
+### review: 9 tools, 15 operations
+`get_tracked_changes`, `resolve_revisions`, `get_revision_report`, `get_comments`, `manage_comment`, `comment_report`, `structured_diff`, `anonymize_for_review`, `deanonymize_document`.
+
+### academic: 23 tools, 62 operations
+`manage_note`, `convert_notes`, `insert_reference_list`, `insert_caption`, `insert_cross_reference`, `insert_bookmark`, `mark_index_entry`, `assemble_front_matter`, `setup_chapter_headers`, `change_heading_level`, `get_styles`, `define_style`, `get_paragraph_format`, `apply_manuscript_format`, `get_headers_footers`, `set_header_footer`, `set_page_numbers`, `set_section_properties`, `set_document_properties`, `word_count`, `validate`, `prepare_for_submission`, `fix_accessibility`.
+
+### assembly: 7 tools, 7 operations
+`insert_document`, `split_document`, `move_section`, `copy_table`, `apply_template`, `fill_template`, `mail_merge`.
+
+### media-forms: 16 tools, 26 operations
+`insert_image`, `set_image`, `export_images`, `insert_chart`, `set_chart_data`, `insert_equation`, `set_textbox_text`, `insert_hyperlink`, `modify_table_structure`, `set_table_properties`, `format_cells`, `sort_table`, `insert_field`, `insert_content_control`, `set_content_control`, `set_form_fields`.
+
+### com-live: 13 tools, 17 operations
+`com_word_status`, `com_refresh_fields`, `com_export_pdf`, `com_import_pdf`, `com_multi_document`, `com_proofing_errors`, `com_readability_statistics`, `com_save_document`, `com_validate_opens_clean`, `live_insert_at_cursor`, `live_scroll_to`, `live_set_track_changes`, `live_repair`.
+
+### protection-io: 6 tools, 8 operations
+`set_document_protection`, `get_protection`, `set_watermark`, `redact_text`, `import_table`, `export_table`.
+
+### Multiplexers: where the extra operations live
+- `list_elements(type=...)`: enumerates tables, images, charts, footnotes, endnotes, sources, bookmarks, sections, fields, equations, form fields, content controls, lists, TOC entries, and more, in place of 18 separate listing tools.
+- `validate(checks=[...])`: 14 correctness batteries, `core`, `captions`, `chapter_headers`, `cross_references`, `notes`, `forms`, `citation_parity`, `defined_terms`, `brand`, `template`, `reference_fields`, `image_resolution`, `accessibility`, `redaction`.
+- `manage_note`, `manage_comment`, `manage_source`, `manage_backups`: lifecycle verbs on one object family per tool.
+- `modify_table_structure(action=...)`: insert and delete rows and columns, merge, unmerge, split.
+- `delete_element(type=...)`: one delete for any addressable element.
+- `com_multi_document(action=...)`: compare, combine, or merge documents through Word.
+
+## 7. Version and migration
+
+v2.0.0 renamed every tool. Measured with one definition on both trees,
+v1.6 performed 200 operations across 189 tools; v2.0 performs 219 across 108.
+Every v1.6 capability is mapped into v2 and the operation count went up.
+Upgrading from v1.x: call `get_workflows("migrate-from-v1")`, or read
+`migration/v1_to_v2.json` or `docs/MIGRATION_V2.md`. New installs need nothing.
+
+## 8. Install
+
+- Claude Desktop: download the `.mcpb` bundle from the latest GitHub release and open it. Requires `uv` on PATH.
+- Claude Code: `claude mcp add word -s user -- uvx kitchensink4word`
 - pip: `pip install kitchensink4word`
-- uvx (no install): `uvx kitchensink4word`
-- Claude Code: `claude mcp add word -s user -- kitchensink4word`
-- Claude Desktop: download `kitchensink4word.mcpb` from the latest GitHub release, then Settings > Extensions > Advanced settings > Install extension (requires uv on PATH)
-- Any other MCP client: run the `kitchensink4word` (or `word-mcp`) executable over stdio, e.g. `{"mcpServers": {"word": {"command": "kitchensink4word"}}}`
-- MCP registry name: `io.github.nometalalchemist/kitchensink4word`
+- uvx, no install: `uvx kitchensink4word`
+- Any MCP client: run the `kitchensink4word` (or `word-mcp`) executable over stdio, for example `{"mcpServers": {"word": {"command": "kitchensink4word"}}}`
 
-## Context cost (measured, v1.6.0)
-
-Published because almost no MCP server tells you what it costs to load:
-
-- Full tool surface, all schemas and descriptions loaded up front: about 27,000 tokens
-- Average per tool: about 144 tokens
-- Clients that defer tool schemas until use (for example Claude Code) pay close to zero until a tool is actually called
-
-ROADMAP (not shipped): v2 plans tiered loading, starting from a lite core of about 20 tools (roughly 4,000 tokens) with capability packs enabled on demand.
-
-## Capabilities: 189 tools by category
-
-Reading and analysis:
-`get_document_info`, `get_outline`, `get_text`, `find_text`, `find_formatted`, `get_styles`, `word_count`, `word_count_with_exclusions`, `validate_document`, `structured_diff`, `preview_replace`, `diagnose_document`, `get_textbox_text`
-
-Text editing and formatting:
-`create_document`, `copy_document`, `search_and_replace`, `insert_paragraphs`, `delete_paragraphs`, `replace_paragraph_text`, `add_heading`, `add_page_break`, `format_text`, `set_paragraph_format`, `apply_style`, `apply_character_style`, `define_style`, `add_list`, `get_lists`, `change_case`, `set_textbox_text`
-
-Tables (merge-aware column insert/delete, one-call bulk cell edits, nested tables):
-`list_tables`, `get_table`, `create_table`, `delete_table`, `insert_rows`, `delete_rows`, `insert_columns`, `delete_columns`, `set_cells`, `set_cells_block`, `format_cells`, `merge_cells`, `unmerge_cells`, `set_column_widths`, `apply_table_style`, `sort_table`, `split_table`, `set_header_row_repeat`, `get_nested_table`, `set_nested_cells`, `export_table`, `import_table`
-
-Footnotes and endnotes (full CRUD plus conversion in both directions):
-`list_footnotes`, `list_endnotes`, `add_footnote`, `add_endnote`, `edit_footnote`, `edit_endnote`, `delete_footnote`, `delete_endnote`, `convert_notes`, `validate_notes`, `cleanup_orphan_notes`
-
-Citations, bibliography and reference managers (12 native bibliography styles; plain-text style conversion across 8 styles; Zotero, Mendeley and EndNote field awareness):
-`add_source`, `list_sources`, `delete_source`, `set_bibliography_style`, `insert_citation`, `insert_bibliography`, `check_citation_parity`, `parse_references`, `convert_citation_style`, `search_zotero_library`, `insert_zotero_citation`, `list_reference_fields`, `check_reference_field_integrity`
-
-TOC, captions, index, bookmarks and links:
-`insert_toc`, `read_toc`, `delete_toc`, `set_update_fields_flag`, `insert_caption_list`, `add_caption`, `validate_captions`, `add_bookmark`, `list_bookmarks`, `add_cross_reference`, `validate_cross_references`, `add_hyperlink`, `mark_index_entry`, `list_index_entries`, `insert_index`
-
-Structure and templates:
-`move_section`, `list_section_blocks`, `split_document`, `apply_template`, `apply_manuscript_format`, `set_document_properties`, `list_template_placeholders`, `fill_template`, `check_template_compliance`, `assemble_front_matter`, `setup_chapter_headers`, `validate_chapter_headers`
-
-Layout and sections:
-`get_headers_footers`, `set_header`, `set_footer`, `add_page_numbers`, `set_page_number_format`, `set_columns`, `set_line_numbering`, `list_sections`, `set_section_properties`, `add_section_break`, `add_watermark`, `remove_watermark`
-
-Images:
-`add_image`, `list_images`, `resize_image`, `replace_image`, `extract_images`, `set_image_alt_text`, `check_image_resolution`
-
-Comments (threaded, with resolve):
-`get_comments`, `add_comment`, `reply_to_comment`, `resolve_comment`, `delete_comment`, `comment_report`, `comment_report_multi`
-
-Tracked changes (read, summarize, accept/reject by author; edits can be WRITTEN as tracked changes with an explicit author):
-`get_tracked_changes`, `revision_summary`, `revision_analytics`, `accept_revisions`, `reject_revisions`
-
-Protection, privacy and redaction (true removal with verification re-scan):
-`set_document_protection`, `remove_document_protection`, `get_protection`, `redact_text`, `verify_redaction`, `anonymize_for_review`, `deanonymize_document`, `check_defined_terms`
-
-Forms, mail merge, batch and audits:
-`list_form_fields`, `fill_form_fields`, `validate_form_completeness`, `mail_merge`, `batch_apply`, `prepare_for_submission`, `check_brand_compliance`, `audit_accessibility`
-
-Equations (LaTeX to native Word math):
-`add_equation`, `list_equations`, `delete_equation`
-
-Live editing (document OPEN in Word; each call lands as one Ctrl+Z step, cursor untouched):
-`com_word_status`, `live_insert_at_cursor`, `live_scroll_to`, `live_set_track_changes`, `word_live_repair`
-
-Word COM (uses a local Microsoft Word):
-`com_refresh_fields`, `com_export_pdf`, `com_import_pdf`, `com_compare_documents`, `com_merge_documents`, `com_combine_documents`, `com_save_open_document`, `com_close_open_document`, `com_proofing_errors`, `com_readability_statistics`, `com_save_with_password`, `com_validate_opens_clean`
-
-## Recommended workflows
-
-Process reviewer/advisor feedback:
-`get_tracked_changes` (see every change with author and text) -> `revision_summary` (counts by author/type) -> `comment_report` (comments with anchored text and threading) -> `accept_revisions` / `reject_revisions` (filter by author or type) -> `resolve_comment` -> `validate_document` (confirm notes and fields survived).
-
-Prepare a submission:
-`copy_document` (work on a dated copy) -> `validate_document` -> `check_citation_parity` -> `check_reference_field_integrity` -> `validate_cross_references` -> `word_count_with_exclusions` -> `prepare_for_submission` (accept revisions, strip comments and metadata) -> optionally `anonymize_for_review` for blind review. Re-run the validation steps after cleanup; the cleanup is itself a mutation.
-
-Citation work without breaking the reference manager:
-identify which system owns the citations first (Word native, Zotero, Mendeley, EndNote, or plain text; mixing systems creates a split-brain bibliography) -> `list_reference_fields` (inventory manager fields) -> `check_citation_parity` -> `convert_citation_style` only when the document is NOT manager-managed -> `check_reference_field_integrity` afterwards. `insert_citation`/`add_source` are Word-native; `insert_zotero_citation` is Zotero; use the family the document already uses.
-
-Build from an institutional template:
-`copy_document` (never build inside the template) -> `list_template_placeholders` -> `fill_template` -> optionally `apply_template` -> `check_template_compliance` -> `validate_document`. Templates using content controls: `list_form_fields` + `fill_form_fields`.
-
-Sustained heavy editing:
-the user keeps the original open in Word for reading while the agent works on a fresh dated copy at full file-mode speed: `copy_document` -> `get_outline` -> `get_text` -> `search_and_replace` -> optionally `batch_apply` (many edits in one atomic pass) -> `validate_document` -> `word_count`. No COM round-trips, no lock conflicts.
-
-## Safety model
-
-- Atomic validated saves; a failed operation leaves the original byte-identical.
-- Automatic timestamped backup before every file mutation.
-- Byte-identical passthrough of anything not being edited (equations, textboxes, content controls).
-- Documents open in Word are refused by file-mode tools; the live_*/com_* tools handle that case explicitly.
-- Test evidence for v1.6.0: 946 tests, roughly 4,400 adversarial calls through the raw MCP stdio transport, zero corruptions, verified by opening outputs in invisible Word and failing on any repair prompt.
-
-## Links
+## 9. Links
 
 - GitHub: https://github.com/nometalalchemist/KitchenSink4Word
 - PyPI: https://pypi.org/project/kitchensink4word/
-- MCP registry: io.github.nometalalchemist/kitchensink4word
-- Glama: listed; search for KitchenSink4Word at https://glama.ai/mcp/servers
+- Migration guide: https://github.com/nometalalchemist/KitchenSink4Word/blob/main/docs/MIGRATION_V2.md
 - Landing page: https://nometalalchemist.github.io/KitchenSink4Word/
-- Issues (bugs, feature requests, licensing): https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose
+- Issues, including licensing: https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose
 
-## License
+## 10. License
 
-AGPL-3.0. Free for any use under AGPL terms (copyleft: modifications to served copies must be shared). Commercial license available for use cases that cannot comply with AGPL: https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml
+AGPL-3.0. Free for individuals and personal use. A company building this into a
+product of its own needs a commercial license, with terms worked out case by
+case, arranged here:
+https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml
+
+## 11. Trademarks
+
+Not affiliated with or endorsed by Microsoft Corporation. Microsoft and Word
+are trademarks of Microsoft Corporation. References to Microsoft Word describe
+file-format compatibility only.

@@ -53,7 +53,7 @@ def _slot_files(doc: Path) -> list[str]:
 def test_two_slots_ever_across_many_mutations(tmp_path):
     doc = _make_doc(tmp_path)
     for i in range(6):
-        srv.insert_paragraphs(str(doc), [{"text": f"edit {i}"}], at_end=True)
+        srv.insert_paragraphs(str(doc), [{"text": f"edit {i}"}])
     assert _slot_files(doc) == sorted(SLOT_POLICY)
     # No legacy .bak files are produced any more.
     assert not list(tmp_path.glob("*.bak-*")), "old .bak scheme resurfaced"
@@ -70,7 +70,7 @@ def test_two_slots_ever_across_many_mutations(tmp_path):
 
 def test_backup_root_is_dot_prefixed_and_next_to_doc(tmp_path):
     doc = _make_doc(tmp_path)
-    srv.insert_paragraphs(str(doc), [{"text": "x"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "x"}])
     root = tmp_path / BACKUP_DIR_NAME
     assert root.is_dir()
     assert (root / doc.name).is_dir()
@@ -78,14 +78,14 @@ def test_backup_root_is_dot_prefixed_and_next_to_doc(tmp_path):
 
 def test_anchor_rotates_after_idle_gap(tmp_path):
     doc = _make_doc(tmp_path)
-    srv.insert_paragraphs(str(doc), [{"text": "session one"}], at_end=True)
-    srv.insert_paragraphs(str(doc), [{"text": "still session one"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "session one"}])
+    srv.insert_paragraphs(str(doc), [{"text": "still session one"}])
     d = safesave.slot_dir(doc)
     # Simulate the idle gap by aging the prev slot's mtime (idle is measured
     # from slot mtimes only - no state database).
     old = time.time() - (safesave.ANCHOR_IDLE_SECONDS + 60)
     os.utime(d / PREV_SLOT, (old, old))
-    srv.insert_paragraphs(str(doc), [{"text": "session two"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "session two"}])
     anchor_texts = [
         p["text"] for p in srv.get_text(str(d / ANCHOR_SLOT), live="off")
     ]
@@ -97,11 +97,11 @@ def test_anchor_rotates_after_idle_gap(tmp_path):
 
 def test_anchor_stable_within_session(tmp_path):
     doc = _make_doc(tmp_path)
-    srv.insert_paragraphs(str(doc), [{"text": "first"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "first"}])
     d = safesave.slot_dir(doc)
     before = (d / ANCHOR_SLOT).read_bytes()
-    srv.insert_paragraphs(str(doc), [{"text": "second"}], at_end=True)
-    srv.insert_paragraphs(str(doc), [{"text": "third"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "second"}])
+    srv.insert_paragraphs(str(doc), [{"text": "third"}])
     assert (d / ANCHOR_SLOT).read_bytes() == before
 
 
@@ -112,7 +112,7 @@ def test_hardlink_failure_falls_back_to_copy(tmp_path, monkeypatch):
         raise OSError(1, "cross-device / non-NTFS / cloud placeholder")
 
     monkeypatch.setattr(os, "link", no_link)
-    srv.insert_paragraphs(str(doc), [{"text": "copied not linked"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "copied not linked"}])
     assert _slot_files(doc) == sorted(SLOT_POLICY)
     d = safesave.slot_dir(doc)
     # Slots are real independent copies and load as valid documents.
@@ -122,8 +122,8 @@ def test_hardlink_failure_falls_back_to_copy(tmp_path, monkeypatch):
 
 def test_korean_unicode_doc_name(tmp_path):
     doc = _make_doc(tmp_path, "제4장 초안 (최종).docx")
-    srv.insert_paragraphs(str(doc), [{"text": "한글 내용"}], at_end=True)
-    srv.insert_paragraphs(str(doc), [{"text": "더 많은 내용"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "한글 내용"}])
+    srv.insert_paragraphs(str(doc), [{"text": "더 많은 내용"}])
     d = safesave.slot_dir(doc)
     assert d.name == doc.name  # reverse mapping stays trivial
     assert _slot_files(doc) == sorted(SLOT_POLICY)
@@ -135,7 +135,7 @@ def test_very_long_doc_name_gets_hash_suffix_and_breadcrumb(tmp_path):
     assert len(name.encode("utf-8")) <= 255  # ext4 safety
     assert len(name) > 80  # long enough to trigger the folder-name truncation
     doc = _make_doc(tmp_path, name)
-    srv.insert_paragraphs(str(doc), [{"text": "long name content"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "long name content"}])
     d = safesave.slot_dir(doc)
     assert d.is_dir() and len(d.name) < len(name)
     # Breadcrumb maps the truncated folder back to the source document.
@@ -154,7 +154,7 @@ def test_very_long_doc_name_gets_hash_suffix_and_breadcrumb(tmp_path):
 
 def test_target_never_absent_during_save(tmp_path, monkeypatch):
     doc = _make_doc(tmp_path)
-    srv.insert_paragraphs(str(doc), [{"text": "seed"}], at_end=True)  # anchor set
+    srv.insert_paragraphs(str(doc), [{"text": "seed"}])  # anchor set
 
     target = os.path.normcase(str(doc.resolve()))
     events: list[tuple[str, str, str]] = []
@@ -185,7 +185,7 @@ def test_target_never_absent_during_save(tmp_path, monkeypatch):
                              real_remove(p, *a, **kw))[1],
     )
 
-    srv.insert_paragraphs(str(doc), [{"text": "mutation"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "mutation"}])
 
     # The document itself is never unlinked/removed at any point.
     assert all(not (op == "unlink" and src == target) for op, src, _ in events)
@@ -221,7 +221,6 @@ def test_concurrent_mutations_serialize(tmp_path):
     srv.insert_paragraphs(
         str(doc),
         [{"text": f"unique marker {i} alpha"} for i in range(n_seed)],
-        at_end=True,
     )
 
     results: dict[int, dict] = {}
@@ -242,7 +241,7 @@ def test_concurrent_mutations_serialize(tmp_path):
         try:
             text = f"threaded insert {i}"
             srv.insert_paragraphs(
-                str(doc), [{"text": text}], at_end=True, live="off"
+                str(doc), [{"text": text}], live="off"
             )
             inserted.append(text)
         except BaseException as exc:  # noqa: BLE001
@@ -294,20 +293,20 @@ def test_concurrent_mutations_serialize(tmp_path):
 
 def test_stale_lockfile_is_broken(tmp_path):
     doc = _make_doc(tmp_path)
-    srv.insert_paragraphs(str(doc), [{"text": "seed"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "seed"}])
     d = safesave.slot_dir(doc)
     lock = d / safesave.LOCK_FILE_NAME
     lock.write_text(
         '{"pid": 999999999, "time": 1.0}', encoding="utf-8"
     )  # dead pid, ancient timestamp
-    srv.insert_paragraphs(str(doc), [{"text": "after stale break"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "after stale break"}])
     assert "after stale break" in _texts(doc)
     assert not lock.exists()
 
 
 def test_live_foreign_lock_refused_with_holder_named(tmp_path, monkeypatch):
     doc = _make_doc(tmp_path)
-    srv.insert_paragraphs(str(doc), [{"text": "seed"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "seed"}])
     d = safesave.slot_dir(doc)
     lock = d / safesave.LOCK_FILE_NAME
     foreign_pid = os.getpid() + 12345
@@ -317,16 +316,16 @@ def test_live_foreign_lock_refused_with_holder_named(tmp_path, monkeypatch):
     monkeypatch.setattr(safesave, "_pid_alive", lambda pid: True)
     monkeypatch.setattr(safesave, "LOCK_WAIT_SECONDS", 0.3)
     with pytest.raises(MutationLockTimeout, match=str(foreign_pid)):
-        srv.insert_paragraphs(str(doc), [{"text": "blocked"}], at_end=True)
+        srv.insert_paragraphs(str(doc), [{"text": "blocked"}])
     lock.unlink()  # release for other tests' sake
 
 
 def test_same_process_lockfile_is_reentrant(tmp_path):
     doc = _make_doc(tmp_path)
-    srv.insert_paragraphs(str(doc), [{"text": "seed"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "seed"}])
     with safesave.write_lock(doc):
         # A nested mutation in the same process must not deadlock or refuse.
-        srv.insert_paragraphs(str(doc), [{"text": "nested"}], at_end=True)
+        srv.insert_paragraphs(str(doc), [{"text": "nested"}])
     assert "nested" in _texts(doc)
 
 
@@ -336,7 +335,7 @@ def test_same_process_lockfile_is_reentrant(tmp_path):
 def test_backup_false_skips_rotation_never_the_atomic_save(tmp_path):
     doc = _make_doc(tmp_path)
     srv.insert_paragraphs(
-        str(doc), [{"text": "no backup"}], at_end=True, backup=False
+        str(doc), [{"text": "no backup"}], backup=False
     )
     assert "no backup" in _texts(doc)
     assert _slot_files(doc) == []  # no slots rotated
@@ -350,11 +349,11 @@ def test_backup_false_skips_rotation_never_the_atomic_save(tmp_path):
 
 def test_list_reports_slots_legacy_and_orphans(tmp_path):
     doc = _make_doc(tmp_path)
-    srv.insert_paragraphs(str(doc), [{"text": "x"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "x"}])
     legacy = tmp_path / f"{doc.stem}.bak-20260828_120000{doc.suffix}"
     shutil.copy2(doc, legacy)
     ghost = _make_doc(tmp_path, "ghost.docx")
-    srv.insert_paragraphs(str(ghost), [{"text": "y"}], at_end=True)
+    srv.insert_paragraphs(str(ghost), [{"text": "y"}])
     ghost.unlink()
 
     listing = bk.manage_backups("list", file_path=str(doc))
@@ -371,8 +370,8 @@ def test_list_reports_slots_legacy_and_orphans(tmp_path):
 
 def test_restore_rotates_prev_first_and_is_undoable(tmp_path):
     doc = _make_doc(tmp_path)
-    srv.insert_paragraphs(str(doc), [{"text": "version A"}], at_end=True)
-    srv.insert_paragraphs(str(doc), [{"text": "version B"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "version A"}])
+    srv.insert_paragraphs(str(doc), [{"text": "version B"}])
 
     r = bk.manage_backups("restore", file_path=str(doc), source="prev")
     assert r["prev_rotated"] is True
@@ -384,7 +383,7 @@ def test_restore_rotates_prev_first_and_is_undoable(tmp_path):
 
 def test_restore_from_anchor(tmp_path):
     doc = _make_doc(tmp_path)
-    srv.insert_paragraphs(str(doc), [{"text": "post-anchor edit"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "post-anchor edit"}])
     bk.manage_backups("restore", file_path=str(doc), source="anchor")
     assert "post-anchor edit" not in _texts(doc)
     DocxPackage(doc)
@@ -392,10 +391,10 @@ def test_restore_from_anchor(tmp_path):
 
 def test_restore_from_legacy_file(tmp_path):
     doc = _make_doc(tmp_path)
-    srv.insert_paragraphs(str(doc), [{"text": "current"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "current"}])
     legacy = tmp_path / f"{doc.stem}.bak-20260828_120000{doc.suffix}"
     shutil.copy2(doc, legacy)
-    srv.insert_paragraphs(str(doc), [{"text": "newer"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "newer"}])
     bk.manage_backups("restore", file_path=str(doc), source=str(legacy))
     assert _texts(doc) == ["current"]
 
@@ -410,7 +409,7 @@ def test_restore_missing_source_is_clear_refusal(tmp_path):
 
 def test_purge_dry_run_is_the_default_and_deletes_nothing(tmp_path):
     doc = _make_doc(tmp_path)
-    srv.insert_paragraphs(str(doc), [{"text": "x"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "x"}])
     legacy = tmp_path / f"{doc.stem}.bak-20260828_120000{doc.suffix}"
     shutil.copy2(doc, legacy)
 
@@ -428,9 +427,9 @@ def test_purge_dry_run_is_the_default_and_deletes_nothing(tmp_path):
 
 def test_purge_slots_and_orphans(tmp_path):
     doc = _make_doc(tmp_path)
-    srv.insert_paragraphs(str(doc), [{"text": "x"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "x"}])
     ghost = _make_doc(tmp_path, "ghost.docx")
-    srv.insert_paragraphs(str(ghost), [{"text": "y"}], at_end=True)
+    srv.insert_paragraphs(str(ghost), [{"text": "y"}])
     ghost.unlink()
 
     r = bk.manage_backups(
@@ -450,9 +449,9 @@ def test_purge_slots_and_orphans(tmp_path):
 
 def test_anchor_recreated_after_slot_purge(tmp_path):
     doc = _make_doc(tmp_path)
-    srv.insert_paragraphs(str(doc), [{"text": "before purge"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "before purge"}])
     bk.manage_backups("purge", file_path=str(doc), scope="slots", dry_run=False)
-    srv.insert_paragraphs(str(doc), [{"text": "after purge"}], at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "after purge"}])
     # Session-start semantics: no anchor -> created on first mutation.
     assert _slot_files(doc) == sorted(SLOT_POLICY)
 

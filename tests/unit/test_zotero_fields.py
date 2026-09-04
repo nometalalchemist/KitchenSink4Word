@@ -1,5 +1,9 @@
 """Zotero field-code preservation (community feedback, 2026-08-28).
 
+v2-staged copy (Wave B): com_save_open_document renamed to
+com_save_document per the 2.15 map and insert_paragraphs anchoring moved
+to the location object; assertions unchanged.
+
 Zotero's Word integration stores citations as `ADDIN ZOTERO_ITEM
 CSL_CITATION {json}` fields and the bibliography as `ADDIN ZOTERO_BIBL`.
 Structural edits that damage these codes silently break the user's citation
@@ -69,7 +73,6 @@ def zotero_doc(tmp_path_factory):
             {"text": "The alliance argument rests on "},
             {"text": "After the citation paragraph."},
         ],
-        at_end=True,
         backup=False,
     )
     pythoncom.CoInitialize()
@@ -108,11 +111,11 @@ def test_live_edits_preserve_zotero_field(zotero_doc):
     srv.search_and_replace(path, [{"find": "alliance", "replace": "coalition"}])
     srv.insert_paragraphs(
         path, [{"text": "Inserted near the citation."}],
-        after_anchor="Before the citation",
+        location={"search": {"text": "Before the citation"}},
     )
     srv.format_text(path, {"bold": True}, find="After the citation")
     srv.search_and_replace(path, [{"find": "coalition", "replace": "alliance"}])
-    srv.com_save_open_document(path)
+    srv.com_save_document(path)
     codes = _zotero_codes(path)
     assert len(codes) == 1
     assert ZOTERO_CODE_MARK in codes[0]
@@ -131,8 +134,7 @@ def test_file_edits_preserve_zotero_field(zotero_doc, tmp_path):
         backup=False, live="off",
     )
     srv.insert_paragraphs(
-        str(work), [{"text": "New paragraph after everything."}],
-        at_end=True, backup=False, live="off",
+        str(work), [{"text": "New paragraph after everything."}], backup=False, live="off",
     )
     codes = _zotero_codes(str(work))
     assert len(codes) == 1
@@ -151,11 +153,11 @@ def test_live_delete_of_citation_paragraph_removes_field_cleanly(zotero_doc):
         p["index"] for p in paras if "alliance argument" in p["text"]
     )
     srv.delete_paragraphs(path, idx, idx)
-    srv.com_save_open_document(path)
+    srv.com_save_document(path)
     assert _zotero_codes(path) == []
     # restore for other tests (module fixture is shared)
     srv.insert_paragraphs(
         path, [{"text": "The alliance argument rests on (plain now)."}],
-        after_anchor="Before the citation",
+        location={"search": {"text": "Before the citation"}},
     )
-    srv.com_save_open_document(path)
+    srv.com_save_document(path)

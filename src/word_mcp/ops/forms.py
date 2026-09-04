@@ -14,12 +14,17 @@ import re
 
 from lxml import etree
 
-from ..core.errors import AmbiguousTarget, UnsupportedStructure, WordMcpError
+from ..core.errors import (
+    AmbiguousTarget,
+    TargetNotFound,
+    UnsupportedStructure,
+    WordMcpError,
+)
 from ..core.package import DocxPackage, qn
 from . import _runmap
 from .read import paragraph_text, run_text
 
-_BAD_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+_BAD_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
 # sdtPr children that mark control types we must not touch as form fields
 # (galleries, TOC wrappers, citations, pictures, group/equation controls).
@@ -756,4 +761,57 @@ def validate_form_completeness(
         "fields_total": len(entries),
         "unfilled": unfilled,
         "missing_fields": missing_fields,
+    }
+
+
+def delete_content_control(
+    pkg: DocxPackage,
+    *,
+    tag: str | None = None,
+    index: int | None = None,
+) -> dict:
+    """Delete one content control (the WHOLE SDT including its content),
+    addressed by tag or by list_content_controls index (exactly one),
+    matching every other delete_element branch's remove-the-object
+    semantics. Locked controls (either lock flavor) are refused; nothing is
+    changed on refusal. v2 addition (V2_DESIGN Section 3.2); v1 had no
+    content-control deletion path."""
+    if (tag is None) == (index is None):
+        raise WordMcpError("give exactly one of tag or index")
+    entries = _all_sdts(pkg)
+    if tag is not None:
+        matches = [e for e in entries if e["tag"] == tag]
+        if not matches:
+            raise TargetNotFound(
+                f"no content control with tag {tag!r}; see "
+                "list_elements(type='content_controls')"
+            )
+        if len(matches) > 1:
+            raise AmbiguousTarget(
+                f"{len(matches)} content controls share tag {tag!r} (indices "
+                f"{[e['index'] for e in matches]}); address one by index"
+            )
+        entry = matches[0]
+    else:
+        entry = next((e for e in entries if e["index"] == index), None)
+        if entry is None:
+            raise TargetNotFound(
+                f"no content control with index {index} "
+                f"({len(entries)} controls); see "
+                "list_elements(type='content_controls')"
+            )
+    label = entry["tag"] or entry["alias"] or f"index {entry['index']}"
+    if entry["content_locked"] or entry["control_locked"]:
+        raise WordMcpError(
+            f"content control {label!r} is locked (w:lock={entry['lock']}); "
+            "Word forbids deleting it. Remove the lock in Word (Developer > "
+            "Properties) first; nothing was changed"
+        )
+    sdt = entry["_sdt"]
+    sdt.getparent().remove(sdt)
+    pkg.mark_dirty()
+    return {
+        "deleted_content_control": label,
+        "type": entry["type"],
+        "was_block": entry["block"],
     }

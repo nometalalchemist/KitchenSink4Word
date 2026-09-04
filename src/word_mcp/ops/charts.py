@@ -1276,3 +1276,101 @@ def update_chart_data(
         "points_after": n,
         "embedded_workbook": workbook_state,
     }
+
+
+# ----------------------------------------------------------- delete (v2 ops)
+#
+# v1 had no chart deletion path (a parity gap the V2_DESIGN Section 3.2
+# delete_element multiplex closes). Additive: nothing above this line
+# changed.
+
+
+def _chart_drawing_entries(pkg: DocxPackage) -> list[tuple]:
+    """(kind, chart_el, graphicData) per chart drawing, in the same document
+    order _document_charts / list_charts index by."""
+    out = []
+    for gdata in pkg.root().iter(f"{{{_A}}}graphicData"):
+        uri = gdata.get("uri")
+        if uri == _C:
+            out.append(("chart", gdata.find(_qc("chart")), gdata))
+        elif uri == _CX:
+            out.append(("chartex", gdata.find(f"{{{_CX}}}chart"), gdata))
+    return out
+
+
+def delete_chart(pkg: DocxPackage, chart_index: int) -> dict:
+    """Delete a chart by its list_charts index. Removes the drawing (the
+    emptied paragraph too when it held nothing else), the document
+    relationship, the chart part with its rels, and satellite parts the
+    chart's rels reference (embedded workbook, colors, style) once nothing
+    else references them. Works on classic c: charts and modern chartex
+    alike."""
+    from .media import _remove_pkg_part, _target_referenced
+
+    entries = _chart_drawing_entries(pkg)
+    if not 0 <= chart_index < len(entries):
+        raise TargetNotFound(
+            f"chart index {chart_index} out of range ({len(entries)} "
+            "charts; see list_charts)"
+        )
+    kind, chart_el, gdata = entries[chart_index]
+    rid = chart_el.get(f"{{{_R_NS}}}id") if chart_el is not None else None
+
+    drawing = gdata
+    while drawing is not None and drawing.tag != qn("w:drawing"):
+        drawing = drawing.getparent()
+    if drawing is None:
+        raise UnsupportedStructure(
+            "chart graphic is not inside a w:drawing; deletion unsupported"
+        )
+    from .media import _detach_drawing
+
+    removed_paragraph = _detach_drawing(drawing)
+    pkg.mark_dirty()
+
+    chart_part = None
+    rels_part = "word/_rels/document.xml.rels"
+    if rid and pkg.has_part(rels_part):
+        rels_root = pkg.root(rels_part)
+        target = next(
+            (r.get("Target") for r in rels_root if r.get("Id") == rid), None
+        )
+        for r in list(rels_root):
+            if r.get("Id") == rid:
+                rels_root.remove(r)
+                pkg.mark_dirty(rels_part)
+        if target:
+            chart_part = posixpath.normpath(
+                posixpath.join("word", target.lstrip("/"))
+            )
+
+    removed_parts: list[str] = []
+    if chart_part and pkg.has_part(chart_part):
+        own_rels = _rels_part_for(chart_part)
+        base = chart_part.rsplit("/", 1)[0]
+        satellites: list[str] = []
+        if pkg.has_part(own_rels):
+            for rel in pkg.root(own_rels):
+                if rel.get("TargetMode") == "External":
+                    continue
+                t = rel.get("Target") or ""
+                if t.startswith("/"):
+                    satellites.append(posixpath.normpath(t.lstrip("/")))
+                else:
+                    satellites.append(
+                        posixpath.normpath(posixpath.join(base, t))
+                    )
+        for name in (own_rels, chart_part):
+            if _remove_pkg_part(pkg, name):
+                removed_parts.append(name)
+        for sat in satellites:
+            if pkg.has_part(sat) and not _target_referenced(pkg, sat):
+                if _remove_pkg_part(pkg, sat):
+                    removed_parts.append(sat)
+    return {
+        "deleted_chart": chart_index,
+        "kind": kind,
+        "part": chart_part,
+        "removed_parts": removed_parts,
+        "removed_paragraph": removed_paragraph,
+    }

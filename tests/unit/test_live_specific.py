@@ -1,4 +1,10 @@
-"""Live-specific tools (v2.0 L3): cursor insert, scroll-to, track toggle."""
+"""Live-specific tools (v2.0 L3): cursor insert, scroll-to, track toggle.
+
+V2 STAGED REWRITE (Wave E): word_live_repair renamed to live_repair. DO NOT
+RUN in the wave phase; the integrator runs the live rounds after applying the
+briefs. Imports from test_live_core resolve once this file replaces
+tests/unit's copy.
+"""
 
 import pytest
 
@@ -26,7 +32,6 @@ def cursor_doc(tmp_path_factory):
     srv.insert_paragraphs(
         str(path),
         [{"text": f"Paragraph number {i} with filler text."} for i in range(40)],
-        at_end=True,
         backup=False,
     )
     pythoncom.CoInitialize()
@@ -120,7 +125,7 @@ def test_com_word_status_extended(cursor_doc):
 
 @live_mark
 @needs_word
-def test_word_live_repair_reports(cursor_doc):
-    report = srv.word_live_repair()
+def test_live_repair_reports(cursor_doc):
+    report = srv.live_repair()
     assert report["word_running"] is True
     assert isinstance(report["actions"], list)

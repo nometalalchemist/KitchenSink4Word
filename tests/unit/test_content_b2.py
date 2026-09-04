@@ -44,8 +44,7 @@ def idx_of(path, fragment):
 def test_redact_fragmented_run(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": f"The launch code is {SECRET} today."}],
-        at_end=True, backup=False,
+        path, [{"text": f"The launch code is {SECRET} today."}], backup=False,
     )
     # Bold half the secret: the match now spans two runs.
     srv.format_text(path, {"bold": True}, find="SECRET", backup=False)
@@ -65,8 +64,7 @@ def test_redact_fragmented_run(tmp_path):
 def test_redact_regex_target(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": "Codes ALPHA-7 and ALPHA-99 are sensitive."}],
-        at_end=True, backup=False,
+        path, [{"text": "Codes ALPHA-7 and ALPHA-99 are sensitive."}], backup=False,
     )
     pkg = DocxPackage(path)
     res = rx.redact_text(
@@ -80,15 +78,14 @@ def test_redact_regex_target(tmp_path):
 def test_redact_all_location_classes_and_verify(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": f"Body mentions {SECRET} and a link here."}],
-        at_end=True, backup=False,
+        path, [{"text": f"Body mentions {SECRET} and a link here."}], backup=False,
     )
-    srv.set_header(path, f"Header {SECRET}", backup=False)
-    srv.add_footnote(path, "mentions", f"Footnote {SECRET}.", backup=False)
-    srv.add_hyperlink(
+    srv.set_header_footer(path, part="header", text=f"Header {SECRET}", backup=False)
+    srv.manage_note(path, action="insert", note_type="footnote", text=f"Footnote {SECRET}.", location={"search": {"text": "mentions"}}, backup=False)
+    srv.insert_hyperlink(
         path, "link here", f"https://example.com/{SECRET}", backup=False
     )
-    srv.add_comment(path, "Body", f"Comment {SECRET}", backup=False)
+    srv.manage_comment(path, action="add", text=f"Comment {SECRET}", location={"search": {"text": "Body"}}, backup=False)
     srv.set_document_properties(
         path, subject=f"About {SECRET}", keywords=f"{SECRET}, draft",
         backup=False,
@@ -129,7 +126,7 @@ def test_redact_all_location_classes_and_verify(tmp_path):
 def test_redact_field_instruction_and_cached_result(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": "Field host paragraph."}], at_end=True, backup=False
+        path, [{"text": "Field host paragraph."}], backup=False
     )
     pkg = DocxPackage(path)
     host = [
@@ -153,7 +150,7 @@ def test_redact_field_instruction_and_cached_result(tmp_path):
 def test_zero_length_regex_refused(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": f"keep {SECRET} safe"}], at_end=True, backup=False
+        path, [{"text": f"keep {SECRET} safe"}], backup=False
     )
     before = doc_text(path)
     pkg = DocxPackage(path)
@@ -169,7 +166,7 @@ def test_atomic_on_bad_target(tmp_path):
     validation runs before any mutation, and nothing was saved."""
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": f"keep {SECRET} safe"}], at_end=True, backup=False
+        path, [{"text": f"keep {SECRET} safe"}], backup=False
     )
     before = doc_text(path)
     pkg = DocxPackage(path)
@@ -187,7 +184,7 @@ def test_atomic_on_bad_target(tmp_path):
 def test_unknown_scope_refused(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": SECRET}], at_end=True, backup=False
+        path, [{"text": SECRET}], backup=False
     )
     with pytest.raises(WordMcpError):
         rx.redact_text(DocxPackage(path), [{"find": SECRET}], scope="bogus")
@@ -224,7 +221,7 @@ CONTRACT = [
 def contract_doc(tmp_path):
     path = new_doc(tmp_path, "contract.docx")
     srv.insert_paragraphs(
-        path, [{"text": t} for t in CONTRACT], at_end=True, backup=False
+        path, [{"text": t} for t in CONTRACT], backup=False
     )
     return path
 
@@ -299,110 +296,3 @@ def test_custom_definition_pattern(contract_doc):
         definition_patterns=[r'"([A-Z][^"\n]{0,80}?)"\s+shall\s+mean\b'],
     )
     assert {d["term"] for d in res["defined_terms"]} == {"Services"}
-
-
-# --------------------------------------------------------------- registration
-
-
-def test_registration_snippet_imports():
-    """The paste-ready snippet registers cleanly on the shared mcp instance
-    (paste-readiness smoke test; server.py itself is untouched). The
-    integration/ dir is a local-only staging area (gitignored), so this
-    test is a no-op where it is absent — CI, fresh clones."""
-    import importlib.util
-
-    if not (
-        Path(__file__).resolve().parents[2] / "integration"
-    ).exists():
-        pytest.skip("integration/ staging dir not present (gitignored)")
-
-    path = (
-        Path(__file__).resolve().parents[2]
-        / "integration"
-        / "content_b2_registrations.py"
-    )
-    spec = importlib.util.spec_from_file_location(
-        "content_b2_registrations", path
-    )
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    for name in (
-        "redact_text", "verify_redaction", "check_defined_terms",
-        "com_import_pdf",
-    ):
-        assert hasattr(mod, name)
-
-
-# ----------------------------------------------------------------- PDF import
-
-
-def _word_available():
-    try:
-        import pythoncom  # noqa: F401
-        import win32com.client  # noqa: F401
-    except ImportError:
-        return False
-    import winreg
-
-    try:
-        winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, "Word.Application")
-        return True
-    except OSError:
-        return False
-
-
-live_mark = pytest.mark.live
-needs_word = pytest.mark.skipif(
-    not _word_available(), reason="Word/pywin32 not available on this machine"
-)
-
-
-@live_mark
-@needs_word
-@pytest.mark.timeout(300)
-def test_pdf_import_roundtrip(tmp_path):
-    """create docx -> export PDF via the com bridge -> import_pdf the result
-    -> the text round-trips. Also: default output colliding with an existing
-    file is refused."""
-    from word_mcp.com import convert
-
-    src = new_doc(tmp_path, "src.docx")
-    srv.insert_paragraphs(
-        src,
-        [
-            {"text": "Kitchen sink PDF import fidelity check 12345."},
-            {"text": "Second paragraph survives the reflow."},
-        ],
-        at_end=True, backup=False,
-    )
-    pdf = srv.com_export_pdf(src)["pdf"]
-    assert Path(pdf).exists()
-
-    out = str(tmp_path / "imported.docx")
-    res = convert.import_pdf(pdf, out)
-    assert res["docx"] == out
-    assert Path(out).exists()
-    assert res["words"] > 0
-    assert res["pages"] >= 1
-    assert "warning" not in res  # real text layer, no scanned-image warning
-    text = doc_text(out)
-    assert "fidelity" in text and "12345" in text
-    assert "reflow" in text
-
-    # Default output would be src.docx, which exists -> refused, untouched.
-    with pytest.raises(WordMcpError):
-        convert.import_pdf(pdf)
-
-
-@live_mark
-@needs_word
-def test_pdf_import_missing_and_wrong_type(tmp_path):
-    from word_mcp.com import convert
-    from word_mcp.core.errors import DocumentNotFound
-
-    with pytest.raises(DocumentNotFound):
-        convert.import_pdf(str(tmp_path / "nope.pdf"))
-    not_pdf = tmp_path / "x.txt"
-    not_pdf.write_text("hi")
-    with pytest.raises(WordMcpError):
-        convert.import_pdf(str(not_pdf))

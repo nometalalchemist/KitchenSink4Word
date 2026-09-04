@@ -29,7 +29,6 @@ def make_doc(tmp_path, paragraphs, name="doc.docx"):
     srv.insert_paragraphs(
         path,
         [{"text": t} for t in paragraphs],
-        at_end=True,
         backup=False,
         live="off",
     )
@@ -90,10 +89,10 @@ def test_valid_cross_reference_ok(tmp_path):
         tmp_path,
         ["The delta model shows change over time.", "See the later section."],
     )
-    srv.add_bookmark(path, "DeltaModel", anchor_text="delta model", backup=False)
-    srv.add_cross_reference(
-        path, after_anchor="See the later", to_bookmark="DeltaModel",
-        kind="page", backup=False,
+    srv.insert_bookmark(path, "DeltaModel", anchor_text="delta model", backup=False)
+    srv.insert_cross_reference(
+        path, to_bookmark="DeltaModel", kind="page",
+        location={"search": {"text": "See the later"}}, backup=False,
     )
     rep = integrity.validate_cross_references(DocxPackage(path))
     assert rep["ok"] is True
@@ -109,10 +108,10 @@ def test_broken_cross_reference_detected(tmp_path):
         tmp_path,
         ["The delta model shows change over time.", "See the later section."],
     )
-    srv.add_bookmark(path, "DeltaModel", anchor_text="delta model", backup=False)
-    srv.add_cross_reference(
-        path, after_anchor="See the later", to_bookmark="DeltaModel",
-        kind="page", backup=False,
+    srv.insert_bookmark(path, "DeltaModel", anchor_text="delta model", backup=False)
+    srv.insert_cross_reference(
+        path, to_bookmark="DeltaModel", kind="page",
+        location={"search": {"text": "See the later"}}, backup=False,
     )
     # Delete the bookmark out from under the field.
     pkg = DocxPackage(path)
@@ -132,7 +131,7 @@ def test_broken_cross_reference_detected(tmp_path):
 
 def test_unreferenced_bookmark_reported(tmp_path):
     path = make_doc(tmp_path, ["The delta model shows change over time."])
-    srv.add_bookmark(path, "Orphan", anchor_text="delta model", backup=False)
+    srv.insert_bookmark(path, "Orphan", anchor_text="delta model", backup=False)
     rep = integrity.validate_cross_references(DocxPackage(path))
     assert rep["ok"] is True  # informational, not an error
     assert any(b["name"] == "Orphan" for b in rep["unreferenced_bookmarks"])
@@ -149,7 +148,7 @@ def test_textual_reference_unverified_then_verified(tmp_path):
     assert unverified[0]["paragraph_index"] == 0
 
     # Add a Figure caption and simulate Word computing its number as 3.
-    srv.add_caption(
+    srv.insert_caption(
         path, text="Trend over time", after_anchor="Results follow",
         label="Figure", backup=False,
     )
@@ -165,9 +164,9 @@ def test_textual_reference_unverified_then_verified(tmp_path):
 
 def test_missing_table_caption_detected(tmp_path):
     path = make_doc(tmp_path, ["Intro paragraph for the tables."])
-    srv.create_table(path, [["A", "B"], ["1", "2"]], at_end=True, backup=False)
-    srv.create_table(path, [["C", "D"], ["3", "4"]], at_end=True, backup=False)
-    srv.add_caption(
+    srv.create_table(path, [["A", "B"], ["1", "2"]], backup=False)
+    srv.create_table(path, [["C", "D"], ["3", "4"]], backup=False)
+    srv.insert_caption(
         path, text="First table", table_index=0, label="Table", backup=False
     )
     rep = integrity.validate_captions(DocxPackage(path))
@@ -180,14 +179,14 @@ def test_missing_image_caption_then_resolved(tmp_path):
     png = tmp_path / "dot.png"
     png.write_bytes(base64.b64decode(_PNG_B64))
     path = make_doc(tmp_path, ["Diagram below."])
-    srv.add_image(path, str(png), at_end=True, backup=False)
+    srv.insert_image(path, str(png), backup=False)
 
     rep = integrity.validate_captions(DocxPackage(path))
     assert rep["images_checked"] == 1
     assert any(m["kind"] == "image" for m in rep["missing"])
 
     # Caption lands between the text and the image -> adjacent to the image.
-    srv.add_caption(
+    srv.insert_caption(
         path, text="A diagram", after_anchor="Diagram below", label="Figure",
         backup=False,
     )
@@ -198,9 +197,9 @@ def test_missing_image_caption_then_resolved(tmp_path):
 
 def test_mixed_numbering_convention_flagged(tmp_path):
     path = make_doc(tmp_path, ["Intro paragraph for the figures."])
-    srv.create_table(path, [["A"], ["1"]], at_end=True, backup=False)
-    srv.create_table(path, [["B"], ["2"]], at_end=True, backup=False)
-    srv.add_caption(
+    srv.create_table(path, [["A"], ["1"]], backup=False)
+    srv.create_table(path, [["B"], ["2"]], backup=False)
+    srv.insert_caption(
         path, text="Sequential one", table_index=0, label="Figure",
         backup=False,
     )
@@ -246,9 +245,9 @@ def test_prepare_for_submission_end_to_end(tmp_path):
         path, [{"find": "draft", "replace": "manuscript"}],
         track=True, author="Reviewer", backup=False, live="off",
     )
-    srv.add_comment(
-        path, anchor_text="Another paragraph", text="fix this",
-        author="Reviewer", backup=False,
+    srv.manage_comment(
+        path, action="add", text="fix this", author="Reviewer",
+        location={"search": {"text": "Another paragraph"}}, backup=False,
     )
     assert read.revision_summary(DocxPackage(path))["total"] > 0
     assert len(read.get_comments(DocxPackage(path))) == 1
@@ -288,7 +287,7 @@ def test_prepare_for_submission_end_to_end(tmp_path):
 
 def test_prepare_for_submission_refuses_protected(tmp_path):
     path = make_doc(tmp_path, ["A protected document."])
-    srv.set_document_protection(path, edit="readOnly", backup=False)
+    srv.set_document_protection(path, protection="readOnly", backup=False)
     with pytest.raises(DocumentProtected):
         cleanup.prepare_for_submission(DocxPackage(path))
 
@@ -374,10 +373,10 @@ def test_reference_field_integrity_check(tmp_path):
 def test_reference_field_integrity_clean_doc(tmp_path):
     # Non-manager fields (a PAGEREF cross-reference) must not trip the check.
     path = make_doc(tmp_path, ["The delta model target.", "See the target."])
-    srv.add_bookmark(path, "Target", anchor_text="delta model", backup=False)
-    srv.add_cross_reference(
-        path, after_anchor="See the target", to_bookmark="Target",
-        kind="page", backup=False,
+    srv.insert_bookmark(path, "Target", anchor_text="delta model", backup=False)
+    srv.insert_cross_reference(
+        path, to_bookmark="Target", kind="page",
+        location={"search": {"text": "See the target"}}, backup=False,
     )
     chk = reffields.check_reference_field_integrity(DocxPackage(path))
     assert chk["ok"] is True

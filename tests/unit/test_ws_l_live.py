@@ -1,5 +1,11 @@
 """Workstream L regressions: the Ch5 live-ops bug batch (L1-L9 + sweep).
 
+V2 STAGED REWRITE (Wave E): replace_paragraph_text renamed to
+set_paragraph_text (location object), apply_style moved to range kwargs. DO
+NOT RUN in the wave phase; the integrator runs the live rounds after applying
+the briefs. Imports from test_live_core resolve once this file replaces
+tests/unit's copy.
+
 File-mode tests (LCID map, outlineLvl outline detection) run everywhere.
 The live-marked tests spawn their OWN Word instance via the standard fixture
 infrastructure (DispatchEx + ROT-moniker quit) and never touch documents
@@ -68,10 +74,17 @@ def _new_doc(tmp_path, name, texts):
     path = tmp_path / name
     srv.create_document(str(path))
     srv.insert_paragraphs(
-        str(path), [{"text": t} for t in texts], at_end=True, backup=False,
+        str(path), [{"text": t} for t in texts], backup=False,
         live="off",
     )
     return str(path)
+
+
+def _apply_para_style(path, index, style):
+    """v2 apply_style on a single paragraph."""
+    srv.apply_style(
+        path, style=style, range={"start": index, "end": index}, backup=False
+    )
 
 
 def _add_style(path, style_id, outline_val=None, based_on=None):
@@ -110,7 +123,7 @@ def test_outline_detects_direct_outlinelvl(tmp_path):
 def test_outline_detects_style_outlinelvl(tmp_path):
     path = _new_doc(tmp_path, "styled.docx", ["Section Head", "Body."])
     _add_style(path, "NsuHead", outline_val=1)
-    srv.apply_style(path, [0], "NsuHead", backup=False)
+    _apply_para_style(path, 0, "NsuHead")
     outline = srv.get_outline(path, live="off")
     assert [(h["text"], h["level"], h["detected_via"]) for h in outline] == [
         ("Section Head", 2, "outline_level")
@@ -119,13 +132,13 @@ def test_outline_detects_style_outlinelvl(tmp_path):
 
 def test_outline_detects_basedon_chain_outlinelvl(tmp_path):
     """outlineLvl inherited through the style's basedOn chain (grandparent
-    carries it) — Word resolves the effective value this way and so must
+    carries it): Word resolves the effective value this way and so must
     get_outline (L8)."""
     path = _new_doc(tmp_path, "chain.docx", ["Deep Head", "Body."])
     _add_style(path, "BaseHead", outline_val=2)
     _add_style(path, "MidHead", based_on="BaseHead")
     _add_style(path, "LeafHead", based_on="MidHead")
-    srv.apply_style(path, [0], "LeafHead", backup=False)
+    _apply_para_style(path, 0, "LeafHead")
     outline = srv.get_outline(path, live="off")
     assert [(h["text"], h["level"], h["detected_via"]) for h in outline] == [
         ("Deep Head", 3, "outline_level")
@@ -139,7 +152,7 @@ def test_outline_lvl9_is_body_text(tmp_path):
     from lxml import etree
 
     path = _new_doc(tmp_path, "lvl9.docx", ["Not a heading", "Demoted head"])
-    srv.apply_style(path, [1], "Heading 1", backup=False)
+    _apply_para_style(path, 1, "Heading 1")
     pkg = DocxPackage(path)
     for idx in (0, 1):
         p = [
@@ -153,12 +166,16 @@ def test_outline_lvl9_is_body_text(tmp_path):
         ol.set(qn("w:val"), "9")
     pkg.mark_dirty()
     pkg.save(do_backup=False)
-    assert srv.get_outline(path, live="off") == []
+    # No headings: the field-test fix returns the honest fallback dict
+    # (note + flat structure counts) instead of a bare empty list.
+    out = srv.get_outline(path, live="off")
+    assert out["headings"] == []
+    assert out["structure"]["paragraphs"] == 2
 
 
 def test_outline_heading_style_still_detected(tmp_path):
     path = _new_doc(tmp_path, "head.docx", ["Real Heading", "Body."])
-    srv.apply_style(path, [0], "Heading 2", backup=False)
+    _apply_para_style(path, 0, "Heading 2")
     outline = srv.get_outline(path, live="off")
     assert [(h["text"], h["level"], h["detected_via"]) for h in outline] == [
         ("Real Heading", 2, "heading_style")
@@ -173,7 +190,7 @@ def test_word_count_sections_from_outlinelvl_headings(tmp_path):
         ["Template Chapter", "four words of body", "more body words here"],
     )
     _add_style(path, "NsuHead", outline_val=0)
-    srv.apply_style(path, [0], "NsuHead", backup=False)
+    _apply_para_style(path, 0, "NsuHead")
     wc = srv.word_count(path, live="off")
     assert len(wc["sections"]) == 1
     sec = wc["sections"][0]
@@ -204,24 +221,31 @@ def ws_l_doc(tmp_path_factory):
             {"text": LONG_SENT},
             {"text": "Template heading"},
             {"text": "Closing text paragraph."},
-        ],
-        at_end=True, backup=False, live="off",
+        ], backup=False, live="off",
     )
     read = srv.get_text(str(path), live="off")
     idx = {p["text"]: p["index"] for p in read if p["index"] is not None}
-    srv.apply_style(str(path), [idx["Intro heading"]], "Heading 1",
-                    backup=False)
+    srv.apply_style(
+        str(path), style="Heading 1",
+        range={"start": idx["Intro heading"], "end": idx["Intro heading"]},
+        backup=False,
+    )
     srv.set_paragraph_format(
         str(path), [idx["Template heading"]], {"outline_level": 0},
         backup=False,
     )
-    srv.create_table(str(path), [["a", "b"], ["c", "d"]], at_end=True,
+    srv.create_table(str(path), [["a", "b"], ["c", "d"]],
                      backup=False)
-    srv.add_comment(str(path), anchor_text="Closing text",
-                    text="First comment", author="Tester A", backup=False)
+    srv.manage_comment(
+        str(path), action="add",
+        location={"search": {"text": "Closing text"}},
+        text="First comment", author="Tester A", backup=False,
+    )
     first = srv.get_comments(str(path), live="off")
-    srv.reply_to_comment(str(path), comment_id=first[0]["id"],
-                         text="A reply", author="Tester B", backup=False)
+    srv.manage_comment(
+        str(path), action="reply", comment_id=first[0]["id"],
+        text="A reply", author="Tester B", backup=False,
+    )
     captured = {
         "path": str(path),
         "comments": srv.get_comments(str(path), live="off"),
@@ -332,12 +356,13 @@ def test_l3_diagnose_document_honest_refusal(ws_l_doc):
 
 @live_mark
 @needs_word
-def test_l4_replace_paragraph_text_live(ws_l_doc):
+def test_l4_set_paragraph_text_live(ws_l_doc):
     path = ws_l_doc["path"]
     paras = srv.get_text(path)
     target = next(p for p in paras if p["text"] == "Closing text paragraph.")
-    r = srv.replace_paragraph_text(
-        path, target["index"], "Rewritten closing paragraph."
+    r = srv.set_paragraph_text(
+        path, location={"paragraph": target["index"]},
+        new_text="Rewritten closing paragraph.",
     )
     assert r["live"] is True
     assert r["replaced_paragraph"] == target["index"]
@@ -346,7 +371,10 @@ def test_l4_replace_paragraph_text_live(ws_l_doc):
     assert entry["text"] == "Rewritten closing paragraph."
     assert entry["style"] == target["style"]  # paragraph mark untouched
     # restore for the other tests
-    srv.replace_paragraph_text(path, target["index"], target["text"])
+    srv.set_paragraph_text(
+        path, location={"paragraph": target["index"]},
+        new_text=target["text"],
+    )
 
 
 @live_mark

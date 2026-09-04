@@ -1,10 +1,8 @@
 """fix_accessibility gate: the audit's mutation twin. Per-category opt-ins,
 conservative refusals, dry_run, and the audit -> fix -> audit round trip.
 Documents are synthetic (server-layer builders); the tool itself is exercised
-through the integration registration snippet, which doubles as its
-paste-readiness smoke test. No COM, no Word."""
+through the registered v2 server surface. No COM, no Word."""
 
-import importlib.util
 import struct
 import zlib
 from pathlib import Path
@@ -16,19 +14,9 @@ from word_mcp.core.errors import WordMcpError
 from word_mcp.core.package import DocxPackage
 from word_mcp.ops import accessibility as ax
 
-# Load the registration snippet exactly as server.py would host it: this both
-# smoke-tests paste-readiness and gives the tests the real tool (dry_run
-# routing + _edit save path included).
-_REG = Path(__file__).resolve().parents[2] / "integration" / (
-    "accessibility_fix_registrations.py"
-)
-if _REG.exists():
-    _spec = importlib.util.spec_from_file_location("accessibility_fix_reg", _REG)
-    _regmod = importlib.util.module_from_spec(_spec)
-    _spec.loader.exec_module(_regmod)
-    fix_accessibility = _regmod.fix_accessibility
-else:
-    fix_accessibility = srv.fix_accessibility.fn if hasattr(srv.fix_accessibility, 'fn') else srv.fix_accessibility
+# v2: fix_accessibility ships in server.py proper; the module
+# attribute is the raw function (in-process v1-shaped contract).
+fix_accessibility = srv.fix_accessibility
 
 
 def make_png(path, w=80, h=40, rgb=(200, 30, 30)):
@@ -74,16 +62,16 @@ def core_title(path):
 def build_flagged_doc(tmp_path):
     """One document carrying all four fixable finding types."""
     path = new_doc(tmp_path, "flagged.docx")  # no title
-    srv.add_heading(path, "Report Title", 1, at_end=True, backup=False)
-    srv.add_heading(path, "Deep Detail", 3, at_end=True, backup=False)  # skip
+    srv.insert_paragraphs(path, [{"text": "Report Title", "heading_level": 1}], backup=False)
+    srv.insert_paragraphs(path, [{"text": "Deep Detail", "heading_level": 3}], backup=False)  # skip
     srv.insert_paragraphs(
-        path, [{"text": "Body text under the deep heading."}], at_end=True,
+        path, [{"text": "Body text under the deep heading."}],
         backup=False,
     )
     png = make_png(tmp_path / "img.png")
-    srv.add_image(path, str(png), at_end=True, backup=False)  # no alt text
+    srv.insert_image(path, str(png), backup=False)  # no alt text
     srv.create_table(
-        path, [["Name", "Value"], ["a", "1"]], at_end=True, header_row=False,
+        path, [["Name", "Value"], ["a", "1"]], header_row=False,
         backup=False,
     )
     return path
@@ -119,7 +107,7 @@ def test_only_opted_in_categories_run(tmp_path):
 def test_alt_text_placeholder_marked_and_listed(tmp_path):
     path = new_doc(tmp_path, title="T")
     png = make_png(tmp_path / "img.png")
-    srv.add_image(path, str(png), at_end=True, backup=False)
+    srv.insert_image(path, str(png), backup=False)
     res = fix_accessibility(path, alt_text_placeholders=True, backup=False)
     cat = res["categories"]["alt_text_placeholders"]
     assert len(cat["fixed"]) == 1
@@ -135,8 +123,8 @@ def test_alt_text_placeholder_marked_and_listed(tmp_path):
 def test_alt_text_existing_never_touched(tmp_path):
     path = new_doc(tmp_path, title="T")
     png = make_png(tmp_path / "img.png")
-    srv.add_image(path, str(png), at_end=True, backup=False)
-    srv.set_image_alt_text(path, 0, "A real description", backup=False)
+    srv.insert_image(path, str(png), backup=False)
+    srv.set_image(path, 0, alt_text="A real description", backup=False)
     res = fix_accessibility(path, alt_text_placeholders=True, backup=False)
     cat = res["categories"]["alt_text_placeholders"]
     assert cat["fixed"] == [] and cat["needs_human_review"] == []
@@ -157,9 +145,9 @@ def test_alt_text_existing_never_touched(tmp_path):
 
 def test_heading_promote_closes_gap_with_subtree(tmp_path):
     path = new_doc(tmp_path, title="T")
-    srv.add_heading(path, "Top", 1, at_end=True, backup=False)
-    srv.add_heading(path, "Deep", 3, at_end=True, backup=False)
-    srv.add_heading(path, "Deeper", 4, at_end=True, backup=False)
+    srv.insert_paragraphs(path, [{"text": "Top", "heading_level": 1}], backup=False)
+    srv.insert_paragraphs(path, [{"text": "Deep", "heading_level": 3}], backup=False)
+    srv.insert_paragraphs(path, [{"text": "Deeper", "heading_level": 4}], backup=False)
     res = fix_accessibility(path, heading_skips=True, backup=False)
     cat = res["categories"]["heading_skips"]
     assert [(f["from_level"], f["to_level"]) for f in cat["fixed"]] == [
@@ -174,10 +162,10 @@ def test_heading_promote_closes_gap_with_subtree(tmp_path):
 
 def test_heading_demote_following(tmp_path):
     path = new_doc(tmp_path, title="T")
-    srv.add_heading(path, "A", 1, at_end=True, backup=False)
-    srv.add_heading(path, "B", 2, at_end=True, backup=False)
-    srv.add_heading(path, "C", 1, at_end=True, backup=False)  # over-promoted
-    srv.add_heading(path, "D", 3, at_end=True, backup=False)  # skip after C
+    srv.insert_paragraphs(path, [{"text": "A", "heading_level": 1}], backup=False)
+    srv.insert_paragraphs(path, [{"text": "B", "heading_level": 2}], backup=False)
+    srv.insert_paragraphs(path, [{"text": "C", "heading_level": 1}], backup=False)  # over-promoted
+    srv.insert_paragraphs(path, [{"text": "D", "heading_level": 3}], backup=False)  # skip after C
     res = fix_accessibility(
         path, heading_skips=True, heading_strategy="demote_following",
         backup=False,
@@ -194,9 +182,9 @@ def test_heading_demote_following(tmp_path):
 
 def test_heading_nested_skip_refused_unchanged(tmp_path):
     path = new_doc(tmp_path, title="T")
-    srv.add_heading(path, "One", 1, at_end=True, backup=False)
-    srv.add_heading(path, "Three", 3, at_end=True, backup=False)
-    srv.add_heading(path, "Five", 5, at_end=True, backup=False)
+    srv.insert_paragraphs(path, [{"text": "One", "heading_level": 1}], backup=False)
+    srv.insert_paragraphs(path, [{"text": "Three", "heading_level": 3}], backup=False)
+    srv.insert_paragraphs(path, [{"text": "Five", "heading_level": 5}], backup=False)
     res = fix_accessibility(path, heading_skips=True, backup=False)
     cat = res["categories"]["heading_skips"]
     assert cat["fixed"] == []
@@ -208,8 +196,8 @@ def test_heading_nested_skip_refused_unchanged(tmp_path):
 
 def test_heading_demote_refuses_removing_only_h1(tmp_path):
     path = new_doc(tmp_path, title="T")
-    srv.add_heading(path, "Only", 1, at_end=True, backup=False)
-    srv.add_heading(path, "Deep", 3, at_end=True, backup=False)
+    srv.insert_paragraphs(path, [{"text": "Only", "heading_level": 1}], backup=False)
+    srv.insert_paragraphs(path, [{"text": "Deep", "heading_level": 3}], backup=False)
     res = fix_accessibility(
         path, heading_skips=True, heading_strategy="demote_following",
         backup=False,
@@ -235,11 +223,11 @@ def test_heading_bad_strategy_rejected(tmp_path):
 def test_table_headers_fix_and_numeric_skip(tmp_path):
     path = new_doc(tmp_path, title="T")
     srv.create_table(
-        path, [["Name", "Value"], ["a", "1"]], at_end=True, header_row=False,
+        path, [["Name", "Value"], ["a", "1"]], header_row=False,
         backup=False,
     )
     srv.create_table(
-        path, [["1", "2.5"], ["3", "4"]], at_end=True, header_row=False,
+        path, [["1", "2.5"], ["3", "4"]], header_row=False,
         backup=False,
     )
     res = fix_accessibility(path, table_headers=True, backup=False)
@@ -255,7 +243,7 @@ def test_table_headers_fix_and_numeric_skip(tmp_path):
 def test_table_single_row_skipped(tmp_path):
     path = new_doc(tmp_path, title="T")
     srv.create_table(
-        path, [["only", "row"]], at_end=True, header_row=False, backup=False
+        path, [["only", "row"]], header_row=False, backup=False
     )
     res = fix_accessibility(path, table_headers=True, backup=False)
     cat = res["categories"]["table_headers"]
@@ -269,8 +257,8 @@ def test_table_single_row_skipped(tmp_path):
 
 def test_doc_title_from_first_h1(tmp_path):
     path = new_doc(tmp_path)  # no title
-    srv.add_heading(path, "Annual Report", 1, at_end=True, backup=False)
-    srv.add_heading(path, "Later Heading", 1, at_end=True, backup=False)
+    srv.insert_paragraphs(path, [{"text": "Annual Report", "heading_level": 1}], backup=False)
+    srv.insert_paragraphs(path, [{"text": "Later Heading", "heading_level": 1}], backup=False)
     res = fix_accessibility(path, doc_title=True, backup=False)
     (fixedfix,) = res["categories"]["doc_title"]["fixed"]
     assert fixedfix["title"] == "Annual Report"
@@ -280,7 +268,7 @@ def test_doc_title_from_first_h1(tmp_path):
 
 def test_doc_title_never_overwritten(tmp_path):
     path = new_doc(tmp_path, title="Existing Title")
-    srv.add_heading(path, "Different Heading", 1, at_end=True, backup=False)
+    srv.insert_paragraphs(path, [{"text": "Different Heading", "heading_level": 1}], backup=False)
     res = fix_accessibility(path, doc_title=True, backup=False)
     cat = res["categories"]["doc_title"]
     assert cat["fixed"] == []
@@ -290,7 +278,7 @@ def test_doc_title_never_overwritten(tmp_path):
 
 def test_doc_title_no_h1_needs_review(tmp_path):
     path = new_doc(tmp_path)  # no title
-    srv.add_heading(path, "Only a Subsection", 2, at_end=True, backup=False)
+    srv.insert_paragraphs(path, [{"text": "Only a Subsection", "heading_level": 2}], backup=False)
     res = fix_accessibility(path, doc_title=True, backup=False)
     cat = res["categories"]["doc_title"]
     assert cat["fixed"] == []

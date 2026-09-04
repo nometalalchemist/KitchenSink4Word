@@ -31,7 +31,7 @@ _PLACEHOLDER_RE = re.compile(r"\{\{([^{}\n]{1,200}?)\}\}")
 _MERGEFIELD_RE = re.compile(r"MERGEFIELD\s+(?:\"([^\"]+)\"|([^\s\\\"]+))")
 # XML 1.0 forbids these outright (\x07, Word's cell separator, included);
 # they would also poison every downstream save.
-_BAD_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+_BAD_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
 _MISSING_MODES = ("error", "skip", "empty")
 

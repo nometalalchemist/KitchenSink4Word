@@ -18,7 +18,9 @@ def _box_doc(tmp_path):
 def test_f1_replace_matches_preview_on_box_docs(tmp_path):
     path = _box_doc(tmp_path)
     # box text contains "Box body text"; host contains "Host paragraph."
-    prev = srv.preview_replace(str(path), [{"find": "Box body", "replace": "X"}])
+    prev = srv.search_and_replace(
+        str(path), [{"find": "Box body", "replace": "X"}], preview=True
+    )
     real = srv.search_and_replace(
         str(path), [{"find": "Box body", "replace": "X"}],
         backup=False, live="off",
@@ -42,12 +44,11 @@ def test_f2_protected_entry_citations_not_numbered(tmp_path):
          {"text": "Hurd, I. (1999). Legitimacy and authority. International "
                   "Organization, 53(2), 379-408."},
          {"text": "Lake, D. (2009). Hierarchy in international relations. "
-                  "Cornell University Press."}],
-        at_end=True, backup=False,
+                  "Cornell University Press."}], backup=False,
     )
-    srv.apply_style(str(path), [1], "Heading 1", backup=False)
+    srv.apply_style(str(path), style="Heading 1", range={"start": 1, "end": 1}, backup=False)
     # protect the Hurd entry with a hyperlink
-    srv.add_hyperlink(
+    srv.insert_hyperlink(
         str(path), anchor_text="International Organization",
         url="https://example.org/io", backup=False,
     )
@@ -69,13 +70,11 @@ def test_f3_swapped_blocks_reported_as_moves(tmp_path):
     anchor = ["Anchor paragraph one stays.", "Anchor paragraph two stays."]
     srv.create_document(str(a))
     srv.insert_paragraphs(
-        str(a), [{"text": t} for t in block1 + anchor + block2],
-        at_end=True, backup=False,
+        str(a), [{"text": t} for t in block1 + anchor + block2], backup=False,
     )
     srv.create_document(str(b))
     srv.insert_paragraphs(
-        str(b), [{"text": t} for t in block2 + anchor + block1],
-        at_end=True, backup=False,
+        str(b), [{"text": t} for t in block2 + anchor + block1], backup=False,
     )
     d = srv.structured_diff(str(a), str(b))
     assert d["counts"]["moved"] >= 6 if "counts" in d else len(d["moved"]) >= 6
@@ -91,11 +90,10 @@ def test_f4_hangul_and_nd_citations_recognized(tmp_path):
         [{"text": "북한 연구에서 김철수 (2026) argues; see also (박영희, n.d.)."},
          {"text": "References"},
          {"text": "김철수. (2026). 논문 제목. 학술지, 1(1), 1-10."},
-         {"text": "박영희. (n.d.). 다른 논문. 학술지."}],
-        at_end=True, backup=False,
+         {"text": "박영희. (n.d.). 다른 논문. 학술지."}], backup=False,
     )
-    srv.apply_style(str(path), [1], "Heading 1", backup=False)
-    parity = srv.check_citation_parity(str(path))
+    srv.apply_style(str(path), style="Heading 1", range={"start": 1, "end": 1}, backup=False)
+    parity = srv.validate(str(path), checks=["citation_parity"])["results"]["citation_parity"]["findings"]
     uncited = parity.get("uncited_references", [])
     assert not any("김철수" in u for u in uncited)
     parsed = srv.parse_references(str(path))
@@ -114,12 +112,12 @@ def test_f5_page_range_dash_preserved():
 def test_f6_file_macros_refused(tmp_path):
     path = tmp_path / "f6.docx"
     srv.create_document(str(path))
-    srv.insert_paragraphs(str(path), [{"text": "x"}], at_end=True, backup=False)
+    srv.insert_paragraphs(str(path), [{"text": "x"}], backup=False)
     with pytest.raises(WordMcpError, match="file/preamble"):
-        srv.add_equation(str(path), r"\input{secrets.tex}", at_end=True,
+        srv.insert_equation(str(path), r"\input{secrets.tex}",
                          backup=False)
     with pytest.raises(WordMcpError, match="file/preamble"):
-        srv.add_equation(str(path), r"a + \write18{cmd}", at_end=True,
+        srv.insert_equation(str(path), r"a + \write18{cmd}",
                          backup=False)
 
 
@@ -129,7 +127,7 @@ def test_f7_extract_images_dir_is_file_refused(tmp_path):
     blocker = tmp_path / "blocker"
     blocker.write_text("i am a file")
     with pytest.raises(WordMcpError, match="existing FILE"):
-        srv.extract_images(str(path), str(blocker))
+        srv.export_images(str(path), str(blocker))
 
 
 def test_accented_latin_authors_recognized(tmp_path):
@@ -142,10 +140,9 @@ def test_accented_latin_authors_recognized(tmp_path):
         [{"text": "As Müller (2019) shows, and see also (García, 2020)."},
          {"text": "References"},
          {"text": "Müller, K. (2019). Der Titel. Zeitschrift, 1(1), 1-10."},
-         {"text": "García, L. (2020). El título. Revista, 2(2), 20-30."}],
-        at_end=True, backup=False,
+         {"text": "García, L. (2020). El título. Revista, 2(2), 20-30."}], backup=False,
     )
-    srv.apply_style(str(path), [1], "Heading 1", backup=False)
-    parity = srv.check_citation_parity(str(path))
+    srv.apply_style(str(path), style="Heading 1", range={"start": 1, "end": 1}, backup=False)
+    parity = srv.validate(str(path), checks=["citation_parity"])["results"]["citation_parity"]["findings"]
     uncited = parity.get("uncited_references", [])
     assert not any("Müller" in u or "García" in u for u in uncited), parity

@@ -874,22 +874,3 @@ def test_special_characters_survive(tmp_path):
     assert ch._series_name(ser) == "R&D <spend>"
     cells = _sheet_cells(f, "word/embeddings/Microsoft_Excel_Worksheet1.xlsx")
     assert cells["A2"] == "A & B" and cells["B1"] == "R&D <spend>"
-
-
-def test_registration_snippet_importable():
-    """The integration snippet registers cleanly on the shared mcp instance
-    (paste-readiness smoke test; mirrors the dataio bundle's convention)."""
-    import importlib
-    import sys
-
-    root = Path(__file__).resolve().parents[2]
-    if not (root / "integration" / "charts_registrations.py").exists():
-        pytest.skip("integration/ staging dir not present (gitignored)")
-    sys.path.insert(0, str(root))
-    try:
-        mod = importlib.import_module("integration.charts_registrations")
-        assert hasattr(mod, "add_chart")
-        assert hasattr(mod, "list_charts")
-        assert hasattr(mod, "update_chart_data")
-    finally:
-        sys.path.remove(str(root))

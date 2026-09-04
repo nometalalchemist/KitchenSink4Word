@@ -66,6 +66,40 @@ def search_and_replace(
     """
     counts = {item["find"]: 0 for item in replacements}
 
+    # Zero-width-only regex pre-scan: a pattern that MATCHES but only at
+    # zero width (pure lookarounds like (?<=foo)) used to fall through to
+    # "0 replaced" with no explanation, since zero-length matches are
+    # always skipped. Refuse loudly before touching anything, consistent
+    # with the empty-regex preview refusal (field test, 2026-09-03).
+    if any(item.get("regex") for item in replacements):
+        zw_raw: dict[int, int] = {}
+        zw_eff: dict[int, int] = {}
+        for part in _replace_parts(pkg, scope):
+            for p in pkg.root(part).iter(qn("w:p")):
+                if _runmap._in_textbox(p, pkg.root(part)):
+                    continue
+                text, _ = _runmap.build_map(p)
+                for i, item in enumerate(replacements):
+                    if not item.get("regex"):
+                        continue
+                    for m in _regex.finditer(item["find"], text):
+                        zw_raw[i] = zw_raw.get(i, 0) + 1
+                        if m.start() != m.end():
+                            zw_eff[i] = zw_eff.get(i, 0) + 1
+        offenders = [
+            replacements[i]["find"]
+            for i in zw_raw
+            if not zw_eff.get(i)
+        ]
+        if offenders:
+            raise WordMcpError(
+                f"regex pattern(s) {offenders} matched only zero-width "
+                "positions (lookarounds such as (?<=x) match a position, "
+                "not text), and zero-length matches are always skipped. "
+                "Nothing was changed; include the text to be replaced in "
+                "the pattern (e.g. (?<=x)y instead of a bare lookbehind)."
+            )
+
     if max_replacements is not None:
         projected = 0
         for part in _replace_parts(pkg, scope):
@@ -209,9 +243,26 @@ def _resolve_anchor(pkg: DocxPackage, anchor_text: str) -> etree._Element:
     return matches[0]
 
 
+# XML 1.0-forbidden control characters plus DEL (0x7F). C0 controls make
+# lxml refuse anyway; DEL is XML-legal but Word strips it silently on open,
+# so accepting it would be a silent data change (field test, 2026-09-03).
+_CTRL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def _check_storable_text(text: str, what: str = "text") -> None:
+    m = _CTRL_CHARS_RE.search(text)
+    if m:
+        raise WordMcpError(
+            f"{what} contains control character 0x{ord(m.group(0)):02X}, "
+            "which Word cannot store (C0 controls and DEL 0x7F are "
+            "refused; use \\n for line breaks and \\t for tabs)"
+        )
+
+
 def _make_paragraph(
     text: str, *, style: str | None = None, formatting: dict | None = None
 ) -> etree._Element:
+    _check_storable_text(text, "paragraph text")
     p = etree.Element(qn("w:p"))
     if style or formatting:
         ppr = etree.SubElement(p, qn("w:pPr"))
@@ -234,8 +285,12 @@ def _paragraph_format_clone(
     p: etree._Element,
 ) -> tuple[etree._Element | None, etree._Element | None]:
     """Clonable formatting of a body paragraph for inherit_format /
-    copy_format_from: (deep copy of its direct pPr minus numPr/sectPr, deep
-    copy of its terminal run's rPr). Revision markers (w:ins/w:del/
+    copy_format_from: (deep copy of its direct pPr minus numPr/sectPr/
+    outlineLvl, deep copy of its terminal run's rPr). w:outlineLvl is
+    STRUCTURAL, not visual: cloning it from a heading anchor silently made
+    new body paragraphs show up in the outline and TOC (field test,
+    2026-09-03), so it is excluded; set it deliberately with
+    set_paragraph_format's outline_level. Revision markers (w:ins/w:del/
     w:rPrChange/w:pPrChange) are never cloned — copying the anchor's tracked
     state onto brand-new paragraphs would mark them inserted/deleted by
     someone else. Either element may be None when the paragraph carries no
@@ -243,7 +298,7 @@ def _paragraph_format_clone(
     ppr = p.find(qn("w:pPr"))
     ppr_clone = copy.deepcopy(ppr) if ppr is not None else None
     if ppr_clone is not None:
-        for tag in ("w:numPr", "w:sectPr", "w:pPrChange"):
+        for tag in ("w:numPr", "w:sectPr", "w:pPrChange", "w:outlineLvl"):
             for node in ppr_clone.findall(qn(tag)):
                 ppr_clone.remove(node)
         mark_rpr = ppr_clone.find(qn("w:rPr"))
@@ -805,6 +860,57 @@ def format_text(
 
 _ALIGN = {"left": "left", "center": "center", "right": "right", "justify": "both"}
 
+# Numeric bounds mirroring Word's own UI limits (Word caps spacing and
+# indents at 1584pt / 22in and line-spacing multiples at 132). Out-of-range
+# values used to ride through into undefined rendering (field test,
+# 2026-09-03): negative indents, 99999pt spacing.
+_PT_MAX = 1584.0
+_LINE_SPACING_MIN, _LINE_SPACING_MAX = 0.06, 132.0
+
+
+def _num_ok(v) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def validate_paragraph_numeric(formatting: dict) -> None:
+    """Range-check the numeric paragraph-formatting keys; raises with the
+    valid bounds named. Shared by the file and live paths."""
+    for key in ("space_before_pt", "space_after_pt"):
+        if key in formatting:
+            v = formatting[key]
+            if not _num_ok(v) or not 0 <= v <= _PT_MAX:
+                raise WordMcpError(
+                    f"{key} must be a number from 0 to {_PT_MAX:.0f}pt "
+                    f"(Word's maximum), got {v!r}"
+                )
+    if "line_spacing" in formatting:
+        v = formatting["line_spacing"]
+        if not _num_ok(v) or not (
+            _LINE_SPACING_MIN <= v <= _LINE_SPACING_MAX
+        ):
+            raise WordMcpError(
+                "line_spacing is a multiple of single spacing (1 = single, "
+                f"2 = double) from {_LINE_SPACING_MIN} to "
+                f"{_LINE_SPACING_MAX:.0f} (Word's maximum), got {v!r}"
+            )
+    for key in ("indent_left_pt", "indent_right_pt"):
+        if key in formatting:
+            v = formatting[key]
+            if not _num_ok(v) or not 0 <= v <= _PT_MAX:
+                raise WordMcpError(
+                    f"{key} must be a number from 0 to {_PT_MAX:.0f}pt; "
+                    f"got {v!r} (negative indents are refused; for a "
+                    "hanging indent use a negative first_line_indent_pt)"
+                )
+    if "first_line_indent_pt" in formatting:
+        v = formatting["first_line_indent_pt"]
+        if not _num_ok(v) or not -_PT_MAX <= v <= _PT_MAX:
+            raise WordMcpError(
+                f"first_line_indent_pt must be a number from "
+                f"-{_PT_MAX:.0f} to {_PT_MAX:.0f}pt (negative = hanging "
+                f"indent), got {v!r}"
+            )
+
 
 def set_paragraph_format(
     pkg: DocxPackage, indices: list[int], formatting: dict
@@ -822,6 +928,7 @@ def set_paragraph_format(
     apply_style('Heading N') would wreck the template's look. 0 is the top
     level (Heading 1 equivalent); body text simply has no outlineLvl."""
     _check_keys(formatting, _PARA_FMT_KEYS, "paragraph-formatting")
+    validate_paragraph_numeric(formatting)
     if "outline_level" in formatting:
         lvl = formatting["outline_level"]
         if lvl is not None and (

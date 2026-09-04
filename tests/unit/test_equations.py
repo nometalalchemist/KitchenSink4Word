@@ -147,7 +147,6 @@ def test_display_positioning_modes(tmp_path):
     srv.insert_paragraphs(
         path,
         [{"text": "First paragraph."}, {"text": "Second paragraph."}],
-        at_end=True,
         backup=False,
     )
     add(path, r"a^2", after_anchor="First paragraph.")
@@ -184,7 +183,6 @@ def test_inline_insert_preserves_text(tmp_path):
     srv.insert_paragraphs(
         path,
         [{"text": "The identity holds for all x in the domain."}],
-        at_end=True,
         backup=False,
     )
     before = [p["text"] for p in srv.get_text(path, live="off")]
@@ -226,7 +224,7 @@ def test_inline_requires_anchor_and_refuses_positions(tmp_path):
 def test_equation_invisible_to_get_text_visible_to_list(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": "Before the math."}], at_end=True, backup=False
+        path, [{"text": "Before the math."}], backup=False
     )
     add(path, r"\frac{dy}{dx} = 3x^2", at_end=True)
     all_text = " ".join(p["text"] for p in srv.get_text(path, live="off"))
@@ -240,7 +238,7 @@ def test_equation_invisible_to_get_text_visible_to_list(tmp_path):
 def test_list_reports_location_and_note_part(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": "Anchor paragraph here."}], at_end=True, backup=False
+        path, [{"text": "Anchor paragraph here."}], backup=False
     )
     add(path, r"a^2", after_anchor="Anchor paragraph here.")
     entry = listed(path)["equations"][0]
@@ -254,7 +252,7 @@ def test_list_reports_location_and_note_part(tmp_path):
 def test_delete_display_removes_paragraph(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": "Keep me."}], at_end=True, backup=False
+        path, [{"text": "Keep me."}], backup=False
     )
     n_before = len(srv.get_text(path, live="off"))
     add(path, r"\frac{a}{b}", at_end=True)
@@ -273,8 +271,7 @@ def test_delete_display_removes_paragraph(tmp_path):
 def test_delete_inline_keeps_paragraph_text(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": "Sentence with math after this."}],
-        at_end=True, backup=False,
+        path, [{"text": "Sentence with math after this."}], backup=False,
     )
     add(path, r"x^2", display=False, anchor_text="math")
     before = [p["text"] for p in srv.get_text(path, live="off")]
@@ -297,7 +294,7 @@ def test_delete_bad_index_refused(tmp_path):
 def test_add_delete_roundtrip_restores_structure(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": "Stable content."}], at_end=True, backup=False
+        path, [{"text": "Stable content."}], backup=False
     )
     snapshot = [p["text"] for p in srv.get_text(path, live="off")]
     add(path, r"\int_0^\infty e^{-x^2} dx", at_end=True)
@@ -317,7 +314,7 @@ def test_add_delete_roundtrip_restores_structure(tmp_path):
 def test_conversion_failure_is_atomic(tmp_path):
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": "Untouched content."}], at_end=True, backup=False
+        path, [{"text": "Untouched content."}], backup=False
     )
     original = Path(path).read_bytes()
     pkg = DocxPackage(path)
@@ -369,8 +366,7 @@ def test_word_roundtrip_three_equations(tmp_path):
     counts OMaths.Count == 3 (invisible DispatchEx instance, quit cleanly)."""
     path = new_doc(tmp_path)
     srv.insert_paragraphs(
-        path, [{"text": "The identity appears mid-sentence."}],
-        at_end=True, backup=False,
+        path, [{"text": "The identity appears mid-sentence."}], backup=False,
     )
     add(path, r"\frac{a+b}{c}", at_end=True)
     add(path, r"\sum_{i=1}^{n} i^2 = \frac{n(n+1)(2n+1)}{6}", at_end=True)

@@ -1,0 +1,1326 @@
+{
+ "schema": 1,
+ "v1_version": "1.6.0",
+ "v2_version": "2.0.0",
+ "_status": "COMPLETE (v2 Phase 2): one entry per shipped v1.6.0 tool, all 189, merged from the five wave fragments plus the Phase 0 batch_apply row. The completeness test in tests/unit/test_v2_migration_map.py is enforced.",
+ "_entry_fields": {
+  "to": "v2 tool name",
+  "inject": "literal v2 param values that reproduce the v1 tool's fixed behavior",
+  "params": "old param name -> new param path, dot notation into nested objects like the location object",
+  "notes": "optional free text"
+ },
+ "tools": {
+  "accept_revisions": {
+   "to": "resolve_revisions",
+   "inject": {
+    "action": "accept"
+   },
+   "params": {
+    "author": "author"
+   }
+  },
+  "add_bookmark": {
+   "to": "insert_bookmark",
+   "params": {}
+  },
+  "add_caption": {
+   "to": "insert_caption",
+   "params": {}
+  },
+  "add_chart": {
+   "to": "insert_chart",
+   "params": {
+    "after_index": "location.paragraph"
+   },
+   "notes": "after_anchor -> location:{search:{text}}; at_end -> omit location"
+  },
+  "add_comment": {
+   "to": "manage_comment",
+   "inject": {
+    "action": "add"
+   },
+   "params": {
+    "anchor_text": "location.search.text",
+    "occurrence": "location.search.occurrence",
+    "text": "text",
+    "author": "author"
+   }
+  },
+  "add_cross_reference": {
+   "to": "insert_cross_reference",
+   "params": {
+    "after_anchor": "location.search.text",
+    "to_bookmark": "to_bookmark",
+    "kind": "kind"
+   },
+   "notes": "renamed to the insert_ verb family; v1 had no occurrence param (acted on first match), the v2 search selector defaults occurrence=1"
+  },
+  "add_endnote": {
+   "to": "manage_note",
+   "inject": {
+    "action": "insert",
+    "note_type": "endnote"
+   },
+   "params": {
+    "anchor_text": "location.search.text",
+    "occurrence": "location.search.occurrence",
+    "note_text": "text"
+   }
+  },
+  "add_equation": {
+   "to": "insert_equation",
+   "params": {
+    "after_index": "location.paragraph"
+   },
+   "notes": "display placement moves to the location object; inline placement (display=false) keeps anchor_text/occurrence unchanged"
+  },
+  "add_footnote": {
+   "to": "manage_note",
+   "inject": {
+    "action": "insert",
+    "note_type": "footnote"
+   },
+   "params": {
+    "anchor_text": "location.search.text",
+    "occurrence": "location.search.occurrence",
+    "note_text": "text"
+   }
+  },
+  "add_heading": {
+   "to": "insert_paragraphs",
+   "params": {
+    "text": "paragraphs[0].text",
+    "level": "paragraphs[0].heading_level",
+    "after_index": "location.paragraph",
+    "after_anchor": "location.search.text"
+   },
+   "notes": "merged; heading_level maps to the Heading style, or to outlineLvl on outline-based documents (the NSU lesson); at_end=true -> omit location entirely (document-end default)."
+  },
+  "add_hyperlink": {
+   "to": "insert_hyperlink",
+   "params": {}
+  },
+  "add_image": {
+   "to": "insert_image",
+   "params": {
+    "after_index": "location.paragraph"
+   },
+   "notes": "v1 at_end=true or no position -> omit location (document end); after_anchor -> location:{search:{text}}"
+  },
+  "add_list": {
+   "to": "insert_list",
+   "params": {
+    "after_index": "location.paragraph"
+   },
+   "notes": "v1 at_end=true -> location:{position:'end'} or omit location"
+  },
+  "add_page_break": {
+   "to": "insert_break",
+   "inject": {
+    "type": "page"
+   },
+   "params": {
+    "after_index": "location.paragraph"
+   }
+  },
+  "add_page_numbers": {
+   "to": "set_page_numbers",
+   "params": {
+    "start_at": "format.start_at"
+   }
+  },
+  "add_section_break": {
+   "to": "insert_break",
+   "params": {
+    "after_index": "location.paragraph",
+    "break_type": "type"
+   },
+   "notes": "value map: nextPage->section_next, continuous->section_continuous, evenPage->section_even, oddPage->section_odd (v1 default nextPage -> inject type:'section_next' when break_type was omitted)"
+  },
+  "add_source": {
+   "to": "manage_source",
+   "inject": {
+    "action": "add"
+   },
+   "params": {},
+   "notes": "all bibliographic params keep their v1 names (tag, source_type, title, year, authors, editors, journal_name, book_title, publisher, city, pages, volume, issue, edition, institution, url, internet_site_title, style, extra_fields)"
+  },
+  "add_watermark": {
+   "to": "set_watermark",
+   "params": {
+    "text": "watermark.text",
+    "color": "watermark.color",
+    "opacity": "watermark.opacity",
+    "diagonal": "watermark.diagonal"
+   }
+  },
+  "anonymize_for_review": {
+   "to": "anonymize_for_review",
+   "params": {}
+  },
+  "apply_character_style": {
+   "to": "apply_style",
+   "params": {
+    "find": "target.search.text",
+    "occurrence": "target.search.occurrence",
+    "style": "style"
+   },
+   "notes": "absorbed; the target selector routes to the character-style path."
+  },
+  "apply_manuscript_format": {
+   "to": "apply_manuscript_format",
+   "params": {}
+  },
+  "apply_style": {
+   "to": "apply_style",
+   "params": {
+    "indices": "range"
+   },
+   "notes": "a contiguous indices list [a..b] becomes range={start:a,end:b}; non-contiguous lists need one call per contiguous run; style carries over by name."
+  },
+  "apply_table_style": {
+   "to": "set_table_properties",
+   "params": {},
+   "notes": "style, banded_rows, first_row_header keep their names; banded_rows/first_row_header only apply when style is passed"
+  },
+  "apply_template": {
+   "to": "apply_template",
+   "params": {}
+  },
+  "assemble_front_matter": {
+   "to": "assemble_front_matter",
+   "params": {}
+  },
+  "audit_accessibility": {
+   "to": "validate",
+   "inject": {
+    "checks": [
+     "accessibility"
+    ]
+   },
+   "notes": "v2: report top level is {passed, results} (ok belongs to the envelope)"
+  },
+  "batch_apply": {
+   "to": "apply_edits",
+   "params": {},
+   "notes": "op-type absorption into the batch layer"
+  },
+  "change_case": {
+   "to": "format_text",
+   "params": {
+    "transform": "case",
+    "indices": "range",
+    "find": "find"
+   },
+   "notes": "absorbed; a contiguous indices list [a..b] becomes range={start:a,end:b}; NON-CONTIGUOUS lists need one call per contiguous run. 'toggle' was never a v1 transform and is not in v2.0."
+  },
+  "change_heading_level": {
+   "to": "change_heading_level",
+   "params": {}
+  },
+  "check_brand_compliance": {
+   "to": "validate",
+   "inject": {
+    "checks": [
+     "brand"
+    ]
+   },
+   "params": {
+    "rules": "options.brand"
+   },
+   "notes": "options.brand takes the same rules dict the v1 tool took; v2: report top level is {passed, results} (ok belongs to the envelope)"
+  },
+  "check_citation_parity": {
+   "to": "validate",
+   "inject": {
+    "checks": [
+     "citation_parity"
+    ]
+   },
+   "params": {},
+   "notes": "v2: report top level is {passed, results} (ok belongs to the envelope)"
+  },
+  "check_defined_terms": {
+   "to": "validate",
+   "inject": {
+    "checks": [
+     "defined_terms"
+    ]
+   },
+   "params": {
+    "definition_patterns": "options.defined_terms.definition_patterns"
+   },
+   "notes": "v2: report top level is {passed, results} (ok belongs to the envelope)"
+  },
+  "check_image_resolution": {
+   "to": "validate",
+   "inject": {
+    "checks": [
+     "image_resolution"
+    ]
+   },
+   "params": {
+    "min_dpi": "options.image_resolution.min_dpi"
+   },
+   "notes": "runs as one check inside the validate battery; v2: report top level is {passed, results} (ok belongs to the envelope)"
+  },
+  "check_reference_field_integrity": {
+   "to": "validate",
+   "inject": {
+    "checks": [
+     "reference_fields"
+    ]
+   },
+   "params": {},
+   "notes": "v2: report top level is {passed, results} (ok belongs to the envelope)"
+  },
+  "check_template_compliance": {
+   "to": "validate",
+   "inject": {
+    "checks": [
+     "template"
+    ]
+   },
+   "params": {
+    "rules": "options.template"
+   },
+   "notes": "options.template takes the v1 rules DICT (same flag as brand); v2: report top level is {passed, results} (ok belongs to the envelope)"
+  },
+  "cleanup_orphan_notes": {
+   "to": "manage_note",
+   "inject": {
+    "action": "cleanup_orphans"
+   },
+   "params": {},
+   "notes": "covers footnotes AND endnotes in one call, as in v1"
+  },
+  "com_close_open_document": {
+   "to": "com_save_document",
+   "inject": {
+    "close": true
+   },
+   "params": {
+    "save": "save"
+   },
+   "notes": "merged; save=false still discards unsaved changes on close."
+  },
+  "com_combine_documents": {
+   "to": "com_multi_document",
+   "inject": {
+    "action": "combine"
+   },
+   "params": {
+    "original_path": "files[0]",
+    "revised_path": "files[1]",
+    "output_path": "output_path"
+   },
+   "notes": "merged; output still defaults beside the original."
+  },
+  "com_compare_documents": {
+   "to": "com_multi_document",
+   "inject": {
+    "action": "compare"
+   },
+   "params": {
+    "original_path": "files[0]",
+    "revised_path": "files[1]",
+    "output_path": "output_path",
+    "author": "author"
+   },
+   "notes": "merged; output still defaults to <revised>_COMPARE.docx."
+  },
+  "com_export_pdf": {
+   "to": "com_export_pdf",
+   "params": {}
+  },
+  "com_import_pdf": {
+   "to": "com_import_pdf",
+   "params": {}
+  },
+  "com_merge_documents": {
+   "to": "com_multi_document",
+   "inject": {
+    "action": "merge"
+   },
+   "params": {
+    "paths": "files",
+    "output_path": "output_path",
+    "section_break_between": "section_break_between"
+   },
+   "notes": "merged; output_path stays required for merge."
+  },
+  "com_proofing_errors": {
+   "to": "com_proofing_errors",
+   "params": {}
+  },
+  "com_readability_statistics": {
+   "to": "com_readability_statistics",
+   "params": {}
+  },
+  "com_refresh_fields": {
+   "to": "com_refresh_fields",
+   "params": {}
+  },
+  "com_save_open_document": {
+   "to": "com_save_document",
+   "params": {},
+   "notes": "merged; the default call (save=true, close=false) reproduces it exactly."
+  },
+  "com_save_with_password": {
+   "to": "com_save_document",
+   "params": {
+    "password": "password",
+    "output_path": "output_path"
+   },
+   "notes": "merged; runs on its own invisible instance as in v1; not combinable with close."
+  },
+  "com_validate_opens_clean": {
+   "to": "com_validate_opens_clean",
+   "params": {}
+  },
+  "com_word_status": {
+   "to": "com_word_status",
+   "params": {}
+  },
+  "comment_report": {
+   "to": "comment_report",
+   "params": {
+    "file_path": "files[0]"
+   },
+   "notes": "single file becomes a one-element files array; include_resolved keeps its name (single-file mode only)"
+  },
+  "comment_report_multi": {
+   "to": "comment_report",
+   "params": {
+    "file_paths": "files"
+   }
+  },
+  "convert_citation_style": {
+   "to": "convert_citation_style",
+   "params": {}
+  },
+  "convert_notes": {
+   "to": "convert_notes",
+   "params": {}
+  },
+  "copy_document": {
+   "to": "copy_document",
+   "params": {}
+  },
+  "copy_table": {
+   "to": "copy_table",
+   "params": {},
+   "notes": "identity; added day three post-design, rides insert_document's engine; docstring rewritten to budget in v2"
+  },
+  "create_document": {
+   "to": "create_document",
+   "params": {}
+  },
+  "create_snapshot": {
+   "to": "manage_backups",
+   "inject": {
+    "action": "snapshot"
+   },
+   "params": {
+    "label": "label",
+    "dest_dir": "dest_dir"
+   },
+   "notes": "snapshots stay permanent keepers; no purge scope touches them"
+  },
+  "create_table": {
+   "to": "create_table",
+   "params": {
+    "after_index": "location.paragraph",
+    "after_anchor": "location.search.text"
+   },
+   "notes": "at_end:true (or no position param) -> omit location entirely; location's default position 'after' matches v1 after_index semantics. v1 after_anchor matched FULL paragraph plain text; v2 search matches substrings and refuses ambiguity loudly, so a recurring anchor text that silently hit first-match in v1 now refuses with the match list."
+  },
+  "deanonymize_document": {
+   "to": "deanonymize_document",
+   "params": {}
+  },
+  "define_style": {
+   "to": "define_style",
+   "params": {},
+   "notes": "identity."
+  },
+  "delete_columns": {
+   "to": "modify_table_structure",
+   "inject": {
+    "action": "delete",
+    "target": "columns"
+   },
+   "params": {},
+   "notes": "columns keeps its name"
+  },
+  "delete_comment": {
+   "to": "manage_comment",
+   "inject": {
+    "action": "delete"
+   },
+   "params": {
+    "comment_id": "comment_id"
+   }
+  },
+  "delete_endnote": {
+   "to": "manage_note",
+   "inject": {
+    "action": "delete",
+    "note_type": "endnote"
+   },
+   "params": {
+    "note_id": "note_id",
+    "position": "position"
+   }
+  },
+  "delete_equation": {
+   "to": "delete_element",
+   "inject": {
+    "type": "equation"
+   },
+   "params": {
+    "index": "id"
+   }
+  },
+  "delete_footnote": {
+   "to": "manage_note",
+   "inject": {
+    "action": "delete",
+    "note_type": "footnote"
+   },
+   "params": {
+    "note_id": "note_id",
+    "position": "position"
+   }
+  },
+  "delete_paragraphs": {
+   "to": "delete_paragraphs",
+   "params": {},
+   "notes": "identity; start/end integer shorthand unchanged, range={start,end} location objects added."
+  },
+  "delete_rows": {
+   "to": "modify_table_structure",
+   "inject": {
+    "action": "delete",
+    "target": "rows"
+   },
+   "params": {},
+   "notes": "start, end keep their names (end None = start only)"
+  },
+  "delete_source": {
+   "to": "manage_source",
+   "inject": {
+    "action": "delete"
+   },
+   "params": {
+    "tag": "tag",
+    "force": "force"
+   }
+  },
+  "delete_table": {
+   "to": "delete_table",
+   "params": {}
+  },
+  "delete_toc": {
+   "to": "delete_element",
+   "inject": {
+    "type": "reference_list"
+   },
+   "params": {
+    "which": "id"
+   },
+   "notes": "v1 which was the read_toc order index; v2 ids come from list_elements(type='toc')"
+  },
+  "detect_citation_system": {
+   "to": "detect_citation_system",
+   "params": {}
+  },
+  "diagnose_document": {
+   "to": "diagnose_document",
+   "params": {},
+   "notes": "counted under Validation and workflow in 2.16; still no live route BY DESIGN; v2: top-level ok re-keyed to healthy (the envelope ok now means the call succeeded)"
+  },
+  "edit_endnote": {
+   "to": "manage_note",
+   "inject": {
+    "action": "edit",
+    "note_type": "endnote"
+   },
+   "params": {
+    "new_text": "text",
+    "note_id": "note_id",
+    "position": "position"
+   }
+  },
+  "edit_footnote": {
+   "to": "manage_note",
+   "inject": {
+    "action": "edit",
+    "note_type": "footnote"
+   },
+   "params": {
+    "new_text": "text",
+    "note_id": "note_id",
+    "position": "position"
+   }
+  },
+  "export_table": {
+   "to": "export_table",
+   "params": {}
+  },
+  "extract_images": {
+   "to": "export_images",
+   "params": {}
+  },
+  "fill_form_fields": {
+   "to": "set_form_fields",
+   "params": {}
+  },
+  "fill_template": {
+   "to": "fill_template",
+   "params": {}
+  },
+  "find_formatted": {
+   "to": "find_text",
+   "params": {
+    "formatting": "formatting",
+    "query": "query",
+    "scope": "scope"
+   },
+   "notes": "formatting mode is file-mode only and refuses regex=True or include_textboxes=True"
+  },
+  "find_text": {
+   "to": "find_text",
+   "params": {}
+  },
+  "fix_accessibility": {
+   "to": "fix_accessibility",
+   "params": {}
+  },
+  "format_cells": {
+   "to": "format_cells",
+   "params": {}
+  },
+  "format_text": {
+   "to": "format_text",
+   "params": {
+    "paragraph_index": "range.start"
+   },
+   "notes": "set range.end to the same index (single-paragraph ranges only in formatting mode); find/occurrence/formatting carry over by name."
+  },
+  "get_comments": {
+   "to": "get_comments",
+   "params": {},
+   "notes": "identity; keeps the live route and the live='auto' param"
+  },
+  "get_document_info": {
+   "to": "get_document_info",
+   "params": {}
+  },
+  "get_headers_footers": {
+   "to": "get_headers_footers",
+   "params": {}
+  },
+  "get_lists": {
+   "to": "list_elements",
+   "inject": {
+    "type": "lists"
+   }
+  },
+  "get_nested_table": {
+   "to": "get_table",
+   "params": {
+    "row": "nested.row",
+    "cell": "nested.cell",
+    "nested_index": "nested.index"
+   },
+   "notes": "absorbed via the nested address object"
+  },
+  "get_outline": {
+   "to": "get_outline",
+   "params": {}
+  },
+  "get_paragraph_format": {
+   "to": "get_paragraph_format",
+   "params": {}
+  },
+  "get_protection": {
+   "to": "get_protection",
+   "params": {}
+  },
+  "get_styles": {
+   "to": "get_styles",
+   "params": {}
+  },
+  "get_table": {
+   "to": "get_table",
+   "params": {},
+   "notes": "identity; gains the optional nested={row, cell, index} address"
+  },
+  "get_text": {
+   "to": "get_text",
+   "params": {}
+  },
+  "get_textbox_text": {
+   "to": "get_text",
+   "inject": {
+    "textbox": true
+   },
+   "notes": "full per-box shape verbatim; {\"index\": n} narrows to one box; file-mode only"
+  },
+  "get_tracked_changes": {
+   "to": "get_tracked_changes",
+   "params": {}
+  },
+  "get_workflows": {
+   "to": "get_workflows",
+   "params": {},
+   "notes": "gains migrate-from-v1 and bulk-edit task entries (ops/workflows.py addition, see wave_A.md entry 22)"
+  },
+  "import_table": {
+   "to": "import_table",
+   "params": {},
+   "notes": "identity; keeps at_end/after_anchor (table import does not take the location object)"
+  },
+  "insert_bibliography": {
+   "to": "insert_reference_list",
+   "inject": {
+    "type": "bibliography"
+   },
+   "params": {
+    "title": "title",
+    "after_index": "location.paragraph",
+    "update_on_open": "update_on_open"
+   },
+   "notes": "v1 at_end=True is the v2 default when location is omitted"
+  },
+  "insert_caption_list": {
+   "to": "insert_reference_list",
+   "params": {
+    "title": "title",
+    "after_index": "location.paragraph",
+    "update_on_open": "update_on_open"
+   },
+   "notes": "v1 label decides the v2 type: Table -> type='table_list', Figure -> 'figure_list', Equation -> 'equation_list'; default placement when location omitted matches v1 (document start)"
+  },
+  "insert_citation": {
+   "to": "insert_citation",
+   "params": {
+    "anchor_text": "location.search.text",
+    "occurrence": "location.search.occurrence"
+   },
+   "notes": "name unchanged; anchoring moves to the location object; pages/suppress flags/prefix/suffix keep their names"
+  },
+  "insert_columns": {
+   "to": "modify_table_structure",
+   "inject": {
+    "action": "insert",
+    "target": "columns"
+   },
+   "params": {},
+   "notes": "at, count, width_pt keep their names"
+  },
+  "insert_content_control": {
+   "to": "insert_content_control",
+   "params": {}
+  },
+  "insert_document": {
+   "to": "insert_document",
+   "params": {
+    "after_index": "location.paragraph",
+    "after_anchor": "location.search.text"
+   },
+   "notes": "at_end=True maps to omitting location (v2 default appends at end). CAVEAT: v1 after_index counted body ITEMS (paragraphs AND tables); v2 location.paragraph counts paragraphs only, so indices must be re-derived on table-bearing documents. v1 after_anchor matched FULL paragraph text; v2 location.search matches content substrings, so pass occurrence or tighten the string on recurring text."
+  },
+  "insert_field": {
+   "to": "insert_field",
+   "params": {
+    "after_anchor": "location.search.text",
+    "occurrence": "location.search.occurrence"
+   },
+   "notes": "name unchanged; anchoring moves to the location object; field_code/placeholder keep their names"
+  },
+  "insert_glossary": {
+   "to": "insert_reference_list",
+   "inject": {
+    "type": "glossary"
+   },
+   "params": {
+    "heading": "title",
+    "heading_level": "options.heading_level",
+    "definition_patterns": "options.definition_patterns",
+    "after_index": "location.paragraph"
+   },
+   "notes": "v1 at_end=True is the v2 default when location is omitted; glossary writes literal paragraphs, so update_on_open does not apply"
+  },
+  "insert_index": {
+   "to": "insert_reference_list",
+   "inject": {
+    "type": "index"
+   },
+   "params": {
+    "title": "title",
+    "columns": "options.columns",
+    "letter_headings": "options.letter_headings",
+    "after_index": "location.paragraph",
+    "update_on_open": "update_on_open"
+   },
+   "notes": "v1 at_end=True is the v2 default when location is omitted"
+  },
+  "insert_paragraphs": {
+   "to": "insert_paragraphs",
+   "params": {
+    "after_index": "location.paragraph",
+    "before_index": "location.paragraph",
+    "after_anchor": "location.search.text"
+   },
+   "notes": "after_index keeps the default position 'after'; before_index also sets location.position='before'; after_anchor becomes a search selector (v1 anchors matched paragraph plain text as a substring, same as the search selector); at_end=true -> omit location entirely (document-end default, the cross-wave convention). Items gain optional heading_level."
+  },
+  "insert_rows": {
+   "to": "modify_table_structure",
+   "inject": {
+    "action": "insert",
+    "target": "rows"
+   },
+   "params": {},
+   "notes": "at, count, copy_format_from keep their names"
+  },
+  "insert_toc": {
+   "to": "insert_reference_list",
+   "inject": {
+    "type": "toc"
+   },
+   "params": {
+    "levels": "options.levels",
+    "title": "title",
+    "after_index": "location.paragraph",
+    "update_on_open": "update_on_open"
+   },
+   "notes": "v1 at_start=True (or after_index=None) is the v2 default placement when location is omitted"
+  },
+  "insert_zotero_citation": {
+   "to": "insert_zotero_citation",
+   "params": {
+    "anchor_text": "location.search.text",
+    "occurrence": "location.search.occurrence"
+   },
+   "notes": "name unchanged; anchoring moves to the location object; item_keys/page/prefix/suffix/db_path keep their names"
+  },
+  "list_bookmarks": {
+   "to": "list_elements",
+   "inject": {
+    "type": "bookmarks"
+   }
+  },
+  "list_charts": {
+   "to": "list_elements",
+   "inject": {
+    "type": "charts"
+   }
+  },
+  "list_content_controls": {
+   "to": "list_elements",
+   "inject": {
+    "type": "content_controls"
+   },
+   "notes": "items = v1 controls array; the v1 count key is dropped in favor of the envelope count"
+  },
+  "list_endnotes": {
+   "to": "list_elements",
+   "inject": {
+    "type": "endnotes"
+   }
+  },
+  "list_equations": {
+   "to": "list_elements",
+   "inject": {
+    "type": "equations"
+   },
+   "notes": "items = v1 equations array; equation_count sibling carried"
+  },
+  "list_fields": {
+   "to": "list_elements",
+   "inject": {
+    "type": "fields"
+   },
+   "notes": "items = v1 fields array; total and parts_scanned siblings carried"
+  },
+  "list_footnotes": {
+   "to": "list_elements",
+   "inject": {
+    "type": "footnotes"
+   }
+  },
+  "list_form_fields": {
+   "to": "list_elements",
+   "inject": {
+    "type": "form_fields"
+   },
+   "notes": "items = v1 fields array; the v1 count key is dropped in favor of the envelope count"
+  },
+  "list_images": {
+   "to": "list_elements",
+   "inject": {
+    "type": "images"
+   }
+  },
+  "list_index_entries": {
+   "to": "list_elements",
+   "inject": {
+    "type": "index_entries"
+   }
+  },
+  "list_reference_fields": {
+   "to": "list_elements",
+   "inject": {
+    "type": "reference_fields"
+   },
+   "notes": "items = v1 fields array; by_manager, broken, and the other v1 keys carried as siblings"
+  },
+  "list_section_blocks": {
+   "to": "list_elements",
+   "inject": {
+    "type": "section_blocks"
+   }
+  },
+  "list_sections": {
+   "to": "list_elements",
+   "inject": {
+    "type": "sections"
+   }
+  },
+  "list_sources": {
+   "to": "list_elements",
+   "inject": {
+    "type": "sources"
+   }
+  },
+  "list_tables": {
+   "to": "list_elements",
+   "inject": {
+    "type": "tables"
+   }
+  },
+  "list_template_placeholders": {
+   "to": "list_elements",
+   "inject": {
+    "type": "template_placeholders"
+   },
+   "notes": "items = v1 placeholders array; names and mergefields carried as siblings"
+  },
+  "live_insert_at_cursor": {
+   "to": "live_insert_at_cursor",
+   "params": {}
+  },
+  "live_scroll_to": {
+   "to": "live_scroll_to",
+   "params": {}
+  },
+  "live_set_track_changes": {
+   "to": "live_set_track_changes",
+   "params": {}
+  },
+  "mail_merge": {
+   "to": "mail_merge",
+   "params": {}
+  },
+  "manage_backups": {
+   "to": "manage_backups",
+   "params": {}
+  },
+  "mark_index_entry": {
+   "to": "mark_index_entry",
+   "params": {
+    "anchor_text": "location.search.text",
+    "occurrence": "location.search.occurrence"
+   },
+   "notes": "name unchanged; anchoring moves to the location object; entry/subentry/bold_page/italic_page/see keep their names"
+  },
+  "merge_cells": {
+   "to": "modify_table_structure",
+   "inject": {
+    "action": "merge"
+   },
+   "params": {
+    "start_row": "range.start_row",
+    "end_row": "range.end_row",
+    "start_col": "range.start_col",
+    "end_col": "range.end_col"
+   }
+  },
+  "move_section": {
+   "to": "move_section",
+   "params": {}
+  },
+  "parse_references": {
+   "to": "parse_references",
+   "params": {}
+  },
+  "prepare_for_submission": {
+   "to": "prepare_for_submission",
+   "params": {}
+  },
+  "preview_replace": {
+   "to": "search_and_replace",
+   "inject": {
+    "preview": true
+   },
+   "params": {},
+   "notes": "absorbed; preview is the dry-run flag of the same operation, result shape unchanged."
+  },
+  "read_toc": {
+   "to": "list_elements",
+   "inject": {
+    "type": "toc"
+   },
+   "notes": "items = v1 tocs array; present/instruction/cached_entries carried as siblings"
+  },
+  "redact_text": {
+   "to": "redact_text",
+   "params": {}
+  },
+  "reject_revisions": {
+   "to": "resolve_revisions",
+   "inject": {
+    "action": "reject"
+   },
+   "params": {
+    "author": "author"
+   }
+  },
+  "remove_document_protection": {
+   "to": "set_document_protection",
+   "inject": {
+    "protection": "none"
+   }
+  },
+  "remove_watermark": {
+   "to": "set_watermark",
+   "inject": {
+    "watermark": "none"
+   },
+   "notes": "set-to-none is the removal idiom"
+  },
+  "replace_formatted": {
+   "to": "search_and_replace",
+   "params": {
+    "formatting": "find_formatting",
+    "replace": "replacements[0].replace",
+    "find": "replacements[0].find"
+   },
+   "notes": "absorbed; find=None (omit replacements[0].find) keeps the whole-matching-stretch semantics; scope and max_replacements carry over by name; no regex or track in this mode, as in v1."
+  },
+  "replace_image": {
+   "to": "set_image",
+   "params": {
+    "image_index": "image_id",
+    "new_image_path": "source"
+   }
+  },
+  "replace_paragraph_text": {
+   "to": "set_paragraph_text",
+   "params": {
+    "index": "location.paragraph"
+   },
+   "notes": "renamed to the set_ verb family; expect guard and replaced_text return unchanged"
+  },
+  "reply_to_comment": {
+   "to": "manage_comment",
+   "inject": {
+    "action": "reply"
+   },
+   "params": {
+    "comment_id": "comment_id",
+    "text": "text",
+    "author": "author"
+   }
+  },
+  "resize_image": {
+   "to": "set_image",
+   "params": {
+    "image_index": "image_id"
+   }
+  },
+  "resolve_comment": {
+   "to": "manage_comment",
+   "inject": {
+    "action": "resolve"
+   },
+   "params": {
+    "comment_id": "comment_id",
+    "done": "done"
+   }
+  },
+  "revision_analytics": {
+   "to": "get_revision_report",
+   "inject": {
+    "mode": "analytics"
+   },
+   "params": {}
+  },
+  "revision_summary": {
+   "to": "get_revision_report",
+   "inject": {
+    "mode": "summary"
+   },
+   "params": {}
+  },
+  "search_and_replace": {
+   "to": "search_and_replace",
+   "params": {},
+   "notes": "identity; keeps its name; gains preview and find_formatting"
+  },
+  "search_zotero_library": {
+   "to": "search_zotero_library",
+   "params": {}
+  },
+  "set_bibliography_style": {
+   "to": "set_bibliography_style",
+   "params": {}
+  },
+  "set_cells": {
+   "to": "set_cells",
+   "params": {},
+   "notes": "identity in scatter mode; gains block and nested modes"
+  },
+  "set_cells_block": {
+   "to": "set_cells",
+   "params": {
+    "origin_row": "block.origin.row",
+    "origin_cell": "block.origin.cell",
+    "data": "block.values"
+   },
+   "notes": "block mode is file-only, as the v1 tool was; no track, no live route"
+  },
+  "set_column_widths": {
+   "to": "set_table_properties",
+   "params": {
+    "widths_pt": "column_widths"
+   }
+  },
+  "set_columns": {
+   "to": "set_section_properties",
+   "params": {
+    "count": "columns.count",
+    "space_pt": "columns.space_pt",
+    "separator": "columns.separator",
+    "widths_pt": "columns.widths_pt"
+   }
+  },
+  "set_content_control_value": {
+   "to": "set_content_control",
+   "params": {}
+  },
+  "set_document_properties": {
+   "to": "set_document_properties",
+   "params": {}
+  },
+  "set_document_protection": {
+   "to": "set_document_protection",
+   "params": {
+    "edit": "protection"
+   }
+  },
+  "set_footer": {
+   "to": "set_header_footer",
+   "inject": {
+    "part": "footer"
+   },
+   "params": {}
+  },
+  "set_header": {
+   "to": "set_header_footer",
+   "inject": {
+    "part": "header"
+   },
+   "params": {}
+  },
+  "set_header_row_repeat": {
+   "to": "set_table_properties",
+   "params": {
+    "rows": "header_row_repeat"
+   },
+   "notes": "on:false -> header_row_repeat:false regardless of rows; on:true with rows N -> header_row_repeat:N (true alone = 1 row)"
+  },
+  "set_image_alt_text": {
+   "to": "set_image",
+   "params": {
+    "image_index": "image_id",
+    "description": "alt_text",
+    "title": "alt_title"
+   }
+  },
+  "set_line_numbering": {
+   "to": "set_section_properties",
+   "params": {
+    "count_by": "line_numbering.count_by",
+    "start": "line_numbering.start",
+    "restart": "line_numbering.restart",
+    "distance_pt": "line_numbering.distance_pt"
+   },
+   "notes": "v1 remove=true -> line_numbering:'none' (value transform, not a path rename)"
+  },
+  "set_nested_cells": {
+   "to": "set_cells",
+   "params": {
+    "row": "nested.row",
+    "cell": "nested.cell",
+    "nested_index": "nested.index"
+   },
+   "notes": "edits keeps its name; nested mode is file-only, as the v1 tool was"
+  },
+  "set_page_number_format": {
+   "to": "set_page_numbers",
+   "params": {
+    "number_format": "format.number_format",
+    "start_at": "format.start_at"
+   },
+   "notes": "format-only call: leave position unset"
+  },
+  "set_paragraph_format": {
+   "to": "set_paragraph_format",
+   "params": {},
+   "notes": "identity."
+  },
+  "set_section_properties": {
+   "to": "set_section_properties",
+   "params": {}
+  },
+  "set_textbox_text": {
+   "to": "set_textbox_text",
+   "params": {}
+  },
+  "set_update_fields_flag": {
+   "to": "set_document_properties",
+   "params": {
+    "on": "update_fields_on_open"
+   },
+   "notes": "it is a document setting; one edit pass covers metadata plus the flag"
+  },
+  "setup_chapter_headers": {
+   "to": "setup_chapter_headers",
+   "params": {}
+  },
+  "sort_table": {
+   "to": "sort_table",
+   "params": {}
+  },
+  "split_document": {
+   "to": "split_document",
+   "params": {}
+  },
+  "split_table": {
+   "to": "modify_table_structure",
+   "inject": {
+    "action": "split"
+   },
+   "params": {},
+   "notes": "at_row keeps its name"
+  },
+  "structured_diff": {
+   "to": "structured_diff",
+   "params": {}
+  },
+  "unmerge_cells": {
+   "to": "modify_table_structure",
+   "inject": {
+    "action": "unmerge"
+   },
+   "params": {},
+   "notes": "row, cell keep their names"
+  },
+  "update_chart_data": {
+   "to": "set_chart_data",
+   "params": {
+    "chart_index": "chart_id"
+   }
+  },
+  "validate_captions": {
+   "to": "validate",
+   "inject": {
+    "checks": [
+     "captions"
+    ]
+   },
+   "notes": "v2: report top level is {passed, results} (ok belongs to the envelope)"
+  },
+  "validate_chapter_headers": {
+   "to": "validate",
+   "inject": {
+    "checks": [
+     "chapter_headers"
+    ]
+   },
+   "notes": "v2: report top level is {passed, results} (ok belongs to the envelope)"
+  },
+  "validate_cross_references": {
+   "to": "validate",
+   "inject": {
+    "checks": [
+     "cross_references"
+    ]
+   },
+   "params": {},
+   "notes": "v2: report top level is {passed, results} (ok belongs to the envelope)"
+  },
+  "validate_document": {
+   "to": "validate",
+   "inject": {
+    "checks": [
+     "core"
+    ]
+   },
+   "notes": "core is the default check set; v1 result dict lands verbatim under results.core.findings; v2: report top level is {passed, results} (ok belongs to the envelope)"
+  },
+  "validate_form_completeness": {
+   "to": "validate",
+   "inject": {
+    "checks": [
+     "forms"
+    ]
+   },
+   "params": {
+    "required": "options.forms.required"
+   },
+   "notes": "v2: report top level is {passed, results} (ok belongs to the envelope)"
+  },
+  "validate_notes": {
+   "to": "validate",
+   "inject": {
+    "checks": [
+     "notes"
+    ]
+   },
+   "params": {},
+   "notes": "v2: report top level is {passed, results} (ok belongs to the envelope)"
+  },
+  "verify_redaction": {
+   "to": "validate",
+   "inject": {
+    "checks": [
+     "redaction"
+    ]
+   },
+   "params": {
+    "targets": "options.redaction.targets"
+   },
+   "notes": "the redaction check re-scans for the given patterns without changing anything; v2: report top level is {passed, results} (ok belongs to the envelope)"
+  },
+  "word_count": {
+   "to": "word_count",
+   "params": {}
+  },
+  "word_count_with_exclusions": {
+   "to": "word_count",
+   "params": {
+    "exclude": "exclusions"
+   },
+   "notes": "exclusions mode is file-mode only; by_section not consulted there"
+  },
+  "word_live_repair": {
+   "to": "live_repair",
+   "params": {},
+   "notes": "renamed into the live_ namespace"
+  }
+ }
+}

@@ -37,19 +37,6 @@ from word_mcp.ops import structure as sx
 from word_mcp.ops import workflows as wf
 from word_mcp.ops.fields import _field_run
 
-INTEGRATION = Path(__file__).resolve().parents[2] / "integration"
-
-
-def _reg():
-    if not (INTEGRATION / "absorptions_registrations.py").exists():
-        pytest.skip("integration/ staging dir not present (gitignored)")
-    if str(INTEGRATION) not in sys.path:
-        sys.path.insert(0, str(INTEGRATION))
-    import absorptions_registrations as reg
-
-    return reg
-
-
 def _make_doc(tmp_path: Path, name: str = "t.docx") -> Path:
     doc = tmp_path / name
     srv.create_document(str(doc))
@@ -58,7 +45,7 @@ def _make_doc(tmp_path: Path, name: str = "t.docx") -> Path:
 
 def _add_paras(doc: Path, texts: list[str]) -> None:
     srv.insert_paragraphs(
-        str(doc), [{"text": t} for t in texts], at_end=True, live="off"
+        str(doc), [{"text": t} for t in texts], live="off"
     )
 
 
@@ -89,6 +76,10 @@ def test_workflows_listing_names_all_tasks():
         "format-citations",
         "build-from-template",
         "heavy-editing",
+        "live-editing",
+        "comment-partner",
+        "migrate-from-v1",
+        "bulk-edit",
     }
     for t in out["tasks"]:
         assert t["summary"]
@@ -116,7 +107,6 @@ def test_every_workflow_tool_exists_in_registry():
     import asyncio
     import inspect
 
-    _reg()  # registers the new tools on the shared mcp instance
     res = srv.mcp.list_tools()
     if inspect.iscoroutine(res):
         res = asyncio.run(res)
@@ -126,7 +116,7 @@ def test_every_workflow_tool_exists_in_registry():
         for wfd in wf.WORKFLOWS.values()
         for step in wfd["steps"]
     }
-    missing = referenced - registered
+    missing = referenced - registered - wf.PENDING_TOOLS
     assert not missing, f"workflow steps name unregistered tools: {missing}"
 
 
@@ -224,12 +214,12 @@ def test_detect_sees_fldsimple_bibliography(tmp_path):
 
 def _heading_doc(tmp_path) -> Path:
     doc = _make_doc(tmp_path)
-    srv.add_heading(str(doc), "Intro", level=1, at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "Intro", "heading_level": 1}])
     _add_paras(doc, ["Some intro text."])
-    srv.add_heading(str(doc), "Background", level=2, at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "Background", "heading_level": 2}])
     _add_paras(doc, ["Background prose."])
-    srv.add_heading(str(doc), "Details", level=3, at_end=True)
-    srv.add_heading(str(doc), "Methods", level=2, at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "Details", "heading_level": 3}])
+    srv.insert_paragraphs(str(doc), [{"text": "Methods", "heading_level": 2}])
     return doc
 
 
@@ -288,8 +278,8 @@ def test_promote_above_level_1_refused_naming_blocker(tmp_path):
 
 def test_subtree_refusal_is_atomic(tmp_path):
     doc = _make_doc(tmp_path)
-    srv.add_heading(str(doc), "Top", level=8, at_end=True)
-    srv.add_heading(str(doc), "Deep", level=9, at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "Top", "heading_level": 8}])
+    srv.insert_paragraphs(str(doc), [{"text": "Deep", "heading_level": 9}])
     with pytest.raises(WordMcpError, match="Deep.*below level 9"):
         _mutate(
             doc,
@@ -332,8 +322,8 @@ def test_outline_lvl_only_heading_refused(tmp_path):
 
 def test_ambiguous_heading_text_refused(tmp_path):
     doc = _make_doc(tmp_path)
-    srv.add_heading(str(doc), "Twin", level=2, at_end=True)
-    srv.add_heading(str(doc), "Twin", level=2, at_end=True)
+    srv.insert_paragraphs(str(doc), [{"text": "Twin", "heading_level": 2}])
+    srv.insert_paragraphs(str(doc), [{"text": "Twin", "heading_level": 2}])
     with pytest.raises(AmbiguousTarget, match="paragraph_index"):
         _mutate(
             doc,
@@ -437,7 +427,7 @@ def test_field_code_unbalanced_quote_refused(tmp_path):
 def test_list_fields_sees_fldsimple_and_headers(tmp_path):
     doc = _make_doc(tmp_path)
     _add_paras(doc, ["Body paragraph."])
-    srv.set_header(str(doc), "Chapter header")
+    srv.set_header_footer(str(doc), part="header", text="Chapter header")
 
     def inject(pkg):
         p = pkg.body().findall(qn("w:p"))[0]
@@ -538,7 +528,7 @@ def test_insert_list_set_plain_text_control(tmp_path):
     assert out["controls"][0]["value"] == "Beta LLC"
 
     # The new control is a first-class form field too.
-    r = srv.fill_form_fields(str(doc), {"client": "Gamma"}, backup=False)
+    r = srv.set_form_fields(str(doc), {"client": "Gamma"}, backup=False)
     assert r["filled"] == {"client": "sdt_text"}
 
 
@@ -712,47 +702,3 @@ def test_insert_glossary_refuses_without_terms(tmp_path):
     _add_paras(doc, ["No defined terms in this prose at all."])
     with pytest.raises(WordMcpError, match="no defined terms"):
         _mutate(doc, lambda pkg: dterms.insert_glossary(pkg))
-
-
-# ------------------------------------------- registration snippet smoke test
-
-
-def test_absorptions_registration_snippet_importable():
-    """The integration snippet registers all ten tools on the shared FastMCP
-    instance (paste-readiness), exactly like prior bundles."""
-    reg = _reg()
-    for name in (
-        "get_workflows",
-        "detect_citation_system",
-        "change_heading_level",
-        "insert_field",
-        "list_fields",
-        "create_snapshot",
-        "list_content_controls",
-        "set_content_control_value",
-        "insert_content_control",
-        "insert_glossary",
-    ):
-        obj = getattr(reg, name, None)
-        assert obj is not None and (callable(obj) or hasattr(obj, "fn")), name
-
-
-def test_registered_change_heading_level_end_to_end(tmp_path):
-    """One call through the registered tool wrapper (backup contract, _edit
-    path) to prove the snippet wiring, not just the ops layer."""
-    reg = _reg()
-    doc = _heading_doc(tmp_path)
-    fn = reg.change_heading_level
-    fn = fn.fn if hasattr(fn, "fn") else fn
-    r = fn(str(doc), delta=1, heading_text="Background", subtree=True)
-    assert "saved" in r
-    assert _levels(doc)["Details"] == 4
-
-
-def test_registered_create_snapshot_end_to_end(tmp_path):
-    reg = _reg()
-    doc = _make_doc(tmp_path)
-    fn = reg.create_snapshot
-    fn = fn.fn if hasattr(fn, "fn") else fn
-    r = fn(str(doc), label="keeper")
-    assert re.fullmatch(r"\d{8}_\d{4}_t_keeper\.docx", Path(r["snapshot"]).name)

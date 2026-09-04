@@ -27,8 +27,10 @@ import re
 
 from ..core.errors import (
     AmbiguousTarget,
+    StaleAnchor,
     TargetNotFound,
     UnsupportedStructure,
+    WordBusy,
     WordMcpError,
 )
 from ..ops import _regex as _rx
@@ -299,6 +301,61 @@ def _para_text(p, deleted_spans: list | None = None) -> str:
     return text.replace("\x0c", "")
 
 
+# --------------------------------------------- snapshot staleness guard
+#
+# Live-branch location resolution reads a DISK SNAPSHOT of the open
+# document (server._resolve_for_live), so a text selector (search,
+# after_heading, outline, anchor) resolved while Word holds unsaved
+# changes can point at the wrong live paragraph. Bodies that accept a
+# verify_text compare the live paragraph's text against the snapshot
+# paragraph the selector matched, and refuse (STALE_ANCHOR) on mismatch.
+# The check is skipped when doc.Saved is true (live == disk, nothing can
+# be stale), so the refusal's remedy — save the document in Word — always
+# clears it.
+
+_NOTE_REF_RE = re.compile(r"\[(?:fn|en):\d+\]")
+
+
+def _texts_equivalent(file_text: str, live_text: str) -> bool:
+    """File-layer paragraph text vs Range.Text, normalized: note-reference
+    markers ([fn:3] vs \\x02), soft breaks (\\n vs \\x0b), non-breaking
+    hyphens, and object placeholders/control chars the two extractors
+    render differently."""
+    f = _NOTE_REF_RE.sub("\x02", file_text)
+    lv = (
+        live_text.replace("\x0b", "\n")
+        .replace("\x1e", "-")
+        .replace("\x1f", "")
+    )
+    keep = "\t\n\x02"
+    f = "".join(ch for ch in f if ch >= " " or ch in keep)
+    lv = "".join(ch for ch in lv if ch >= " " or ch in keep)
+    return f == lv
+
+
+def _stale_guard(session, paras, index: int, expected: str | None,
+                 what: str) -> None:
+    """Refuse when a snapshot-resolved index cannot be trusted: the open
+    document has unsaved changes AND the live paragraph no longer carries
+    the text the selector matched on disk. expected=None disables the
+    check (index/cursor addressing, where no snapshot text was involved)."""
+    if expected is None:
+        return
+    with contextlib.suppress(Exception):
+        if session.doc.Saved:
+            return
+    if not 0 <= index < len(paras):
+        return  # the op's own bounds check raises the precise error
+    if not _texts_equivalent(expected, _para_text(paras[index])):
+        raise StaleAnchor(
+            f"{what}: the open document has UNSAVED changes and paragraph "
+            f"{index} no longer matches the saved file this location was "
+            "resolved against (locations resolve against the last saved "
+            "state). Save the document in Word (com_save_document) and "
+            "retry."
+        )
+
+
 def _hex_to_wdcolor(color: str) -> int:
     h = color.lstrip("#")
     if len(h) != 6:
@@ -417,12 +474,50 @@ def _assign_text(rng, text: str):
     insert_text_chunked(rng, text)   # rng grows to cover the inserted text
 
 
-def _replace_literal(story, find: str, replace: str) -> tuple:
+def _deletion_end_at(rng):
+    """Max End of tracked DELETIONS overlapping rng, or None.
+    FAIL-CLOSED: a COM failure while reading revisions raises WordBusy —
+    the 2026-09-03 stress test proved that treating an unreadable revision
+    state as "no revision" lets a tracked replace re-match its own
+    deletion markup and spin (ERPERPERP...); never replace unverified."""
+    try:
+        end = None
+        for rev in rng.Revisions:
+            if rev.Type == 2:  # wdRevisionDelete
+                rev_end = rev.Range.End
+                if end is None or rev_end > end:
+                    end = rev_end
+        return end
+    except Exception as exc:
+        raise WordBusy(
+            "Word did not answer while verifying tracked-change state at a "
+            "match; replacement stopped fail-closed rather than risk "
+            "re-matching tracked-deletion markup. Retry for the remainder."
+        ) from exc
+
+
+def _replace_literal(
+    story, find: str, replace: str, *, tracked: bool = False
+) -> tuple:
     """Find-only then manual text assignment, one match at a time, forward
     only. Matches inside fields/content controls are SKIPPED (see
     _protected_span_end). Self-referencing replacements can't loop because
     the search resumes after each replacement, and the iteration budget is
     tied to the PRE-EDIT match count so no regeneration pathology can spin.
+
+    Tracked-mode loop guarantees (stress report bug 1 — the tracked
+    replace that looped 51 times re-matching its own deletion markup):
+    1. matches carrying a tracked deletion are skipped, and the revision
+       read FAILS CLOSED (_deletion_end_at) — an unreadable state aborts
+       instead of replacing;
+    2. after a tracked replacement the resume point advances past the
+       deletion markup the replacement itself created (Word keeps the
+       replaced text in the story as a findable tracked deletion, and may
+       place the insertion BEFORE it);
+    3. hard cap: tracked mode never performs more replacements than the
+       PRE-EDIT occurrence count of the full find string — tracked
+       replacement removes nothing from the story, so replaceable sites
+       cannot exceed that count even if COM misreports revisions.
 
     Finds longer than Word's ~255-char Find.Text limit (L5) are located via
     the first ~250 chars, the range is extended to the full find length, and
@@ -436,11 +531,16 @@ def _replace_literal(story, find: str, replace: str) -> tuple:
     # budget on PROBE occurrences: >= full-string occurrences, so prefix
     # hits that fail full verification can never starve real matches
     budget = _count_matches(story, probe) + 50
+    # tracked-mode replacement cap (guarantee 3): exact pre-edit count of
+    # the FULL find string
+    tracked_cap = story.Text.count(find) if tracked else None
     rng = story.Duplicate
     done = 0
     skipped = 0
     skipped_deleted = 0
     for _ in range(budget):
+        if tracked_cap is not None and done >= tracked_cap:
+            break
         f = rng.Find
         f.ClearFormatting()
         f.Text = probe
@@ -472,22 +572,32 @@ def _replace_literal(story, find: str, replace: str) -> tuple:
             # a match inside a tracked DELETION re-matches after every
             # tracked replacement (the deleted copy stays findable) — skip
             # it; replacing deleted text is meaningless anyway
-            with contextlib.suppress(Exception):
-                for rev in rng.Revisions:
-                    if rev.Type == 2:  # wdRevisionDelete
-                        deleted_rev_end = max(rev.Range.End, rng.End)
-                        break
+            deleted_rev_end = _deletion_end_at(rng)
         if past_protected is not None:
             skipped += 1
             resume = past_protected
         elif deleted_rev_end is not None:
             skipped_deleted += 1
-            resume = deleted_rev_end
+            resume = max(deleted_rev_end, rng.End)
         else:
             check_text_safe(replace)
+            match_start = rng.Start
             _assign_text(rng, replace)  # rng covers the replacement after
             done += 1
             resume = rng.End
+            if tracked:
+                # guarantee 2: the replaced text stays in the story as a
+                # tracked deletion adjacent to the insertion — advance
+                # resume past that markup so it can never be re-matched
+                # (fail-closed via _deletion_end_at on COM failure)
+                probe_rng = story.Duplicate
+                probe_rng.SetRange(
+                    match_start,
+                    min(story.End, resume + len(find) + 1),
+                )
+                own_markup_end = _deletion_end_at(probe_rng)
+                if own_markup_end is not None:
+                    resume = max(resume, own_markup_end)
         rng.SetRange(resume, max(story.End, resume))
         if rng.Start >= rng.End:
             break
@@ -578,7 +688,7 @@ def search_and_replace(
             else:
                 for story in stories:
                     done, skipped, skipped_del = _replace_literal(
-                        story, find, replace
+                        story, find, replace, tracked=track
                     )
                     n += done
                     in_fields += skipped
@@ -1004,7 +1114,8 @@ def get_comments(path: str, author: str | None = None) -> list:
 
 
 def replace_paragraph_text(
-    path: str, index: int, new_text: str, expect: str | None = None
+    path: str, index: int, new_text: str, expect: str | None = None,
+    verify_text: str | None = None,
 ) -> dict:
     """Live full-paragraph text replacement (L4). FILE-MODE SHAPE:
     {replaced_paragraph: index, replaced_text: old}. expect guards stale
@@ -1020,6 +1131,19 @@ def replace_paragraph_text(
     live has no faithful semantics. Bare fields and content controls inside
     the paragraph are deleted explicitly first (Range.Text assignment
     silently leaves both behind)."""
+    return run_live(
+        path, "replace paragraph text",
+        replace_paragraph_text_body(index, new_text, expect,
+                                    verify_text=verify_text),
+    )
+
+
+def replace_paragraph_text_body(
+    index: int, new_text: str, expect: str | None = None,
+    verify_text: str | None = None,
+):
+    """Session-level body factory; the apply_edits live route composes
+    these inside ONE undo group. Same code the public tool runs."""
     check_text_safe(new_text)
 
     def body(session):
@@ -1030,6 +1154,7 @@ def replace_paragraph_text(
                 f"no body paragraph with index {index}; the document has "
                 f"{len(paras)} body paragraphs"
             )
+        _stale_guard(session, paras, index, verify_text, "set_text")
         p = paras[index]
         rng = doc.Range(p.Range.Start, max(p.Range.Start, p.Range.End - 1))
         current = rng.Text or ""
@@ -1088,7 +1213,7 @@ def replace_paragraph_text(
                 )
         return result
 
-    return run_live(path, "replace paragraph text", body)
+    return body
 
 
 def insert_paragraphs(
@@ -1100,7 +1225,30 @@ def insert_paragraphs(
     at_end: bool = False,
     track: bool = False,
     author: str = "Claude",
+    verify_text: str | None = None,
 ) -> dict:
+    return run_live(
+        path, "insert paragraphs",
+        insert_paragraphs_body(
+            paragraphs, after_index=after_index, before_index=before_index,
+            after_anchor=after_anchor, at_end=at_end, track=track,
+            author=author, verify_text=verify_text,
+        ),
+    )
+
+
+def insert_paragraphs_body(
+    paragraphs: list[dict],
+    *,
+    after_index: int | None = None,
+    before_index: int | None = None,
+    after_anchor: str | None = None,
+    at_end: bool = False,
+    track: bool = False,
+    author: str = "Claude",
+    verify_text: str | None = None,
+):
+    """Session-level body factory; see replace_paragraph_text_body."""
     targets = [after_index is not None, before_index is not None,
                after_anchor is not None, at_end]
     if sum(targets) != 1:
@@ -1139,6 +1287,7 @@ def insert_paragraphs(
                     f"after_index {after_index} out of range "
                     f"({len(paras)} body paragraphs)"
                 )
+            _stale_guard(session, paras, after_index, verify_text, "insert")
             point = paras[after_index].Range.End - 1
             prefix = True
         else:
@@ -1147,6 +1296,7 @@ def insert_paragraphs(
                     f"before_index {before_index} out of range "
                     f"({len(paras)} body paragraphs)"
                 )
+            _stale_guard(session, paras, before_index, verify_text, "insert")
             point = paras[before_index].Range.Start
             prefix = False
 
@@ -1164,7 +1314,18 @@ def insert_paragraphs(
             else:
                 p_start, p_end = rng.Start, max(rng.Start, rng.End - 1)
             styled = doc.Range(p_start, max(p_start, p_end))
-            if spec.get("style"):
+            if spec.get("heading_level"):
+                # built-in heading via the wdStyleHeadingN constant
+                # (-2 .. -10): locale-independent, unlike the name form
+                level = int(spec["heading_level"])
+                styled.Style = doc.Styles(-(level + 1))
+            elif spec.get("outline_heading"):
+                # outline-based heading (academic-template pattern): keep
+                # the Normal look, set the outline level directly
+                styled.Style = doc.Styles(-1)  # wdStyleNormal
+                first = styled.Paragraphs(1)
+                first.OutlineLevel = int(spec["outline_heading"])
+            elif spec.get("style"):
                 try:
                     styled.Style = spec["style"]
                 except Exception as exc:
@@ -1180,7 +1341,7 @@ def insert_paragraphs(
             inserted += 1
         return _tracked_result(session, track, author, {"inserted": inserted})
 
-    return run_live(path, "insert paragraphs", body)
+    return body
 
 
 def delete_paragraphs(
@@ -1189,7 +1350,27 @@ def delete_paragraphs(
     end: int | None = None,
     track: bool = False,
     author: str = "Claude",
+    verify_start_text: str | None = None,
+    verify_end_text: str | None = None,
 ) -> dict:
+    return run_live(
+        path, "delete paragraphs",
+        delete_paragraphs_body(start, end, track=track, author=author,
+                               verify_start_text=verify_start_text,
+                               verify_end_text=verify_end_text),
+    )
+
+
+def delete_paragraphs_body(
+    start: int,
+    end: int | None = None,
+    *,
+    track: bool = False,
+    author: str = "Claude",
+    verify_start_text: str | None = None,
+    verify_end_text: str | None = None,
+):
+    """Session-level body factory; see replace_paragraph_text_body."""
     def body(session):
         doc = session.doc
         last = start if end is None else end
@@ -1199,6 +1380,9 @@ def delete_paragraphs(
                 f"paragraph range [{start}..{last}] out of range "
                 f"({len(paras)} body paragraphs)"
             )
+        _stale_guard(session, paras, start, verify_start_text, "delete")
+        if last != start:
+            _stale_guard(session, paras, last, verify_end_text, "delete")
         rng = doc.Range(paras[start].Range.Start, paras[last].Range.End)
         if rng.Tables.Count:
             raise UnsupportedStructure(
@@ -1255,7 +1439,7 @@ def delete_paragraphs(
         )
         return _tracked_result(session, track, author, payload)
 
-    return run_live(path, "delete paragraphs", body)
+    return body
 
 
 # ------------------------------------------------------------------ tables
@@ -1268,6 +1452,20 @@ def set_cells(
     track: bool = False,
     author: str = "Claude",
 ) -> dict:
+    return run_live(
+        path, "set cells",
+        set_cells_body(table_index, edits, track=track, author=author),
+    )
+
+
+def set_cells_body(
+    table_index: int,
+    edits: list[dict],
+    *,
+    track: bool = False,
+    author: str = "Claude",
+):
+    """Session-level body factory; see replace_paragraph_text_body."""
     def body(session):
         doc = session.doc
         if not 0 <= table_index < doc.Tables.Count:
@@ -1315,7 +1513,7 @@ def set_cells(
             {"cells_written": applied, "table": table_index},
         )
 
-    return run_live(path, "set cells", body)
+    return body
 
 
 # -------------------------------------------------------------- formatting
@@ -1327,7 +1525,26 @@ def format_text(
     paragraph_index: int | None = None,
     find: str | None = None,
     occurrence: int = 1,
+    verify_text: str | None = None,
 ) -> dict:
+    return run_live(
+        path, "format text",
+        format_text_body(
+            formatting, paragraph_index=paragraph_index, find=find,
+            occurrence=occurrence, verify_text=verify_text,
+        ),
+    )
+
+
+def format_text_body(
+    formatting: dict,
+    *,
+    paragraph_index: int | None = None,
+    find: str | None = None,
+    occurrence: int = 1,
+    verify_text: str | None = None,
+):
+    """Session-level body factory; see replace_paragraph_text_body."""
     unknown = set(formatting) - _CHAR_KEYS
     if unknown:
         raise WordMcpError(
@@ -1360,6 +1577,8 @@ def format_text(
                     f"paragraph_index {paragraph_index} out of range "
                     f"({len(paras)} body paragraphs)"
                 )
+            _stale_guard(session, paras, paragraph_index, verify_text,
+                         "format")
             candidates = [(paras[paragraph_index], paragraph_index)]
         else:
             candidates = []
@@ -1406,7 +1625,7 @@ def format_text(
             else "paragraph has no text to format"
         )
 
-    return run_live(path, "format text", body)
+    return body
 
 
 # -------------------------------------------------------- live-only tools
@@ -1636,6 +1855,16 @@ def set_paragraph_format(
     path: str, indices: list[int], formatting: dict
 ) -> dict:
     """Live paragraph formatting via COM Paragraph.Format properties."""
+    return run_live(
+        path, "set paragraph format",
+        set_paragraph_format_body(indices, formatting),
+    )
+
+
+def set_paragraph_format_body(indices: list[int], formatting: dict,
+                              verify_texts: list[str | None] | None = None):
+    """Session-level body factory; see replace_paragraph_text_body.
+    verify_texts, when given, is parallel to indices (None entries skip)."""
     unknown = set(formatting) - _PARA_FMT_KEYS_LIVE - _PARA_FMT_UNSUPPORTED_LIVE
     if unknown:
         raise WordMcpError(
@@ -1670,12 +1899,15 @@ def set_paragraph_format(
         doc = session.doc
         paras = _body_paragraphs(doc)
         applied = []
-        for idx in indices:
+        for pos, idx in enumerate(indices):
             if not 0 <= idx < len(paras):
                 raise TargetNotFound(
                     f"paragraph index {idx} out of range "
                     f"({len(paras)} body paragraphs)"
                 )
+            if verify_texts is not None and pos < len(verify_texts):
+                _stale_guard(session, paras, idx, verify_texts[pos],
+                             "set_paragraph_format")
             p = paras[idx]
             fmt = p.Format
             keys_set = []
@@ -1728,4 +1960,4 @@ def set_paragraph_format(
             applied.append({"paragraph": idx, "keys_set": keys_set})
         return {"paragraphs_formatted": len(applied), "applied": applied}
 
-    return run_live(path, "set paragraph format", body)
+    return body

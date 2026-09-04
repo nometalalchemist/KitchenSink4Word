@@ -173,6 +173,38 @@ def add_list(
         else:
             norm.append((str(item), 0))
 
+    paragraphs, num_id = build_list_paragraphs(pkg, norm, kind)
+
+    from .text import _body_paragraph, _resolve_anchor
+
+    body = pkg.body()
+    if at_end or (after_index is None and after_anchor is None):
+        sectpr = body.find(qn("w:sectPr"))
+        for p in paragraphs:
+            if sectpr is not None:
+                sectpr.addprevious(p)
+            else:
+                body.append(p)
+    elif after_anchor is not None:
+        ref = _resolve_anchor(pkg, after_anchor)
+        for p in reversed(paragraphs):
+            ref.addnext(p)
+    else:
+        ref = _body_paragraph(pkg, after_index)
+        for p in reversed(paragraphs):
+            ref.addnext(p)
+    pkg.mark_dirty()
+    return {"list_added": kind, "items": len(norm), "num_id": num_id}
+
+
+def build_list_paragraphs(
+    pkg: DocxPackage, norm: list[tuple[str, int]], kind: str
+) -> tuple[list[etree._Element], int]:
+    """Build (without inserting) the list's w:p elements, registering a
+    fresh numbering instance in the package. norm: [(text, level 0-8)].
+    Extracted from add_list so the batch layer's markdown list inserts
+    share one construction path. Mutates numbering/styles parts only; the
+    caller splices the paragraphs and calls mark_dirty()."""
     _ensure_numbering_part(pkg)
     _ensure_list_style(pkg)
     num_id = _new_numbering(pkg, kind)
@@ -196,27 +228,7 @@ def add_list(
             t.text = text
             _runmap._preserve_space(t)
         paragraphs.append(p)
-
-    from .text import _body_paragraph, _resolve_anchor
-
-    body = pkg.body()
-    if at_end or (after_index is None and after_anchor is None):
-        sectpr = body.find(qn("w:sectPr"))
-        for p in paragraphs:
-            if sectpr is not None:
-                sectpr.addprevious(p)
-            else:
-                body.append(p)
-    elif after_anchor is not None:
-        ref = _resolve_anchor(pkg, after_anchor)
-        for p in reversed(paragraphs):
-            ref.addnext(p)
-    else:
-        ref = _body_paragraph(pkg, after_index)
-        for p in reversed(paragraphs):
-            ref.addnext(p)
-    pkg.mark_dirty()
-    return {"list_added": kind, "items": len(norm), "num_id": num_id}
+    return paragraphs, num_id
 
 
 def get_lists(pkg: DocxPackage) -> list[dict]:

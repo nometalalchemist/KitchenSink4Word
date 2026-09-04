@@ -11,7 +11,7 @@ def _template(tmp_path):
     tpl = tmp_path / "tpl.docx"
     srv.create_document(str(tpl))
     srv.insert_paragraphs(
-        str(tpl), [{"text": "Hello {{name}}."}], at_end=True, backup=False
+        str(tpl), [{"text": "Hello {{name}}."}], backup=False
     )
     return tpl
 
@@ -53,7 +53,7 @@ def test_f3_protection_creates_missing_settings_part(tmp_path):
     doc = tmp_path / "bare.docx"
     srv.create_document(str(doc))
     srv.insert_paragraphs(
-        str(doc), [{"text": "needs protection"}], at_end=True, backup=False
+        str(doc), [{"text": "needs protection"}], backup=False
     )
     # strip settings.xml the way bare third-party OOXML producers omit it
     import shutil
@@ -76,7 +76,7 @@ def test_f3_protection_creates_missing_settings_part(tmp_path):
                 )
             zout.writestr(item, data)
     r = srv.set_document_protection(
-        str(stripped), edit="readOnly", password="pw", backup=False
+        str(stripped), protection="readOnly", password="pw", backup=False
     )
     assert r["protection"] == "readOnly"
     state = srv.get_protection(str(stripped))
@@ -89,6 +89,6 @@ def test_f3_protection_creates_missing_settings_part(tmp_path):
         for item in zin.infolist():
             if item.filename != "word/settings.xml":
                 zout.writestr(item, zin.read(item.filename))
-    r2 = srv.remove_document_protection(str(tmp_path / "nosettings.docx"),
+    r2 = srv.set_document_protection(protection="none", file_path=str(tmp_path / "nosettings.docx"),
                                         backup=False)
     assert r2["removed"] is False

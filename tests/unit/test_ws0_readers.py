@@ -330,24 +330,3 @@ def test_format_text_sequential_indices_stay_correct(tmp_path):
         live="off", backup=False,
     )
     assert r["formatted"].get("location") == "table cell"
-
-
-# ------------------------------------------- registration snippet smoke test
-
-
-def test_ws0_registration_snippet_importable():
-    """The integration snippet registers get_paragraph_format on the shared
-    FastMCP instance (paste-readiness), exactly like prior bundles."""
-    import sys
-
-    integration_dir = Path(__file__).resolve().parents[2] / "integration"
-    if not (integration_dir / "ws0_readers_registrations.py").exists():
-        pytest.skip("integration/ staging dir not present (gitignored)")
-    integration = str(integration_dir)
-    if integration not in sys.path:
-        sys.path.insert(0, integration)
-    import ws0_readers_registrations as reg
-
-    assert callable(getattr(reg, "get_paragraph_format", None)) or hasattr(
-        reg.get_paragraph_format, "fn"
-    )

@@ -51,7 +51,6 @@ def template(tmp_path):
             {"text": "Your order {{order_id}} ships to {{city}}."},
             {"text": "Regards, {{name}}"},
         ],
-        at_end=True,
         backup=False,
     )
     # Deliberately split the first placeholder across runs: bolding "{{na"

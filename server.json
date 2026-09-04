@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.nometalalchemist/kitchensink4word",
   "title": "KitchenSink4Word",
-  "description": "Everything plus the kitchen sink for Word: live editing, mail merge, redaction, audits, citations.",
-  "version": "1.6.0",
+  "description": "Everything plus the kitchen sink for Microsoft Word: 219 document ops, one grammar, tiered loading.",
+  "version": "2.0.0",
   "websiteUrl": "https://nometalalchemist.github.io/KitchenSink4Word/",
   "repository": {
     "url": "https://github.com/nometalalchemist/KitchenSink4Word",
@@ -13,7 +13,7 @@
     {
       "registryType": "pypi",
       "identifier": "kitchensink4word",
-      "version": "1.6.0",
+      "version": "2.0.0",
       "transport": {
         "type": "stdio"
       }

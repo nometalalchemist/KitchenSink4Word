@@ -278,7 +278,7 @@ Build steps:
      "display_name": "KitchenSink4Word",
      "version": "1.5.0",
      "description": "Everything plus the kitchen sink for Microsoft Word ...",
-     "author": { "name": "Nykolus Alvut" },
+     "author": { "name": "nometalalchemist" },
      "server": {
        "type": "binary",
        "entry_point": "",

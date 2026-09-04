@@ -2,9 +2,9 @@
   "manifest_version": "0.3",
   "name": "kitchensink4word",
   "display_name": "KitchenSink4Word",
-  "version": "1.6.0",
-  "description": "Everything plus the kitchen sink for Microsoft Word. 189 tools for creating, editing, and formatting .docx documents, plus live in-Word editing.",
-  "long_description": "A Model Context Protocol server for Microsoft Word documents. 189 tools across document creation, text and formatting, tables, styles, images, charts, document assembly, headers and footers, footnotes, comments, tracked changes, mail merge, batch operations, redaction, accessibility audit and repair, compliance audits, path sandboxing, and document diagnostics. Live mode edits documents open in Word in place, with each tool call landing as a single undo step; live mode requires Windows with Microsoft Word installed. The file-based majority of the toolset works on any .docx file without Word running. Launching this bundle requires uv (the uvx command) on your machine; the server itself is fetched from PyPI on first launch.",
+  "version": "2.0.0",
+  "description": "Everything plus the kitchen sink for Microsoft Word. 219 document operations across 108 tools, plus live in-Word editing.",
+  "long_description": "A Model Context Protocol server for Microsoft Word documents. 219 distinct operations across 108 tools, covering document creation, text and formatting, tables, styles, images, charts, document assembly, headers and footers, footnotes, comments, tracked changes, mail merge, batch operations, redaction, accessibility audit and repair, compliance audits, path sandboxing, and document diagnostics. Tools load in tiers: a 28 tool lite surface opens the session at about 7,600 tokens, and packs are enabled on demand. Live mode edits documents open in Word in place, with each tool call landing as a single undo step; live mode requires Windows with Microsoft Word installed. The file-based majority of the toolset works on any .docx file without Word running. Launching this bundle requires uv (the uvx command) on your machine; the server itself is fetched from PyPI on first launch.",
   "author": {
     "name": "nometalalchemist"
   },
@@ -30,7 +30,7 @@
     "mcp_config": {
       "command": "uvx",
       "args": [
-        "kitchensink4word==1.6.0"
+        "kitchensink4word==2.0.0"
       ]
     }
   },

@@ -298,3 +298,156 @@ def replace_image(pkg: DocxPackage, image_index: int, new_image_path: str) -> di
         )
     pkg.set_raw_part(part, src.read_bytes())
     return {"replaced": part}
+
+
+# ----------------------------------------------------------- delete (v2 ops)
+#
+# v1 had no image deletion path (a parity gap the V2_DESIGN Section 3.2
+# delete_element multiplex closes). These helpers are additive: nothing
+# above this line changed.
+
+_INERT_PARA_CHILDREN = {"pPr", "proofErr", "bookmarkStart", "bookmarkEnd"}
+
+
+def _remove_pkg_part(pkg: DocxPackage, name: str) -> bool:
+    """Drop a part from the package plus its [Content_Types].xml override.
+
+    DocxPackage has no public remove-part API; save() serializes strictly
+    from _order/_raw/_dirty, so removing the entry from all of them removes
+    the part from the output (the same reach-in ops/cleanup.py and
+    ops/dataio.py already use; candidate for promotion to
+    DocxPackage.remove_part())."""
+    if not pkg.has_part(name):
+        return False
+    pkg._raw.pop(name)
+    pkg._order.remove(name)
+    pkg._trees.pop(name, None)
+    pkg._dirty.discard(name)
+    ct_root = pkg.root("[Content_Types].xml")
+    for o in list(ct_root.findall(f"{{{_CT_NS}}}Override")):
+        if o.get("PartName") == "/" + name:
+            ct_root.remove(o)
+            pkg.mark_dirty("[Content_Types].xml")
+    return True
+
+
+def _target_referenced(pkg: DocxPackage, part: str) -> bool:
+    """True when ANY remaining .rels part in the package still targets
+    `part` (header/footer/notes rels keep shared media alive)."""
+    import posixpath
+
+    for name in pkg.part_names():
+        if not name.endswith(".rels"):
+            continue
+        base = name.split("/_rels/", 1)[0] if "/_rels/" in name else ""
+        for rel in pkg.root(name):
+            if rel.get("TargetMode") == "External":
+                continue
+            target = rel.get("Target") or ""
+            if target.startswith("/"):
+                resolved = posixpath.normpath(target.lstrip("/"))
+            elif base:
+                resolved = posixpath.normpath(posixpath.join(base, target))
+            else:
+                resolved = posixpath.normpath(target)
+            if resolved == part:
+                return True
+    return False
+
+
+def _paragraph_is_empty(p: etree._Element) -> bool:
+    """No content besides inert markers and runs holding only rPr."""
+    for child in p:
+        name = etree.QName(child).localname
+        if name in _INERT_PARA_CHILDREN:
+            continue
+        if name == "r":
+            if any(etree.QName(rc).localname != "rPr" for rc in child):
+                return False
+            continue
+        return False
+    return True
+
+
+def _detach_drawing(drawing: etree._Element) -> bool:
+    """Remove a w:drawing, prune the emptied run, and remove the emptied
+    paragraph when it is a body-level block and the body keeps at least one
+    other block. Returns True when the whole paragraph was removed."""
+    run = drawing.getparent()
+    run.remove(drawing)
+    node = run
+    if run.tag == qn("w:r") and all(
+        etree.QName(c).localname == "rPr" for c in run
+    ):
+        node = run.getparent()
+        node.remove(run)
+    p = node
+    while p is not None and p.tag != qn("w:p"):
+        p = p.getparent()
+    if p is None or not _paragraph_is_empty(p):
+        return False
+    body = p.getparent()
+    if body is None or body.tag != qn("w:body"):
+        # Inside a table cell or text box: cells must keep a paragraph.
+        return False
+    keeps_others = any(
+        el is not p and etree.QName(el).localname in ("p", "tbl")
+        for el in body
+    )
+    if not keeps_others:
+        return False
+    body.remove(p)
+    return True
+
+
+def delete_image(pkg: DocxPackage, image_index: int) -> dict:
+    """Delete an image by its list_images index: the drawing goes (inline or
+    floating), the emptied paragraph goes when it held nothing else, and
+    the relationship plus media part go once nothing else references them
+    (shared media referenced from headers/footers/notes survives)."""
+    blips = list(pkg.root().iter(f"{{{_A}}}blip"))
+    if not 0 <= image_index < len(blips):
+        raise TargetNotFound(
+            f"image index {image_index} out of range ({len(blips)} images; "
+            "see list_images)"
+        )
+    blip = blips[image_index]
+    rid = blip.get(f"{{{_R_NS}}}embed")
+    drawing = blip.getparent()
+    while drawing is not None and drawing.tag != qn("w:drawing"):
+        drawing = drawing.getparent()
+    if drawing is None:
+        raise WordMcpError(
+            "image is not inside a w:drawing (legacy VML picture); "
+            "deletion is unsupported for this shape"
+        )
+    removed_paragraph = _detach_drawing(drawing)
+    pkg.mark_dirty()
+
+    rels_part = "word/_rels/document.xml.rels"
+    media_part = None
+    part_removed = False
+    if rid is not None and pkg.has_part(rels_part):
+        rels_root = pkg.root(rels_part)
+        target = next(
+            (r.get("Target") for r in rels_root if r.get("Id") == rid), None
+        )
+        if target is not None and not target.startswith(".."):
+            media_part = "word/" + target.lstrip("/")
+        still_used = any(
+            b.get(f"{{{_R_NS}}}embed") == rid
+            for b in pkg.root().iter(f"{{{_A}}}blip")
+        )
+        if not still_used:
+            for r in list(rels_root):
+                if r.get("Id") == rid:
+                    rels_root.remove(r)
+                    pkg.mark_dirty(rels_part)
+            if media_part and not _target_referenced(pkg, media_part):
+                part_removed = _remove_pkg_part(pkg, media_part)
+    return {
+        "deleted_image": image_index,
+        "removed_paragraph": removed_paragraph,
+        "media_part": media_part,
+        "media_part_removed": part_removed,
+    }

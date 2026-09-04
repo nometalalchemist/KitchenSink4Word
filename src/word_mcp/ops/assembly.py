@@ -293,12 +293,19 @@ def _resolve_position(
     after_index: int | None,
     after_anchor: str | None,
     at_end: bool,
-) -> tuple[etree._Element | None, int]:
-    """(reference element to insert after — None means append before the
-    trailing sectPr — and the body-item index where inserted content starts)."""
+    before_first: bool = False,
+) -> tuple[str, etree._Element | None, int]:
+    """(mode, reference element, body-item index where inserted content
+    starts). mode: 'append' (before the trailing sectPr), 'after' (after
+    the reference element), or 'before' (before the reference element,
+    used for insertion ahead of the first body item)."""
     blocks = _body_blocks(pkg)
+    if before_first:
+        if not blocks:
+            return "append", None, 0
+        return "before", blocks[0], 0
     if at_end:
-        return None, len(blocks)
+        return "append", None, len(blocks)
     if after_index is not None:
         if not 0 <= after_index < len(blocks):
             raise TargetNotFound(
@@ -306,7 +313,7 @@ def _resolve_position(
                 f"{len(blocks)} body items (paragraphs + tables in document "
                 f"order, valid indices 0-{len(blocks) - 1})"
             )
-        return blocks[after_index], after_index + 1
+        return "after", blocks[after_index], after_index + 1
     # after_anchor: exact paragraph-text match, refused loudly on ambiguity —
     # heading text recurring in body prose must never resolve first-match.
     anchor = after_anchor.strip()
@@ -335,7 +342,7 @@ def _resolve_position(
             "after_index with the intended index instead."
         )
     i, el = matches[0]
-    return el, i + 1
+    return "after", el, i + 1
 
 
 # --------------------------------------------------------- style / numbering
@@ -541,6 +548,294 @@ def _apply_num_remap(elements, num_map: dict[str, str], unresolved: set[str]):
     return stripped
 
 
+# ------------------------------- document-defaults reconciliation (source)
+#
+# The half-single-spaced-dissertation bug (field test, 2026-09-03): with
+# formatting="source", paragraphs that carried NO explicit line_spacing or
+# space_after relied on their SOURCE file's docDefaults for those values.
+# After transplant they resolved against the TARGET's docDefaults instead,
+# silently changing the rendered spacing. formatting="source" promises the
+# source look, so for every tracked property where the two files'
+# docDefaults differ, the source-effective value is baked as an explicit
+# property onto carried paragraphs/runs that inherited it (direct values
+# and style-chain values are left alone: direct already wins, and style
+# values follow the documented by-name reconciliation contract).
+
+# Attribute-level tracked properties (OOXML merges these attribute-wise).
+_DD_PPR_ATTRS: dict[str, tuple[str, ...]] = {
+    "spacing": (
+        "after", "before", "line", "lineRule",
+        "afterAutospacing", "beforeAutospacing",
+    ),
+    "ind": ("left", "start", "right", "end", "firstLine", "hanging"),
+    "jc": ("val",),
+}
+_DD_RPR_ATTRS: dict[str, tuple[str, ...]] = {
+    "rFonts": ("ascii", "hAnsi", "eastAsia", "cs"),
+    "sz": ("val",),
+    "szCs": ("val",),
+}
+
+# Word's built-in value when NEITHER file's docDefaults define an attribute
+# the other file does define. Only pPr attributes with well-defined
+# built-ins are bakeable from absence; run attributes (fonts, size) have
+# theme-dependent built-ins and are baked only when the source defines them.
+_DD_BUILTIN: dict[tuple[str, str], str] = {
+    ("spacing", "after"): "0",
+    ("spacing", "before"): "0",
+    ("spacing", "line"): "240",
+    ("spacing", "lineRule"): "auto",
+    ("ind", "left"): "0",
+    ("ind", "start"): "0",
+    ("ind", "right"): "0",
+    ("ind", "end"): "0",
+    ("ind", "firstLine"): "0",
+    ("ind", "hanging"): "0",
+    ("jc", "val"): "left",
+}
+
+_RPR_ORDER = [
+    "rStyle", "rFonts", "b", "bCs", "i", "iCs", "caps", "smallCaps",
+    "strike", "dstrike", "outline", "shadow", "emboss", "imprint",
+    "noProof", "snapToGrid", "vanish", "webHidden", "color", "spacing",
+    "w", "kern", "position", "sz", "szCs", "highlight", "u", "effect",
+    "bdr", "shd", "fitText", "vertAlign", "rtl", "cs", "em", "lang",
+    "eastAsianLayout", "specVanish", "oMath",
+]
+
+
+def _ordered_get_or_add(parent: etree._Element, local: str, order: list[str]):
+    existing = parent.find(qn(f"w:{local}"))
+    if existing is not None:
+        return existing
+    el = etree.Element(qn(f"w:{local}"))
+    my_rank = order.index(local)
+    for child in parent:
+        name = _localname(child)
+        if name in order and order.index(name) > my_rank:
+            child.addprevious(el)
+            return el
+    parent.append(el)
+    return el
+
+
+def _docdefaults_props(
+    pkg: DocxPackage, which: str
+) -> dict[tuple[str, str], str]:
+    """Tracked (element, attribute) -> value pairs from styles.xml
+    docDefaults. which: 'pPr' | 'rPr'."""
+    out: dict[tuple[str, str], str] = {}
+    if not pkg.has_part("word/styles.xml"):
+        return out
+    dd = pkg.root("word/styles.xml").find(qn("w:docDefaults"))
+    if dd is None:
+        return out
+    if which == "pPr":
+        holder = dd.find(f"{qn('w:pPrDefault')}/{qn('w:pPr')}")
+        table = _DD_PPR_ATTRS
+    else:
+        holder = dd.find(f"{qn('w:rPrDefault')}/{qn('w:rPr')}")
+        table = _DD_RPR_ATTRS
+    if holder is None:
+        return out
+    for elem_name, attrs in table.items():
+        el = holder.find(qn(f"w:{elem_name}"))
+        if el is None:
+            continue
+        for a in attrs:
+            v = el.get(qn(f"w:{a}"))
+            if v is not None:
+                out[(elem_name, a)] = v
+    return out
+
+
+def _direct_keys(
+    holder: etree._Element | None, table: dict[str, tuple[str, ...]]
+) -> set[tuple[str, str]]:
+    """Tracked (element, attribute) keys explicitly present on a pPr/rPr."""
+    keys: set[tuple[str, str]] = set()
+    if holder is None:
+        return keys
+    for elem_name, attrs in table.items():
+        el = holder.find(qn(f"w:{elem_name}"))
+        if el is None:
+            continue
+        for a in attrs:
+            if el.get(qn(f"w:{a}")) is not None:
+                keys.add((elem_name, a))
+    return keys
+
+
+class _DefaultsBaker:
+    """Bakes source-docDefaults-inherited properties onto carried copies
+    (formatting='source' only). See the section comment above."""
+
+    def __init__(self, src: DocxPackage, pkg: DocxPackage):
+        self.src_ppr = _docdefaults_props(src, "pPr")
+        self.tgt_ppr = _docdefaults_props(pkg, "pPr")
+        self.src_rpr = _docdefaults_props(src, "rPr")
+        self.tgt_rpr = _docdefaults_props(pkg, "rPr")
+        self.diff_ppr = {
+            k
+            for k in set(self.src_ppr) | set(self.tgt_ppr)
+            if self.src_ppr.get(k) != self.tgt_ppr.get(k)
+        }
+        self.diff_rpr = {
+            k
+            for k in set(self.src_rpr) | set(self.tgt_rpr)
+            if self.src_rpr.get(k) != self.tgt_rpr.get(k)
+        }
+        # Source style definitions for inheritance-chain checks.
+        self.style_el: dict[str, etree._Element] = {}
+        self.based_on: dict[str, str] = {}
+        self.default_para_style: str | None = None
+        if src.has_part("word/styles.xml"):
+            for s in src.root("word/styles.xml").findall(qn("w:style")):
+                sid = s.get(qn("w:styleId"))
+                if not sid:
+                    continue
+                self.style_el[sid] = s
+                base = s.find(qn("w:basedOn"))
+                if base is not None and base.get(qn("w:val")):
+                    self.based_on[sid] = base.get(qn("w:val"))
+                if (
+                    s.get(qn("w:type")) == "paragraph"
+                    and s.get(qn("w:default")) in ("1", "true", "on")
+                ):
+                    self.default_para_style = sid
+        self._chain_cache: dict[tuple[str, str], set[tuple[str, str]]] = {}
+        self.paragraphs_baked = 0
+        self.runs_baked = 0
+
+    @property
+    def active(self) -> bool:
+        return bool(self.diff_ppr or self.diff_rpr)
+
+    def _chain_keys(self, sid: str | None, which: str) -> set[tuple[str, str]]:
+        """Tracked keys DEFINED anywhere along a source style's basedOn
+        chain (attribute-level; a defined key stops docDefaults
+        inheritance for that attribute)."""
+        if sid is None:
+            return set()
+        memo = self._chain_cache.get((sid, which))
+        if memo is not None:
+            return memo
+        keys: set[tuple[str, str]] = set()
+        table = _DD_PPR_ATTRS if which == "pPr" else _DD_RPR_ATTRS
+        cur: str | None = sid
+        seen: set[str] = set()
+        while cur is not None and cur not in seen:
+            seen.add(cur)
+            s = self.style_el.get(cur)
+            if s is None:
+                break
+            keys |= _direct_keys(s.find(qn(f"w:{which}")), table)
+            cur = self.based_on.get(cur)
+        self._chain_cache[(sid, which)] = keys
+        return keys
+
+    def _bake_value(self, key: tuple[str, str], from_rpr: bool) -> str | None:
+        """The source-effective value to write, or None when it cannot be
+        determined safely (run built-ins are theme-dependent)."""
+        src = self.src_rpr if from_rpr else self.src_ppr
+        if key in src:
+            return src[key]
+        if from_rpr:
+            return None
+        return _DD_BUILTIN.get(key)
+
+    def bake_paragraph(self, p: etree._Element) -> None:
+        ppr = p.find(qn("w:pPr"))
+        pstyle = None
+        if ppr is not None:
+            ps = ppr.find(qn("w:pStyle"))
+            if ps is not None:
+                pstyle = ps.get(qn("w:val"))
+        if pstyle is None:
+            pstyle = self.default_para_style
+        # ---- paragraph properties
+        if self.diff_ppr:
+            skip = _direct_keys(ppr, _DD_PPR_ATTRS)
+            skip |= self._chain_keys(pstyle, "pPr")
+            changed = False
+            for key in sorted(self.diff_ppr):
+                if key in skip:
+                    continue
+                value = self._bake_value(key, from_rpr=False)
+                if value is None:
+                    continue
+                if ppr is None:
+                    ppr = etree.Element(qn("w:pPr"))
+                    p.insert(0, ppr)
+                el = _ordered_get_or_add(ppr, key[0], _PPR_BAKE_ORDER)
+                el.set(qn(f"w:{key[1]}"), value)
+                changed = True
+            if changed:
+                self.paragraphs_baked += 1
+        # ---- run properties
+        if not self.diff_rpr:
+            return
+        para_chain = self._chain_keys(pstyle, "rPr")
+        for r in p.iter(qn("w:r")):
+            if r.getparent() is ppr:
+                continue  # the paragraph-mark rPr holder is not a run
+            rpr = r.find(qn("w:rPr"))
+            rstyle = None
+            if rpr is not None:
+                rs = rpr.find(qn("w:rStyle"))
+                if rs is not None:
+                    rstyle = rs.get(qn("w:val"))
+            skip = _direct_keys(rpr, _DD_RPR_ATTRS)
+            skip |= para_chain
+            skip |= self._chain_keys(rstyle, "rPr")
+            changed = False
+            for key in sorted(self.diff_rpr):
+                if key in skip:
+                    continue
+                value = self._bake_value(key, from_rpr=True)
+                if value is None:
+                    continue
+                if rpr is None:
+                    rpr = etree.Element(qn("w:rPr"))
+                    r.insert(0, rpr)
+                el = _ordered_get_or_add(rpr, key[0], _RPR_ORDER)
+                el.set(qn(f"w:{key[1]}"), value)
+                changed = True
+            if changed:
+                self.runs_baked += 1
+
+    def report(self) -> dict:
+        differing = sorted(
+            [f"pPr.{e}.{a}" for (e, a) in self.diff_ppr]
+            + [f"rPr.{e}.{a}" for (e, a) in self.diff_rpr]
+        )
+        return {
+            "differ": True,
+            "differing_properties": differing,
+            "paragraphs_baked": self.paragraphs_baked,
+            "runs_baked": self.runs_baked,
+            "note": (
+                "the source and target files have different document "
+                "defaults; source paragraphs that inherited these "
+                "properties were given explicit values so they keep the "
+                "source appearance. The target's own content is untouched."
+            ),
+        }
+
+
+# pPr insertion order for baked elements (CT_PPr child sequence, abridged).
+_PPR_BAKE_ORDER = [
+    "pStyle", "keepNext", "keepLines", "pageBreakBefore", "framePr",
+    "widowControl", "numPr", "suppressLineNumbers", "pBdr", "shd", "tabs",
+    "suppressAutoHyphens", "kinsoku", "wordWrap", "overflowPunct",
+    "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd",
+    "snapToGrid", "spacing", "ind", "contextualSpacing", "mirrorIndents",
+    "suppressOverlap", "jc", "textDirection", "textAlignment",
+    "textboxTightWrap", "outlineLvl", "divId", "cnfStyle", "rPr", "sectPr",
+    "pPrChange",
+]
+
+
 # ------------------------------------------------- formatting strip (modes)
 
 _FORMATTING_MODES = ("source", "merge", "destination")
@@ -639,15 +934,19 @@ def _strip_direct_formatting(elements, mode: str) -> tuple[int, int]:
 
 
 def _check_positioners(
-    after_index: int | None, after_anchor: str | None, at_end: bool
+    after_index: int | None,
+    after_anchor: str | None,
+    at_end: bool,
+    before_first: bool = False,
 ) -> None:
     positioners = (
-        (after_index is not None) + (after_anchor is not None) + bool(at_end)
+        (after_index is not None) + (after_anchor is not None)
+        + bool(at_end) + bool(before_first)
     )
     if positioners != 1:
         raise WordMcpError(
-            "give exactly one positioner: after_index, after_anchor, or "
-            "at_end=True"
+            "give exactly one positioner: after_index, after_anchor, "
+            "at_end=True, or before_first=True"
         )
 
 
@@ -672,6 +971,7 @@ def insert_document(
     after_index: int | None = None,
     after_anchor: str | None = None,
     at_end: bool = False,
+    before_first: bool = False,
     formatting: str = "source",
 ) -> dict:
     """Insert the ENTIRE body content of the document at `source_path` into
@@ -708,9 +1008,14 @@ def insert_document(
       structurally required (numPr, outlineLvl, tab stops stay); the
       target's styles govern rendering entirely.
     With "merge"/"destination" the result reports runs/paragraphs stripped.
+    With "source", properties the source paragraphs inherited from their
+    file's document defaults (docDefaults) are resolved to explicit values
+    when the two files' defaults differ, so the carried content keeps the
+    source's rendered spacing/indent/font; the result reports what was
+    reconciled under "document_defaults".
 
     The source file is never modified."""
-    _check_positioners(after_index, after_anchor, at_end)
+    _check_positioners(after_index, after_anchor, at_end, before_first)
     if formatting not in _FORMATTING_MODES:
         raise WordMcpError(
             f"formatting must be one of {list(_FORMATTING_MODES)}, "
@@ -735,6 +1040,7 @@ def insert_document(
         after_index=after_index,
         after_anchor=after_anchor,
         at_end=at_end,
+        before_first=before_first,
         formatting=formatting,
     )
 
@@ -808,12 +1114,15 @@ def _transplant(
     after_anchor: str | None,
     at_end: bool,
     formatting: str,
+    before_first: bool = False,
 ) -> dict:
     """Shared reconciliation-and-insert pipeline over already-deep-copied
     source elements. Phase A only scans (any refusal leaves the target
     untouched); phase B mutates the in-memory target, which is saved only by
     the caller."""
-    ref_el, start_item = _resolve_position(pkg, after_index, after_anchor, at_end)
+    pos_mode, ref_el, start_item = _resolve_position(
+        pkg, after_index, after_anchor, at_end, before_first
+    )
 
     # ---- phase A: prepare and SCAN (no target mutation on refusal)
 
@@ -950,6 +1259,23 @@ def _transplant(
         runs_stripped, paras_stripped = _strip_direct_formatting(
             [el for el, _ in units], formatting
         )
+
+    # B0b. formatting="source": reconcile document defaults. Properties the
+    # source paragraphs inherited from their file's docDefaults are baked
+    # as explicit values wherever the two files' defaults differ, so the
+    # carried content keeps the source's rendered look instead of silently
+    # resolving against the target's defaults (field test, 2026-09-03).
+    dd_baker = None
+    if formatting == "source":
+        dd_baker = _DefaultsBaker(src, pkg)
+        if dd_baker.active:
+            for el, _story in units:
+                if el.tag == qn("w:p"):
+                    dd_baker.bake_paragraph(el)
+                for p in el.iterdescendants(qn("w:p")):
+                    dd_baker.bake_paragraph(p)
+        else:
+            dd_baker = None
 
     # B1+B2. Styles and numbering, to a fixpoint (cloned styles can reference
     # numbering; cloned numbering can reference styles via styleLink/pStyle).
@@ -1226,6 +1552,9 @@ def _transplant(
                 sectpr.addprevious(el)
             else:
                 body.append(el)
+    elif pos_mode == "before":
+        for el in copied:
+            ref_el.addprevious(el)
     else:
         for el in reversed(copied):
             ref_el.addnext(el)
@@ -1277,6 +1606,8 @@ def _transplant(
             "mode": (
                 "at_end"
                 if at_end
+                else "before_first"
+                if before_first
                 else ("after_index" if after_index is not None else "after_anchor")
             ),
             "starts_at_body_item": start_item,
@@ -1310,6 +1641,8 @@ def _transplant(
     if formatting != "source":
         result["runs_stripped"] = runs_stripped
         result["paragraphs_stripped"] = paras_stripped
+    if dd_baker is not None:
+        result["document_defaults"] = dd_baker.report()
     if styles.unresolved:
         result["style_refs_unresolved_in_source"] = sorted(styles.unresolved)
     if numbering.unresolved:

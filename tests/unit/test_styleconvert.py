@@ -1,13 +1,16 @@
 """Publication-style conversion bundle: parse / convert / manuscript format.
 
-Fixtures are synthetic manuscripts built with the server's own tools: a
-10-entry APA reference list with 2 deliberately malformed entries and a body
-mixing parenthetical, multi-work, and narrative citations. Gate cases per
-the v1.5 spec: APA -> Chicago author-date, APA -> IEEE (first-appearance
-numbering, narrative names kept), APA -> Chicago notes (REAL footnotes,
-long-then-short), IEEE -> APA round trip, dry_run byte-identity, malformed
-entries untouched + flagged, native-field routing, and the APA manuscript
-format verified via sectPr/pPr reads.
+v2-staged copy (Phase 2 Wave B): server-surface calls renamed to the v2
+grammar (manage_source, manage_note, insert_citation with a location
+object); ops-level calls, fixtures, and assertions unchanged from the v1
+suite. Fixtures are synthetic manuscripts built with the server's own
+tools: a 10-entry APA reference list with 2 deliberately malformed entries
+and a body mixing parenthetical, multi-work, and narrative citations. Gate
+cases per the v1.5 spec: APA -> Chicago author-date, APA -> IEEE
+(first-appearance numbering, narrative names kept), APA -> Chicago notes
+(REAL footnotes, long-then-short), IEEE -> APA round trip, dry_run
+byte-identity, malformed entries untouched + flagged, native-field
+routing, and the APA manuscript format verified via sectPr/pPr reads.
 """
 
 import hashlib
@@ -63,10 +66,10 @@ def _build(tmp_path, name, body, entries, heading_index):
     path = str(tmp_path / name)
     srv.create_document(path)
     srv.insert_paragraphs(
-        path, [{"text": t} for t in body + entries], at_end=True,
+        path, [{"text": t} for t in body + entries],
         backup=False, live="off",
     )
-    srv.apply_style(path, [heading_index], "Heading1", backup=False)
+    srv.apply_style(path, style="Heading1", range={"start": heading_index, "end": heading_index}, backup=False)
     return path
 
 
@@ -130,7 +133,7 @@ def test_no_reference_heading_raises(tmp_path):
     path = str(tmp_path / "bare.docx")
     srv.create_document(path)
     srv.insert_paragraphs(
-        path, [{"text": "Just prose, no list."}], at_end=True,
+        path, [{"text": "Just prose, no list."}],
         backup=False, live="off",
     )
     with pytest.raises(TargetNotFound):
@@ -154,7 +157,7 @@ def test_apa_to_chicago_author_date(manuscript):
     # in-text: comma dropped, page without p.
     assert any("(Hurd 1999, 384)" in t for t in texts)
     assert any("(Walt 1987; Snyder 1997)" in t for t in texts)
-    # narrative form is identical in both styles — must survive
+    # narrative form is identical in both styles, so it must survive
     assert any(t.startswith("Lake (2009) argues") for t in texts)
     # reference entry: inverted name, year after period, quoted title-case
     # title, journal + vol (iss): pages
@@ -186,7 +189,7 @@ def test_apa_to_ieee_numbering_and_narrative(manuscript):
     assert "vol. 53, no. 2, pp. 379-408, 1999." in hurd
     lake = next(t for t in texts if "Hierarchy in international relations" in t)
     assert lake.startswith("[2] D. A. Lake,")
-    # mixed doc: list order could not be normalized — must be flagged
+    # mixed doc: list order could not be normalized, which must be flagged
     assert any("could not be normalized" in f for f in result["flags"])
 
 
@@ -291,16 +294,19 @@ def test_native_field_doc_routed_not_rewritten(tmp_path):
     srv.create_document(path)
     srv.insert_paragraphs(
         path,
-        [{"text": "Legitimacy matters here."}, {"text": "References"}],
-        at_end=True, backup=False, live="off",
+        [{"text": "Legitimacy matters here."}, {"text": "References"}], backup=False, live="off",
     )
-    srv.add_source(
-        path, "Hurd1999", "JournalArticle", "Legitimacy and authority",
+    srv.manage_source(
+        path, action="add", tag="Hurd1999", source_type="JournalArticle",
+        title="Legitimacy and authority",
         year="1999", authors=[{"last": "Hurd", "first": "Ian"}],
         journal_name="International Organization",
         backup=False,
     )
-    srv.insert_citation(path, "Hurd1999", "matters here", backup=False)
+    srv.insert_citation(
+        path, "Hurd1999", location={"search": {"text": "matters here"}},
+        backup=False,
+    )
     before = _md5(path)
     result = sc.convert_citation_style(DocxPackage(path), "apa7")
     assert result["routed"] is True and result["converted"] is False
@@ -365,9 +371,10 @@ def test_notes_round_trip_harvest(clean_manuscript):
 def test_mixed_content_footnote_left_alone(clean_manuscript):
     _convert(clean_manuscript, "chicago17-notes")
     # add a commentary footnote that must NOT be harvested
-    srv.add_footnote(
-        clean_manuscript, anchor_text="hierarchy persists",
-        note_text="This claim is contested; see the discussion in chapter 3.",
+    srv.manage_note(
+        clean_manuscript, action="insert", note_type="footnote",
+        text="This claim is contested; see the discussion in chapter 3.",
+        location={"search": {"text": "hierarchy persists"}},
         backup=False,
     )
     result = _convert(

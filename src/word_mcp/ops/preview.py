@@ -24,8 +24,9 @@ from .read import body_items
 from .text import _replace_parts
 
 # XML 1.0-forbidden control characters (includes \x07, Word's internal
-# table-cell separator) — same class the mail-merge guard refuses.
-_BAD_CHARS_RE = _re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+# table-cell separator) plus DEL 0x7F, which Word strips silently on open
+# — same class the mail-merge guard refuses.
+_BAD_CHARS_RE = _re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
 _MATCH_DETAIL_CAP = 300
 _CONTEXT = 60
