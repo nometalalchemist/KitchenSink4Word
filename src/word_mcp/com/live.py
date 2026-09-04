@@ -391,7 +391,10 @@ class LiveSession:
         self.screen_toggled = False
         self.state_restore_failed: list = []
         self.enforced_tracking = False   # trackedChanges protection active
+        # False = Word said "not read-only"; True = it said "read-only";
+        # None = it did not answer, and read_only_probe_failed says why
         self.opened_read_only = False
+        self.read_only_probe_failed = None
 
     def batch_screen_off(self):
         """Only for >20-mutation batches; auto-restored, watchdog-backed."""
@@ -411,6 +414,11 @@ class LiveSession:
             out["enforced_tracking"] = True
         if self.opened_read_only:
             out["opened_read_only"] = True
+        if self.read_only_probe_failed:
+            # never report a confident False for a question Word refused to
+            # answer: say the probe failed and hand back the reason
+            out["opened_read_only"] = None
+            out["read_only_probe_failed"] = self.read_only_probe_failed
         with contextlib.suppress(Exception):
             out["document_dirty"] = not self.doc.Saved
         try:
@@ -445,6 +453,24 @@ def _check_protection(doc, path: str, session: "LiveSession"):
     )
 
 
+def probe_read_only(session: "LiveSession", doc) -> None:
+    """Ask the document whether it opened read-only, and RECORD a refusal.
+
+    This probe used to sit under a bare contextlib.suppress, so a COM fault
+    on doc.ReadOnly (a wedged instance, a proxy that answers some properties
+    and not others, a late-bound getattr that surfaces as AttributeError)
+    became a confident opened_read_only=False. That is the one failure mode
+    a read-only flag must not have: the caller edits a document it was told
+    was writable and cannot tell that the check never ran. On a fault the
+    session records None plus the reason, and the result carries
+    read_only_probe_failed."""
+    try:
+        session.opened_read_only = bool(doc.ReadOnly)
+    except Exception as exc:
+        session.opened_read_only = None
+        session.read_only_probe_failed = f"{type(exc).__name__}: {exc}"
+
+
 @contextlib.contextmanager
 def live_session(path: str, tool_name: str, *, mutating: bool = True):
     """attach → resolve → probe → guard+undo → yield → restore, per call.
@@ -474,8 +500,7 @@ def live_session(path: str, tool_name: str, *, mutating: bool = True):
                 session = LiveSession(app, doc, guard, grouped)
                 with contextlib.suppress(Exception):
                     session.had_unsaved_user_changes = not doc.Saved
-                with contextlib.suppress(Exception):
-                    session.opened_read_only = bool(doc.ReadOnly)
+                probe_read_only(session, doc)
                 if mutating:
                     _check_protection(doc, path, session)
                 try:
