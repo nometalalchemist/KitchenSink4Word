@@ -30,6 +30,7 @@ from ..core.errors import (
     StaleAnchor,
     TargetNotFound,
     UnsupportedStructure,
+    WordBusy,
     WordMcpError,
 )
 from ..ops import _regex as _rx
@@ -473,12 +474,50 @@ def _assign_text(rng, text: str):
     insert_text_chunked(rng, text)   # rng grows to cover the inserted text
 
 
-def _replace_literal(story, find: str, replace: str) -> tuple:
+def _deletion_end_at(rng):
+    """Max End of tracked DELETIONS overlapping rng, or None.
+    FAIL-CLOSED: a COM failure while reading revisions raises WordBusy —
+    the 2026-09-03 stress test proved that treating an unreadable revision
+    state as "no revision" lets a tracked replace re-match its own
+    deletion markup and spin (ERPERPERP...); never replace unverified."""
+    try:
+        end = None
+        for rev in rng.Revisions:
+            if rev.Type == 2:  # wdRevisionDelete
+                rev_end = rev.Range.End
+                if end is None or rev_end > end:
+                    end = rev_end
+        return end
+    except Exception as exc:
+        raise WordBusy(
+            "Word did not answer while verifying tracked-change state at a "
+            "match; replacement stopped fail-closed rather than risk "
+            "re-matching tracked-deletion markup. Retry for the remainder."
+        ) from exc
+
+
+def _replace_literal(
+    story, find: str, replace: str, *, tracked: bool = False
+) -> tuple:
     """Find-only then manual text assignment, one match at a time, forward
     only. Matches inside fields/content controls are SKIPPED (see
     _protected_span_end). Self-referencing replacements can't loop because
     the search resumes after each replacement, and the iteration budget is
     tied to the PRE-EDIT match count so no regeneration pathology can spin.
+
+    Tracked-mode loop guarantees (stress report bug 1 — the tracked
+    replace that looped 51 times re-matching its own deletion markup):
+    1. matches carrying a tracked deletion are skipped, and the revision
+       read FAILS CLOSED (_deletion_end_at) — an unreadable state aborts
+       instead of replacing;
+    2. after a tracked replacement the resume point advances past the
+       deletion markup the replacement itself created (Word keeps the
+       replaced text in the story as a findable tracked deletion, and may
+       place the insertion BEFORE it);
+    3. hard cap: tracked mode never performs more replacements than the
+       PRE-EDIT occurrence count of the full find string — tracked
+       replacement removes nothing from the story, so replaceable sites
+       cannot exceed that count even if COM misreports revisions.
 
     Finds longer than Word's ~255-char Find.Text limit (L5) are located via
     the first ~250 chars, the range is extended to the full find length, and
@@ -492,11 +531,16 @@ def _replace_literal(story, find: str, replace: str) -> tuple:
     # budget on PROBE occurrences: >= full-string occurrences, so prefix
     # hits that fail full verification can never starve real matches
     budget = _count_matches(story, probe) + 50
+    # tracked-mode replacement cap (guarantee 3): exact pre-edit count of
+    # the FULL find string
+    tracked_cap = story.Text.count(find) if tracked else None
     rng = story.Duplicate
     done = 0
     skipped = 0
     skipped_deleted = 0
     for _ in range(budget):
+        if tracked_cap is not None and done >= tracked_cap:
+            break
         f = rng.Find
         f.ClearFormatting()
         f.Text = probe
@@ -528,22 +572,32 @@ def _replace_literal(story, find: str, replace: str) -> tuple:
             # a match inside a tracked DELETION re-matches after every
             # tracked replacement (the deleted copy stays findable) — skip
             # it; replacing deleted text is meaningless anyway
-            with contextlib.suppress(Exception):
-                for rev in rng.Revisions:
-                    if rev.Type == 2:  # wdRevisionDelete
-                        deleted_rev_end = max(rev.Range.End, rng.End)
-                        break
+            deleted_rev_end = _deletion_end_at(rng)
         if past_protected is not None:
             skipped += 1
             resume = past_protected
         elif deleted_rev_end is not None:
             skipped_deleted += 1
-            resume = deleted_rev_end
+            resume = max(deleted_rev_end, rng.End)
         else:
             check_text_safe(replace)
+            match_start = rng.Start
             _assign_text(rng, replace)  # rng covers the replacement after
             done += 1
             resume = rng.End
+            if tracked:
+                # guarantee 2: the replaced text stays in the story as a
+                # tracked deletion adjacent to the insertion — advance
+                # resume past that markup so it can never be re-matched
+                # (fail-closed via _deletion_end_at on COM failure)
+                probe_rng = story.Duplicate
+                probe_rng.SetRange(
+                    match_start,
+                    min(story.End, resume + len(find) + 1),
+                )
+                own_markup_end = _deletion_end_at(probe_rng)
+                if own_markup_end is not None:
+                    resume = max(resume, own_markup_end)
         rng.SetRange(resume, max(story.End, resume))
         if rng.Start >= rng.End:
             break
@@ -634,7 +688,7 @@ def search_and_replace(
             else:
                 for story in stories:
                     done, skipped, skipped_del = _replace_literal(
-                        story, find, replace
+                        story, find, replace, tracked=track
                     )
                     n += done
                     in_fields += skipped

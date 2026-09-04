@@ -23,6 +23,11 @@ Contract for every mutating tool (v1.6 rule carried forward):
 - Mutations of one file are serialized; saves are atomic and validated.
 - A file open in Word is edited live by dual-mode tools (live='auto');
   tools with no live route refuse until it is closed.
+- Every COM-touching call (live routes, live_ tools, com_ tools) runs
+  under one process-wide serialization lock (com/serial.py): exactly one
+  call reaches Word at a time, so concurrent multi-agent live editing
+  queues instead of corrupting (2026-09-03 live COM stress report; it
+  was unsafe before this lock).
 """
 
 from __future__ import annotations
@@ -110,7 +115,10 @@ mcp = FastMCP(
         "text matches refuse loudly with every candidate. File-based with "
         "auto-backup before every mutation; dual-mode tools edit documents "
         "open in Word live (live='auto'), tools with no live route refuse "
-        "until the file is closed. list_elements enumerates any "
+        "until the file is closed. COM calls serialize server-side: one "
+        "call reaches Word at a time, concurrent live calls queue (see "
+        "get_workflows task='live-editing' for the save-then-anchor "
+        "cycle). list_elements enumerates any "
         "collection; validate runs any read-only check battery; "
         "migration/v1_to_v2.json maps every v1 tool name here."
     ),
@@ -1472,8 +1480,8 @@ def insert_paragraphs(
     outline 0). inherit_format/copy_format_from clone neighbor formatting
     minus outline level (file mode only); track records insertions by
     author. Auto-backup in file mode; atomic validated save. Open
-    documents are edited live; a stale text-selector target refuses:
-    save in Word, retry.
+    documents edit live, serialized; a stale text-selector target
+    refuses: save in Word, retry.
     """
     from .com import live_ops as _lo
 
@@ -1607,7 +1615,8 @@ def delete_paragraphs(
     every paragraph leaves one empty one behind. track records tracked
     deletions by author instead of removing. Auto-backup in file mode:
     prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
-    atomic validated save. Documents open in Word are edited live, unsaved
+    atomic validated save. Documents open in Word are edited live
+    (serialized), unsaved
     until the user saves.
     """
     from .com import live_ops as _lo
@@ -1660,9 +1669,9 @@ def set_paragraph_text(
     address it with a location object ({paragraph: N}, {search: ...},
     {outline: ...}). Indices shift after edits, so pass expect (a substring
     the target must contain) to refuse instead of hitting the wrong
-    paragraph; verify the returned replaced_text. Auto-backup in file mode:
-    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
-    atomic validated save. Edits go live on open documents;
+    paragraph; verify the returned replaced_text. Auto-backup in file
+    mode: prev/anchor slots (backup=False skips rotation); atomic
+    validated save. Edits go live on open documents (serialized);
     tracked-revision paragraphs refuse live.
     """
     from .com import live_ops as _lo
@@ -1716,7 +1725,8 @@ def search_and_replace(
     counters, and literal finds beyond Word's ~255-char limit are handled
     automatically. Auto-backup in file mode: prev/anchor slots in
     .ks4w-backups (backup=False skips rotation only); atomic validated
-    save. Documents open in Word are edited live.
+    save. Documents open in Word edit live, serialized; tracked replaces
+    never re-match their own markup.
     """
     from .com import live_ops as _lo
 
@@ -1895,12 +1905,11 @@ def apply_edits(
     lists failed ops: re-view, resend). The changed map carries per-op
     results, with fresh anchors for inserted paragraphs, so follow-up
     batches chain without re-viewing. Ops run in order; keep deletes
-    last. Use this for 3+ edits in one section, else the fine-grained
-    tools. Auto-backup in file mode (prev/anchor slots
-    in .ks4w-backups; backup=False skips rotation); atomic validated
-    save. A document open in Word is edited live as ONE undo step
-    (markdown lists and tables are file-mode only there; unsaved-change
-    stale targets refuse: save in Word, resend).
+    last. Auto-backup in file mode (backup=False skips rotation); atomic
+    validated save. A document open in Word is edited live as ONE undo
+    step: serialized, validated before any write, rolled back on
+    mid-batch failure. Markdown lists/tables are file-mode only there;
+    stale targets refuse: com_save_document first, re-view, resend.
     """
     if atomic is not True:
         raise WordMcpError(
@@ -1944,9 +1953,9 @@ def format_text(
     bold, italic, underline, strike, font, size_pt, color, highlight,
     small_caps, char_spacing_pt, language, east_asian_language, and more.
     case: upper | lower | title | sentence. Target: range={start,end},
-    find, or both; one of formatting or case per call. Auto-backup in file
-    mode: prev/anchor slots in .ks4w-backups (backup=False skips rotation
-    only); atomic validated save. Formatting goes live on open documents;
+    find, or both; one of formatting or case per call. Auto-backup in
+    file mode: prev/anchor slots (backup=False skips rotation); atomic
+    validated save. Formatting goes live on open documents (serialized);
     case is file-mode only.
     """
     from .com import live_ops as _lo
@@ -2039,7 +2048,7 @@ def set_paragraph_format(
     numbers are range-checked to Word's limits. outline_level (0-8; null
     removes) never changes the look; it is off by one from heading_level
     1-9. Auto-backup; atomic validated save. Open documents edited live
-    (shading, borders, tab_stops refused live).
+    (serialized; shading/borders/tab_stops refused live).
     """
     from .com import live_ops as _lo
 
@@ -2513,9 +2522,9 @@ def set_cells(
     a 2D block. nested={row, cell, index} targets a table nested in that
     host cell (edits mode only). track records tracked changes by author.
     Live mode (plain edits only) refuses vertical merges; file mode is
-    merge-aware. Auto-backup in file mode: prev/anchor slots in
-    .ks4w-backups (backup=False skips rotation only); atomic validated
-    save. Documents open in Word are edited live.
+    merge-aware. Auto-backup in file mode: prev/anchor slots
+    (backup=False skips rotation); atomic validated save. Documents open
+    in Word edit live, serialized.
     """
     if (edits is None) == (block is None):
         raise WordMcpError(
@@ -4596,15 +4605,14 @@ def set_watermark(
 
 @_tool("com-live")
 def com_word_status() -> dict:
-    """Check whether Word is running and what state it is in:
-    interactive_state (ready, busy if a dialog is open, blocked if a long
-    operation is running, not_running), and a list of open documents with
-    per-document dirty flag and autosave state. Use before live editing to
-    confirm Word is responsive, or to discover which files are locked, and
-    before com_save_document to see what needs saving. No file_path needed.
-    Read-only.
+    """Check Word's state: interactive_state (ready | busy | blocked |
+    serving | not_running), open documents with dirty/autosave flags,
+    com_serialization (which operation holds the server's COM lock; back
+    off while held), and pending_dialogs from the OS window layer, seen
+    even while COM is blocked: blocked=true means a modal dialog needs a
+    HUMAN to dismiss it. Use before live editing and saves. Read-only.
     """
-    from .com import bridge, live
+    from .com import bridge, dialogs, live
 
     out = bridge.word_status()
     status = live.interactive_status()
@@ -4613,6 +4621,16 @@ def com_word_status() -> dict:
         out["open_documents"] = status["open_documents"]
     if status.get("protected_view_documents"):
         out["protected_view_documents"] = status["protected_view_documents"]
+    if status.get("com_serialization"):
+        out["com_serialization"] = status["com_serialization"]
+    pending = dialogs.pending_dialogs()
+    if pending:
+        out["pending_dialogs"] = pending
+        out["blocked"] = True
+        out["dialog_hint"] = (
+            "a modal dialog is open in Word and blocks COM until a human "
+            "dismisses it; do not retry COM operations while it is up"
+        )
     return out
 
 
@@ -4667,6 +4685,7 @@ def com_multi_document(
     output_path: str | None = None,
     author: str = "word-mcp compare",
     section_break_between: bool = True,
+    timeout: float = 300,
 ) -> dict:
     """Word-native multi-document operations through an invisible instance.
     action=compare diffs two versions of a draft (files=[original,
@@ -4674,16 +4693,15 @@ def com_multi_document(
     plus a revision summary; author names the change author; output
     defaults to <revised>_COMPARE.docx. action=combine merges two
     reviewers' tracked changes into one unified redline (files=[original,
-    revised]), both sets of revisions keeping their original attributions;
-    use compare to discover differences, combine to pool existing markup;
-    output defaults beside the original. action=merge concatenates two or
+    revised]), both sets of revisions keeping their original
+    attributions; output defaults beside the original. action=merge concatenates two or
     more whole documents in order into ONE new file with full fidelity
     (styles, footnotes, numbering); section_break_between keeps per-chapter
     headers and numbering possible; output_path is required. To insert a
     document INTO another at a chosen position use insert_document; for one
-    table, copy_table. Input files are never modified; the result is a new
-    file written to disk. Requires Word installed; documents need not be
-    open.
+    table, copy_table. Input files are never modified; the result is a
+    new file written to disk. Bounded: aborts after timeout seconds
+    (default 300). Requires Word installed; documents need not be open.
     """
     from .com import bridge
 
@@ -4697,7 +4715,7 @@ def com_multi_document(
         if section_break_between is not True:
             raise WordMcpError("section_break_between applies to merge only")
         return bridge.compare_documents(
-            files[0], files[1], output_path, author=author
+            files[0], files[1], output_path, author=author, timeout=timeout
         )
     if action == "combine":
         if len(files) != 2:
@@ -4708,7 +4726,9 @@ def com_multi_document(
             raise WordMcpError("author applies to compare only")
         if section_break_between is not True:
             raise WordMcpError("section_break_between applies to merge only")
-        return bridge.combine_documents(files[0], files[1], output_path)
+        return bridge.combine_documents(
+            files[0], files[1], output_path, timeout=timeout
+        )
     if action == "merge":
         if len(files) < 2:
             raise WordMcpError("merge takes two or more files")
@@ -4717,7 +4737,8 @@ def com_multi_document(
         if output_path is None:
             raise WordMcpError("merge requires output_path")
         return bridge.merge_documents(
-            files, output_path, section_break_between=section_break_between
+            files, output_path, section_break_between=section_break_between,
+            timeout=timeout,
         )
     raise WordMcpError("action must be compare | combine | merge")
 
@@ -4732,12 +4753,12 @@ def com_save_document(
 ) -> dict:
     """Save, close, or encrypt a document through Word. Default: tells the
     user's running Word to save the open document so file tools read the
-    current state (the explicit save step of the Option C model: live and
-    COM edits stay unsaved until requested here or by the user). close=True
-    also closes it, releasing the file lock (save=False discards unsaved
-    changes). password saves a real AES-encrypted copy via an invisible
-    instance (output_path saves it elsewhere; not combinable with close).
-    Requires Word installed.
+    current state (Option C: live edits stay unsaved until requested here
+    or by the user). close=True also closes it, releasing the file lock
+    (save=False discards unsaved changes). password saves an
+    AES-encrypted copy via an invisible instance (output_path saves it
+    elsewhere). Serialized, alert-suppressed, retried with backoff; no
+    save dialog can block Word. Requires Word installed.
     """
     from .com import bridge
 
@@ -4761,43 +4782,49 @@ def com_save_document(
 
 
 @_tool("com-live")
-def com_proofing_errors(file_path: str, limit: int = 100) -> dict:
+def com_proofing_errors(
+    file_path: str, limit: int = 100, timeout: float = 60
+) -> dict:
     """Word's own spelling and grammar error lists with surrounding context:
-    each error, its type (spelling or grammar), the sentence containing it,
-    and suggested corrections. Useful as a review aid before submission
-    (note: proper nouns and technical terms appear as spelling errors).
-    Requires Word installed; opens an invisible instance and modifies
-    nothing. The source file is untouched. Read-only.
+    each error, its type (spelling or grammar), the sentence containing
+    it, and suggested corrections; a review aid before submission. Opens
+    an invisible instance; the source file is untouched but must be
+    CLOSED in Word (open documents refuse: same-name dialog risk).
+    Bounded: aborts cleanly after timeout seconds (default 60). Requires
+    Word installed. Read-only.
     """
     from .com import bridge
 
-    return bridge.proofing_errors(file_path, limit=limit)
+    return bridge.proofing_errors(file_path, limit=limit, timeout=timeout)
 
 
 @_tool("com-live")
-def com_readability_statistics(file_path: str) -> dict:
+def com_readability_statistics(file_path: str, timeout: float = 60) -> dict:
     """Word's own readability statistics via COM: Flesch Reading Ease,
-    Flesch-Kincaid Grade Level, word, sentence, and paragraph counts, and
-    averages. Requires Word installed; opens an invisible instance to
-    compute the statistics and modifies nothing; the source file is
-    untouched. Read-only.
+    Flesch-Kincaid Grade Level, word, sentence, and paragraph counts,
+    and averages. Opens an invisible instance and modifies nothing; the
+    file must be CLOSED in Word (open documents refuse). Bounded: aborts
+    after timeout seconds (default 60). Requires Word installed.
+    Read-only.
     """
     from .com import bridge
 
-    return bridge.readability_statistics(file_path)
+    return bridge.readability_statistics(file_path, timeout=timeout)
 
 
 @_tool("com-live")
-def com_validate_opens_clean(file_path: str) -> dict:
+def com_validate_opens_clean(file_path: str, timeout: float = 60) -> dict:
     """Run the definitive corruption check: open the file in an invisible
-    Word instance and report clean or fail, with Word's own error where one
-    is raised. The Word-verdict companion to validate and
-    diagnose_document; use it when XML-level checks pass but Word still
-    complains. Requires Word installed; modifies nothing. Read-only.
+    Word instance and report clean or fail, with Word's own error where
+    one is raised; the Word verdict when XML checks pass but Word still
+    complains. A document already OPEN in Word is checked via the open
+    copy (no same-name dialog) and the result says so. Bounded: aborts
+    after timeout seconds (default 60). Requires Word installed;
+    modifies nothing. Read-only.
     """
     from .com import bridge
 
-    return bridge.validate_opens_clean(file_path)
+    return bridge.validate_opens_clean(file_path, timeout=timeout)
 
 
 # ============================================ 2.15 live tier (visible Word)
@@ -4812,8 +4839,8 @@ def live_insert_at_cursor(
     cursor position is read once and never moved; the user's selection is
     untouched. newline=True ends the insertion with a paragraph break. Use
     insert_paragraphs for location-addressed insertion instead. Requires
-    the document open in a visible Word; the edit is one undo step and
-    stays unsaved until the user saves (Option C).
+    the document open in a visible Word; the edit is one undo step,
+    serialized, unsaved until the user saves (Option C).
     """
     from .com import live_ops as _lo
 

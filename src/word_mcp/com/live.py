@@ -32,6 +32,7 @@ from ..core.errors import (
     WordMcpError,
     WordNotRunning,
 )
+from . import serial as _serial
 
 # HRESULTs (as signed ints, the way pywin32 surfaces them)
 RPC_E_CALL_REJECTED = -2147418111        # modal dialog / call rejected
@@ -63,6 +64,7 @@ _PROTECTION_NAMES = {
 }
 
 _WD_ALERTS_ALL = -1
+_WD_ALERTS_NONE = 0
 
 # Word COM rejects single string arguments much beyond ~32K; stay well under.
 TEXT_CHUNK = 30000
@@ -359,6 +361,8 @@ def _screen_repair_async():
         pythoncom, _, win32com = _com_modules()
         for _ in range(3):
             time.sleep(1.0)
+            if not _serial.acquire(timeout=10.0):
+                continue
             pythoncom.CoInitialize()
             try:
                 app = win32com.GetActiveObject("Word.Application")
@@ -370,6 +374,7 @@ def _screen_repair_async():
             finally:
                 with contextlib.suppress(Exception):
                     pythoncom.CoUninitialize()
+                _serial.release()
 
     threading.Thread(target=_worker, daemon=True).start()
 
@@ -442,41 +447,54 @@ def _check_protection(doc, path: str, session: "LiveSession"):
 
 @contextlib.contextmanager
 def live_session(path: str, tool_name: str, *, mutating: bool = True):
-    """attach → resolve → probe → guard+undo → yield → restore, per call."""
+    """attach → resolve → probe → guard+undo → yield → restore, per call.
+
+    The WHOLE session runs under the process-wide COM serialization lock
+    (com/serial.py): exactly one tool call reaches Word at a time, which
+    is what makes concurrent multi-agent live editing safe (2026-09-03
+    stress report — unserialized Range writes interleave per character).
+    Alerts are suppressed (DisplayAlerts = wdAlertsNone) for the session
+    and restored by the StateGuard, so Word cannot raise a modal dialog
+    mid-operation; live_repair restores alerts if a client crashes."""
     pythoncom, pywintypes, win32com = _com_modules()
     _ensure_com(pythoncom)
-    app = doc = None
-    guard = StateGuard()
-    restore_failed: list = []
-    try:
-        app = _attach_app(win32com, pythoncom)
-        app, doc = _resolve_document(pythoncom, pywintypes, win32com, app, path)
-        probe_ready(pywintypes, app, doc)
-        with undo_group(app, tool_name, doc=doc) as grouped:
-            session = LiveSession(app, doc, guard, grouped)
+    with _serial.com_operation(f"live:{tool_name}"):
+        app = doc = None
+        guard = StateGuard()
+        restore_failed: list = []
+        try:
+            app = _attach_app(win32com, pythoncom)
+            app, doc = _resolve_document(
+                pythoncom, pywintypes, win32com, app, path
+            )
+            probe_ready(pywintypes, app, doc)
             with contextlib.suppress(Exception):
-                session.had_unsaved_user_changes = not doc.Saved
-            with contextlib.suppress(Exception):
-                session.opened_read_only = bool(doc.ReadOnly)
-            if mutating:
-                _check_protection(doc, path, session)
-            try:
-                yield session
-            except pywintypes.com_error as exc:
-                typed = _classify(exc)
-                if typed:
-                    raise typed from exc
-                raise
-            finally:
-                restore_failed = guard.restore()
-                session.state_restore_failed = restore_failed
-                if restore_failed and session.screen_toggled:
-                    _screen_repair_async()
-    finally:
-        # release proxies promptly; the thread's apartment deliberately
-        # stays initialized (see _ensure_com)
-        doc = None
-        app = None
+                guard.set(app, "DisplayAlerts", _WD_ALERTS_NONE)
+            with undo_group(app, tool_name, doc=doc) as grouped:
+                session = LiveSession(app, doc, guard, grouped)
+                with contextlib.suppress(Exception):
+                    session.had_unsaved_user_changes = not doc.Saved
+                with contextlib.suppress(Exception):
+                    session.opened_read_only = bool(doc.ReadOnly)
+                if mutating:
+                    _check_protection(doc, path, session)
+                try:
+                    yield session
+                except pywintypes.com_error as exc:
+                    typed = _classify(exc)
+                    if typed:
+                        raise typed from exc
+                    raise
+                finally:
+                    restore_failed = guard.restore()
+                    session.state_restore_failed = restore_failed
+                    if restore_failed and session.screen_toggled:
+                        _screen_repair_async()
+        finally:
+            # release proxies promptly; the thread's apartment deliberately
+            # stays initialized (see _ensure_com)
+            doc = None
+            app = None
 
 
 def run_live(path: str, tool_name: str, body, *, mutating: bool = True) -> dict:
@@ -520,6 +538,11 @@ def live_repair() -> dict:
     pre-crash TrackRevisions value, so that one is reported, not reverted."""
     pythoncom, pywintypes, win32com = _com_modules()
     _ensure_com(pythoncom)
+    with _serial.com_operation("live_repair"):
+        return _live_repair_locked(pythoncom, win32com)
+
+
+def _live_repair_locked(pythoncom, win32com) -> dict:
     app = None
     actions = []
     try:
@@ -577,7 +600,38 @@ def interactive_status() -> dict:
 
     Documents are collected from the primary (GetActiveObject) instance AND
     from every other Word instance found via the running-object table, so
-    multi-instance setups report completely."""
+    multi-instance setups report completely.
+
+    Contention honesty (stress report item 7): the result always carries
+    com_serialization (lock_snapshot). When another COM operation holds
+    the serialization lock, this tool does NOT queue behind it — it
+    reports interactive_state "serving" with the running operation's name
+    so callers can back off instead of piling on. The probe itself runs
+    lock-free on a helper thread (read-only; a stuck Word cannot hang the
+    server). Limits: Word does not expose modal-dialog state directly —
+    a dialog usually surfaces as "busy" (RPC call rejected), but simple
+    property reads can still succeed with a dialog pending, so "ready"
+    is evidence, not proof, of a dialog-free Word."""
+    if not _serial.acquire(timeout=2.0):
+        return {
+            "interactive_state": "serving",
+            "open_documents": [],
+            "com_serialization": _serial.lock_snapshot(),
+            "note": (
+                "another COM operation holds the serialization lock; "
+                "Word state was not probed to avoid queuing — retry "
+                "after the running operation finishes"
+            ),
+        }
+    try:
+        out = _interactive_status_locked()
+    finally:
+        _serial.release()
+    out["com_serialization"] = _serial.lock_snapshot()
+    return out
+
+
+def _interactive_status_locked() -> dict:
     state = probe_with_timeout()
     out = {"interactive_state": state, "open_documents": []}
     if state != "ready":

@@ -11,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..core.errors import DocumentNotFound, WordMcpError
-from .bridge import _WD_DO_NOT_SAVE, _word
+from .bridge import _WD_DO_NOT_SAVE, _bounded_op, _word
 
 _WD_FORMAT_DOCX_DEFAULT = 16  # wdFormatDocumentDefault (.docx)
 _WD_STAT_WORDS = 0  # wdStatisticWords
@@ -21,6 +21,7 @@ _WD_STAT_PAGES = 2  # wdStatisticPages
 _SCANNED_PDF_WORD_FLOOR = 5
 
 
+@_bounded_op("com_import_pdf", default=300.0)
 def import_pdf(pdf_path: str, output_path: str | None = None) -> dict:
     """Convert a PDF to .docx via Word's built-in PDF reflow.
 

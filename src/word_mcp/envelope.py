@@ -111,7 +111,9 @@ HINTS: dict[str, str] = {
     ),
     "STALE_ANCHOR": (
         "the document changed since the view was taken; re-run "
-        "get_document_view and resend with fresh anchors"
+        "get_document_view and resend with fresh anchors. If you made "
+        "live edits on an open document, com_save_document first "
+        "(anchors resolve from the last SAVED state)"
     ),
     "RANGE_OUT_OF_BOUNDS": (
         "the range exceeds the document; the message names the valid "

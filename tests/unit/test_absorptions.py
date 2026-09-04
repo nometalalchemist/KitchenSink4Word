@@ -76,6 +76,8 @@ def test_workflows_listing_names_all_tasks():
         "format-citations",
         "build-from-template",
         "heavy-editing",
+        "live-editing",
+        "comment-partner",
         "migrate-from-v1",
         "bulk-edit",
     }

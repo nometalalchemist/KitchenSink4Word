@@ -164,6 +164,94 @@ WORKFLOWS: dict[str, dict] = {
             "so even the working copy has prev/anchor rollback.",
         ],
     },
+    "live-editing": {
+        "summary": (
+            "Edit a document while it is OPEN in Word (the Option C save "
+            "model): live edits land in the window unsaved; anchors and "
+            "views read the last SAVED state, so save before any "
+            "anchor-addressed step. COM calls serialize server-side (one "
+            "at a time), so concurrent agents queue instead of colliding."
+        ),
+        "steps": [
+            {"tool": "com_word_status",
+             "why": "confirm Word is responsive, the document is open, and "
+                    "no modal dialog or running COM operation blocks it "
+                    "(pending_dialogs / com_serialization)"},
+            {"tool": "get_text",
+             "why": "read the open document live (dual-mode tools "
+                    "auto-route; reads reflect the live state)"},
+            {"tool": "search_and_replace",
+             "why": "make live edits (also insert_paragraphs, "
+                    "set_paragraph_text, format_text, set_cells...); each "
+                    "call is one Ctrl+Z step, unsaved until saved"},
+            {"tool": "com_save_document",
+             "why": "REQUIRED before anchor work: live edits stay unsaved, "
+                    "and get_document_view/apply_edits anchors resolve "
+                    "from the last saved state"},
+            {"tool": "get_document_view",
+             "why": "take fresh anchors from the just-saved state (on an "
+                    "open document the view says live:true + saved-state "
+                    "note)"},
+            {"tool": "apply_edits",
+             "why": "batch anchor-addressed edits; on the open document "
+                    "the batch runs live in one undo group with all "
+                    "validation before any write"},
+            {"tool": "live_scroll_to",
+             "why": "optional: show the user what changed without moving "
+                    "their cursor"},
+        ],
+        "notes": [
+            "The chain live edit -> stale view -> STALE_ANCHOR is the "
+            "documented trap: a view taken before com_save_document does "
+            "not see live edits. Save first, then view, then apply_edits.",
+            "diagnose_document has no live route (reads saved XML); "
+            "com_validate_opens_clean checks the open copy instead.",
+            "If a save fails repeatedly or Word stops answering, "
+            "com_word_status reports pending dialogs a human must "
+            "dismiss; live_repair fixes crashed-client state.",
+        ],
+    },
+    "comment-partner": {
+        "summary": (
+            "PREVIEW recipe using shipped tools only: collaborate through "
+            "Word comments on an open document — poll for comments "
+            "addressed to the AI, fix as tracked changes, reply/resolve "
+            "after saving. Live in-thread reply/resolve arrives in v2.1."
+        ),
+        "steps": [
+            {"tool": "get_comments",
+             "why": "poll the open document live for new unresolved "
+                    "comments addressed to the AI (filter by text "
+                    "convention, e.g. '@ai' or a name prefix)"},
+            {"tool": "get_text",
+             "why": "read the anchored_text's surrounding context live "
+                    "before acting"},
+            {"tool": "search_and_replace",
+             "why": "make the requested fix as a TRACKED change "
+                    "(track=true, author='AI name') so the human keeps "
+                    "accept/reject control; set_paragraph_text and "
+                    "insert_paragraphs work the same way"},
+            {"tool": "com_save_document",
+             "why": "persist the tracked edits; comment management below "
+                    "is file-mode and reads the saved state"},
+            {"tool": "manage_comment",
+             "why": "reply to the comment describing what was done, then "
+                    "action='resolve' it (file mode; v2.1 adds live "
+                    "in-thread reply/resolve)"},
+        ],
+        "notes": [
+            "Etiquette: act ONLY on comments addressed to the AI; leave "
+            "the humans' discussion threads alone.",
+            "Every edit goes in tracked, attributed to the AI author — "
+            "the human reviews with accept/reject as usual.",
+            "An ambiguous comment gets a REPLY asking for clarification, "
+            "never a guessed edit.",
+            "manage_comment needs the file saved (and briefly closed if "
+            "Word holds the lock: com_save_document close=true, then the "
+            "user reopens) — this friction is what v2.1's live comment "
+            "route removes.",
+        ],
+    },
     "migrate-from-v1": {
         "summary": (
             "Translate v1.x call sites to the v2 surface using the shipped "
