@@ -10,7 +10,7 @@
 [Landing page](https://nometalalchemist.github.io/KitchenSink4Word/) · [llms.txt](https://nometalalchemist.github.io/KitchenSink4Word/llms.txt) (machine-readable capability manifest for agents and LLM crawlers)
 
 **Everything plus the kitchen sink for Microsoft Word.** The most complete
-Word (.docx) MCP server available: **187 document operations** across **108
+Word (.docx) MCP server available: **219 document operations** across **108
 tools**, one consistent grammar, engineered not to corrupt and stress-tested
 against long, heavily formatted real-world documents. Live editing included:
 documents open in Word are edited in place, visibly, with each tool call
@@ -26,12 +26,20 @@ landing as a single Ctrl+Z step.
 
 ## Two numbers that matter
 
-- **187 document operations, 108 tools.** The operation count went up and the
+- **219 document operations, 108 tools.** The operation count went up and the
   tool count came down on purpose. v1 spread similar jobs across many
   competing names; v2 gives each concept exactly one name built from a small
   verb table (`insert_`, `set_`, `manage_`, `list_elements`, `validate`,
   `delete_element`), so an agent picks the right tool the first time and
-  carries less schema to do it. Fewer tools, more reach.
+  carries less schema to do it. Fewer tools, more reach. Measured with one
+  yardstick on both trees, v1.6 performed 200 operations across its 189
+  tools and v2.0 performs 219 across 108: every v1.6 capability survived the
+  consolidation (the migration map covers all 189, test-guarded) and v2 adds
+  the anchored batch editor, the anchored document view, deletion parity,
+  and wider dispatch on the multiplexers. Both figures come from
+  `scripts/count_operations.py`; the v1.6 run is
+  `scripts/count_operations_v16.py`, which measures a v1.6 checkout with the
+  same definition.
 - **Tiered loading: starts at about 7.6k tokens, scales to everything.** A
   fresh session loads the 28-tool lite core (about 7,600 tokens) and turns on
   capability packs only when a task needs them, with one `enable_tools` call.
@@ -105,7 +113,7 @@ comparison is about what each one can do, not how many names it has:
 Capability survey compiled from public repositories, documentation, and issue
 trackers. Corrections welcome: [open an issue](https://github.com/nometalalchemist/KitchenSink4Word/issues).
 
-## What the 187 operations cover
+## What the 219 operations cover
 
 The everyday core covers text and formatting, tables (including merge-aware
 column insert/delete and one-call bulk cell edits), footnotes and endnotes

@@ -47,7 +47,7 @@ def _measured():
 def test_published_numbers_match_scripts():
     """Every headline number in the public copy is the script's number."""
     lite, full, n_ops = _measured()
-    assert (lite, full, n_ops) == (28, 110, 187), (
+    assert (lite, full, n_ops) == (28, 110, 219), (
         f"scripts now report lite={lite} full={full} ops={n_ops}; update the "
         "public copy AND this test together (that is the whole point)."
     )
@@ -70,6 +70,10 @@ _STALE = [
     (r"\b107\b", "retired tool count 107"),
     (r"\b182\b", "retired operations count 182 (undercounted delegate "
                  "dispatch; corrected to 187 in the Fable re-audit)"),
+    (r"\b187\b", "retired operations count 187 (missed dispatch carried "
+                 "inside caller-supplied dicts, and credited only one "
+                 "operation to sibling v1.6 capabilities that landed on the "
+                 "same v2 tool; remeasured at 219)"),
     (r"27[,.   ]?000", "retired token bill 27,000"),
     (r"~?27k\b", "retired token bill 27k"),
     (r"2\.5\s*[-–to ]{1,4}3\s*x", "retired get_text 2.5-3x claim"),
@@ -175,7 +179,7 @@ def test_i18n_dictionaries_carry_current_figures():
     old = forms_of("34,400")
     for i, lang in enumerate(langs):
         block = text[spans[i]:spans[i + 1]]
-        assert "187" in block, f"i18n {lang}: operations count 187 missing"
+        assert "219" in block, f"i18n {lang}: operations count 219 missing"
         for name, forms in (("lite 7.6k", sep), ("full 26.6k", full),
                             ("v1.6 34.4k", old)):
             assert any(f in block for f in forms), (
