@@ -331,11 +331,12 @@ The remaining 63 writers and 14 readers are file-only: they refuse while the doc
 
 ## License
 
-**AGPL-3.0**: free for any use under AGPL terms (copyleft: modifications to
-served copies must be open-sourced). Commercial license available for use
-cases that cannot comply;
-[open an issue](https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml)
-to arrange one.
+**AGPL-3.0.** Free for individuals and personal use, and it stays that way.
+
+If your company wants to build this into a product of its own, that needs a
+commercial license, and terms are worked out case by case.
+[Open an issue](https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml)
+on the repo and we will talk it through.
 
 ---
 

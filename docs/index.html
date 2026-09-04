@@ -30,10 +30,28 @@ a{color:var(--copper)}
 .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
 
 /* ---------- masthead ---------- */
+/* grid, not flex: the language toggle keeps the same centre column in every
+   language, so switching languages never moves it. */
 .masthead{border-bottom:3px double var(--ink);padding:14px 0;font-size:12px;
-  letter-spacing:.18em;text-transform:uppercase;display:flex;justify-content:space-between;
-  gap:12px;flex-wrap:wrap}
+  letter-spacing:.18em;text-transform:uppercase;display:grid;
+  grid-template-columns:1fr auto 1fr;align-items:baseline;gap:12px}
+.masthead>span:last-child{justify-self:end;text-align:right}
 .masthead b{letter-spacing:.02em}
+@media(max-width:900px){
+  .masthead{grid-template-columns:1fr;justify-items:center;text-align:center}
+  .masthead>span:last-child{justify-self:center;text-align:center}
+}
+
+/* ---------- product switch bar ---------- */
+.switchbar{border-bottom:1px solid var(--rule);background:var(--paper-deep);
+  padding:9px 0;font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;
+  display:flex;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap}
+.switchbar .lbl{color:var(--ink-soft);letter-spacing:.22em}
+.switchbar a{color:var(--copper);text-decoration:none;font-weight:600;
+  border-bottom:2px solid transparent;padding-bottom:2px}
+.switchbar a:hover{border-bottom-color:var(--copper)}
+.switchbar .here{color:var(--ink);font-weight:700;border-bottom:2px solid var(--ink);
+  padding-bottom:2px}
 .lang-toggle{display:inline-flex;gap:1px;align-items:baseline;flex-wrap:wrap;text-transform:none;letter-spacing:.05em}
 .lang-toggle button{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;background:none;border:none;border-bottom:2px solid transparent;color:var(--ink-soft);cursor:pointer;padding:1px 5px;letter-spacing:.05em}
 .lang-toggle button:hover{color:var(--copper)}
@@ -130,15 +148,63 @@ tr:nth-child(even) td{background:var(--paper-deep)}
 th.us{background:var(--copper)!important;color:var(--paper)}
 .foot-note{font-size:11px;color:var(--ink-soft);margin-top:10px}
 
+/* new in this version: collapsed by default, the verdict above it leads */
+.newfold{max-width:900px;margin:0 auto}
+.newfold summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:14px;
+  flex-wrap:wrap;border:2px solid var(--ink);background:var(--paper-deep);
+  box-shadow:var(--shadow);padding:16px 22px;transition:all .15s}
+.newfold summary::-webkit-details-marker{display:none}
+.newfold summary:hover{border-color:var(--copper);background:var(--paper)}
+.newfold summary .tag{background:var(--stamp);color:var(--paper);font-size:10px;
+  letter-spacing:.28em;padding:4px 10px;white-space:nowrap}
+.newfold summary .ttl{font-family:'Fraunces',Georgia,serif;font-weight:900;
+  font-size:clamp(17px,2.2vw,21px)}
+.newfold summary .hint{font-size:12.5px;color:var(--ink-soft);flex:1;min-width:180px}
+.newfold summary:after{content:"+";font-family:'Fraunces',Georgia,serif;font-weight:900;
+  font-size:22px;color:var(--copper);line-height:1;margin-left:auto}
+.newfold[open] summary:after{content:"–"}
+.newfold[open] summary{border-bottom-style:dashed}
+.newin{border:2px solid var(--ink);border-top:none;background:var(--paper-deep);
+  box-shadow:var(--shadow);padding:26px 34px 26px;position:relative}
+.newin .sub{font-size:12.5px;color:var(--ink-soft);margin-bottom:20px}
+.newin ul{list-style:none;display:grid;gap:14px}
+.newin li{position:relative;padding-left:26px;font-size:13.5px;line-height:1.65;
+  color:var(--ink-soft)}
+.newin li:before{content:"✦";color:var(--copper);position:absolute;left:2px;top:0;font-size:13px}
+.newin li b{color:var(--ink);font-weight:700}
+
 /* install */
 .term{background:var(--ink);color:#e8edf5;border:2px solid var(--ink);box-shadow:var(--shadow);
-  padding:26px 28px;font-size:14.5px;overflow-x:auto}
+  padding:22px 24px;font-size:14.5px;overflow-x:auto}
 .term .c{color:#8fa8c8}
 .term .p{color:var(--copper-bright)}
 .term div{white-space:pre}
 .install-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+/* grid items default to min-width:auto, so the pre-formatted command inside
+   .term would hold the column open past the viewport on a phone. */
+.install-grid>*{min-width:0}
 @media(max-width:760px){.install-grid{grid-template-columns:1fr}}
 .install-grid h3{font-size:15px;letter-spacing:.06em;margin-bottom:12px}
+.step{border:2px solid var(--ink);background:var(--paper);box-shadow:var(--shadow);
+  padding:24px 26px 22px;position:relative}
+.step .badge{position:absolute;top:-11px;left:24px;background:var(--ink);color:var(--paper);
+  font-size:10px;letter-spacing:.3em;padding:4px 12px;text-transform:uppercase}
+.step h3{font-size:17px;font-weight:800;margin:6px 0 8px}
+.step p{font-size:13px;color:var(--ink-soft);line-height:1.6;margin-bottom:14px}
+.step p.after{margin:12px 0 0}
+.step .go{display:inline-block;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--copper);font-weight:600;text-decoration:none;border-bottom:2px solid var(--copper);
+  padding-bottom:2px}
+details.devfold{margin-top:26px;border:2px dashed var(--rule);background:transparent;padding:0}
+details.devfold summary{cursor:pointer;padding:14px 20px;font-size:11.5px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--ink-soft);list-style:none}
+details.devfold summary::-webkit-details-marker{display:none}
+details.devfold summary:before{content:"▸ ";color:var(--copper)}
+details.devfold[open] summary:before{content:"▾ "}
+details.devfold summary:hover{color:var(--copper)}
+details.devfold .devbody{padding:0 20px 20px}
+details.devfold .devbody p{font-size:12.5px;color:var(--ink-soft);margin:0 0 10px}
+details.devfold .term{margin-bottom:14px;font-size:13px;padding:16px 18px}
 
 /* guarantee */
 .guarantee{max-width:820px;margin:0 auto;text-align:center;border:3px double var(--ink);
@@ -176,7 +242,14 @@ footer a{color:var(--copper)}
 <div class="wrap masthead rev d1">
   <span data-i18n="m.left"><b>EST. 2026</b> · FINE INSTRUMENTS FOR DOCUMENT PLUMBING</span>
   <nav class="lang-toggle" id="langToggle" aria-label="Language"></nav>
-  <span><span data-i18n="m.catalog">CATALOG № 219</span> · <a href="#service" data-i18n="m.service">SERVICE</a> · <a href="https://nometalalchemist.github.io/">STORE</a> · <a href="https://nometalalchemist.github.io/KitchenSink4PPT/">PPT</a> · <a href="https://github.com/nometalalchemist/KitchenSink4Word">GITHUB</a> · <a href="https://pypi.org/project/kitchensink4word/">PYPI</a> · <a href="llms.txt">LLMS.TXT</a></span>
+  <span><span data-i18n="m.catalog">CATALOG № 219</span> · <a href="#service" data-i18n="m.service">SERVICE</a> · <a href="https://github.com/nometalalchemist/KitchenSink4Word">GITHUB</a> · <a href="https://pypi.org/project/kitchensink4word/">PYPI</a> · <a href="llms.txt">LLMS.TXT</a></span>
+</div>
+
+<div class="switchbar">
+  <span class="lbl">THE KITCHENSINK WORKS</span>
+  <span class="here">🚰 KitchenSink4Word <span data-i18n="sw.here">(you are here)</span></span>
+  <a href="https://nometalalchemist.github.io/KitchenSink4PPT/">💡 KitchenSink4PPT</a>
+  <a href="https://nometalalchemist.github.io/">🏪 <span data-i18n="sw.store">The storefront</span></a>
 </div>
 
 <header class="hero wrap">
@@ -201,12 +274,34 @@ footer a{color:var(--copper)}
 <section id="for">
   <div class="wrap">
     <div class="sec-head"><span class="no" data-i18n="no0">DEPT. 00</span><h2 data-i18n="h2.for">What this is actually for</h2></div>
-    <p class="for-lead" data-i18n="for.lead">Plenty of tools can write a paragraph into a .docx file. This catalog exists for the work nobody else solved: editing real Word documents, live in the window, one undo step per call, with merge-aware table surgery, citations, footnotes, and the table of contents handled as first-class fixtures, edits written as tracked changes, redaction with verification, and publication style conversion. It was built for people whose documents are too important to lose.</p>
+    <p class="for-lead" data-i18n="for.lead">This is the last Word MCP server you will need to install. Nothing else in the category comes close on capability: 219 operations reach every part of a Word document that serious work touches, and the survey further down this page is mostly empty columns. Completeness is only half of it. Your documents stay open in Word while the agent edits them, so each change appears in the window in front of you rather than arriving as a file you have to reload, and every change is preceded by an automatic backup and committed through an atomic validated save. Nothing you have written gets lost here.</p>
     <div class="for-grid">
       <div class="forcard"><h3 data-i18n="for1.t">For the academic</h3><p data-i18n="for1.p">A committee returns the manuscript covered in tracked revisions, and the citation apparatus has to survive the rewrite. Citations, footnotes, cross-references, APA parity checks, and the table of contents are first-class here, so an agent can take on the revision pass without breaking any of it.</p></div>
       <div class="forcard"><h3 data-i18n="for2.t">For legal, compliance &amp; HR</h3><p data-i18n="for2.p">Contracts, policies, and case files live in Word, and every edit needs an author attached. Edits here can be written as tracked changes, document compare runs Word-native, and redaction actually removes the text, then verifies that it is gone.</p></div>
       <div class="forcard"><h3 data-i18n="for3.t">For the Word power user</h3><p data-i18n="for3.p">For anyone whose documents are too important to gamble with. Every save is atomic and validated, an automatic backup precedes each change, and live editing keeps the document open in Word, one Ctrl+Z step per call, with the cursor untouched.</p></div>
     </div>
+  </div>
+</section>
+
+<section id="new">
+  <div class="wrap">
+    <details class="newfold">
+      <summary>
+        <span class="tag" data-i18n="new.label">JUST IN</span>
+        <span class="ttl" data-i18n="h2.new">New in this version</span>
+        <span class="hint" data-i18n="new.t">Five things this release changed</span>
+      </summary>
+    <div class="newin">
+      <p class="sub" data-i18n="new.sub">The whole list, no release notes required.</p>
+      <ul>
+        <li data-i18n="new1"><b>More reach, fewer tools.</b> 219 operations now, up from 200 in v1.6, and that v1.6 surface of 189 tools became 108 under one verb grammar, so your agent picks the right tool the first time.</li>
+        <li data-i18n="new2"><b>Starts small, grows on demand.</b> A session opens on a 28-tool core costing about 7,600 tokens and switches on capability packs only when a task actually calls for them.</li>
+        <li data-i18n="new3"><b>Live editing you can leave running.</b> Several agents can now work an open document without colliding, and a Word dialog waiting on a human is caught at the operating-system level instead of quietly freezing the session.</li>
+        <li data-i18n="new4"><b>Read once, edit in bulk.</b> The anchored document view hands back addresses that survive your edits, and the batch editor applies dozens of changes against them in a single all-or-nothing pass.</li>
+        <li data-i18n="new5"><b>Comment back and forth with your AI.</b> Leave a comment in Word the way you would for a colleague, and the agent reads it, does the work as tracked changes, and replies in the thread. (Preview.)</li>
+      </ul>
+    </div>
+    </details>
   </div>
 </section>
 
@@ -245,6 +340,7 @@ footer a{color:var(--copper)}
     <div class="tablewrap">
       <table>
         <tr><th data-i18n="mx.cap">Capability</th><th class="us">🚰 KitchenSink4Word</th><th>word-mcp-live</th><th data-i18n="mx.h3">GongRzhe (archived)</th><th>docx-mcp (SecurityRonin)</th><th data-i18n="mx.h5">Official add-ins*</th></tr>
+        <tr><td data-i18n="mxr0">GitHub stars†</td><td class="us">5</td><td>202</td><td>2.1k</td><td>45</td><td class="nd">n/a</td></tr>
         <tr><td data-i18n="mxr1">Native citations &amp; bibliography</td><td class="us yes" data-i18n="mv.s12">✔ 12 styles</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td><td class="nd">n/d</td></tr>
         <tr><td data-i18n="mxr2">Citation style conversion (APA/Chicago/Turabian/MLA…)</td><td class="us yes" data-i18n="mv.s8">✔ 8 styles</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td><td class="nd">n/d</td></tr>
         <tr><td data-i18n="mxr3">Tracked-changes authoring (writes edits as revisions)</td><td class="us yes">✔</td><td class="yes">✔</td><td class="no">✘</td><td class="yes">✔</td><td class="yes">✔</td></tr>
@@ -256,14 +352,13 @@ footer a{color:var(--copper)}
         <tr><td data-i18n="mxr9">Accessibility audit</td><td class="us yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td><td class="nd">n/d</td></tr>
         <tr><td data-i18n="mxr10">Equations (LaTeX to Word math)</td><td class="us yes">✔</td><td class="nd">n/d</td><td class="no">✘</td><td class="nd">n/d</td><td class="nd">n/d</td></tr>
         <tr><td data-i18n="mxr11">Zotero integration</td><td class="us yes">✔</td><td class="no">✘</td><td class="nd">n/d</td><td class="nd">n/d</td><td class="nd">n/d</td></tr>
-        <tr><td data-i18n="mxr12">International style names</td><td class="us yes">✔</td><td class="nd">n/d</td><td class="no">✘</td><td class="nd">n/d</td><td class="nd">n/d</td></tr>
         <tr><td data-i18n="mxr13">Works without Word installed</td><td class="us yes" data-i18n="mv.file">✔ file tools; COM optional</td><td class="nd">n/d</td><td class="nd">n/d</td><td class="yes">✔</td><td class="no">✘</td></tr>
         <tr><td data-i18n="mxr14">Live editing while open in Word</td><td class="us yes" data-i18n="mv.undo">✔ one Ctrl+Z per call</td><td class="yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="yes" data-i18n="mv.inapp">✔ in-app</td></tr>
         <tr><td data-i18n="mxr16">Tiered context loading (lite core, packs on demand)</td><td class="us yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td><td class="nd">n/d</td></tr>
         <tr><td data-i18n="mxr15">Anti-corruption evidence (tests / corruptions)</td><td class="us yes" data-i18n="mv.evid">✔ 1,255 / 0</td><td class="nd">n/d</td><td class="nd">n/d</td><td class="nd">n/d</td><td class="nd">n/d</td></tr>
       </table>
     </div>
-    <p class="foot-note" data-i18n="mx.note">Capability survey as of 2026-08-28, compiled from public repositories, documentation, and issue trackers. n/d: not documented in the sources surveyed (not a claimed absence). * Official add-ins covers Microsoft's Word AI offerings and the Claude for Word add-in: cloud-based or Team/Enterprise scoped, not local MCP servers. Corrections welcome: open an issue.</p>
+    <p class="foot-note" data-i18n="mx.note">Capability survey as of 2026-08-28, compiled from public repositories, documentation, and issue trackers. n/d: not documented in the sources surveyed (not a claimed absence). * Official add-ins covers Microsoft's Word AI offerings and the Claude for Word add-in: cloud-based or Team/Enterprise scoped, not local MCP servers. Corrections welcome: open an issue. † Star counts read from the GitHub API on 2026-09-04, shown for context: stars say how long a project has been in view, not what it can do.</p>
   </div>
 </section>
 
@@ -276,25 +371,39 @@ footer a{color:var(--copper)}
       <div class="spec"><span class="n">~26.6k</span><span class="l" data-i18n="eff.s2">Full surface · all packs</span></div>
       <div class="spec"><span class="n">~0</span><span class="l" data-i18n="eff.s3">Practical cost when schemas are deferred (Claude Code)</span></div>
     </div>
-    <p class="foot-note" style="margin-top:18px" data-i18n="eff.road"><b>TIERED LOADING</b> · Shipped. A session starts on the 28-tool lite core and turns on packs with one enable_tools call. Starts lite, the whole sink one call away.</p>
+    <p class="foot-note" style="margin-top:18px" data-i18n="eff.growth"><b>MORE REACH, FEWER TOOLS</b> · v1.6 measured 200 operations across 189 tools; v2.0 delivers 219 across 108. Measured with one yardstick on both trees, so the comparison holds.</p>
+    <p class="foot-note" style="margin-top:10px" data-i18n="eff.road"><b>TIERED LOADING</b> · Shipped. A session starts on the 28-tool lite core and turns on packs with one enable_tools call. Starts lite, the whole sink one call away.</p>
   </div>
 </section>
 
 <section id="install">
   <div class="wrap">
     <div class="sec-head"><span class="no" data-i18n="no5">DEPT. 05</span><h2 data-i18n="h2.install">Installation</h2></div>
+    <p class="for-lead" data-i18n="inst.lead">Pick the line that describes you. Most people are the first one.</p>
     <div class="install-grid">
-      <div>
-        <h3 data-i18n="inst.s1">① GET THE FIXTURE</h3>
-        <div class="term"><div><span class="p">$</span> pip install kitchensink4word</div></div>
+      <div class="step">
+        <span class="badge" data-i18n="inst.b1">Easiest</span>
+        <h3 data-i18n="inst.s1">Using Claude Desktop? One double-click.</h3>
+        <p data-i18n="inst.p1">Download the installer bundle from the latest release and double-click it, or drag it into the Claude Desktop window. Desktop adds it as an extension and the sink is connected. Nothing to type, nothing to configure.</p>
+        <a class="go" href="https://github.com/nometalalchemist/KitchenSink4Word/releases/latest" data-i18n="inst.g1">Download the .mcpb bundle →</a>
+        <p class="after" data-i18n="inst.p1b">One-time requirement: <a href="https://docs.astral.sh/uv/">uv</a> on your PATH, which the bundle uses to start the server.</p>
       </div>
-      <div>
-        <h3 data-i18n="inst.s2">② CONNECT THE PLUMBING (Claude Code)</h3>
-        <div class="term"><div><span class="p">$</span> claude mcp add word -s user -- ^
-    <span class="c">&lt;python-scripts-dir&gt;</span>\word-mcp.exe</div></div>
+      <div class="step">
+        <span class="badge" data-i18n="inst.b2">One command</span>
+        <h3 data-i18n="inst.s2">Using Claude Code? Paste this.</h3>
+        <p data-i18n="inst.p2">One line in a terminal and you are done. It fetches and runs the server for you, so there is nothing to install first.</p>
+        <div class="term"><div><span class="p">$</span> claude mcp add word -s user -- uvx kitchensink4word</div></div>
       </div>
     </div>
-    <p class="foot-note" style="margin-top:18px" data-i18n="inst.note">Windows. File-based tools need no Word installation; the Word-app tools (TOC refresh, PDF, proofing…) use a local Microsoft Word. Full setup in the <a href="https://github.com/nometalalchemist/KitchenSink4Word#install">README</a>.</p>
+    <details class="devfold">
+      <summary data-i18n="inst.dev">For developers: pip, uvx, source, other MCP clients</summary>
+      <div class="devbody">
+        <p data-i18n="inst.dp1">Install the package and point any MCP client at the executable:</p>
+        <div class="term"><div><span class="p">$</span> pip install kitchensink4word</div></div>
+        <p data-i18n="inst.dp2">Then in any client's config: <code>{"mcpServers": {"word": {"command": "kitchensink4word"}}}</code>. Running from a clone works the same way; point the command at the <code>word-mcp</code> executable in the clone's virtual environment. Full setup, including the sandbox options, is in the <a href="https://github.com/nometalalchemist/KitchenSink4Word#install">README</a>.</p>
+      </div>
+    </details>
+    <p class="foot-note" style="margin-top:18px" data-i18n="inst.note">Windows. File-based tools need no Word installation; the Word-app tools (TOC refresh, PDF, proofing…) use a local Microsoft Word.</p>
   </div>
 </section>
 
@@ -317,7 +426,7 @@ footer a{color:var(--copper)}
       <a class="counter" href="https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml">
         <span class="icon">💼</span>
         <h3 data-i18n="svc3.t">Commercial fitting?</h3>
-        <p data-i18n="svc3.p">Free for any use under AGPL-3.0 terms. Commercial license available for use cases that cannot comply with copyleft; this counter is where you arrange one.</p>
+        <p data-i18n="svc3.p">Free for individuals and personal use, and it stays that way. If your company wants to build it into a product of its own, that needs a commercial license, with terms worked out case by case. This counter is where you start that conversation.</p>
         <span class="go" data-i18n="svc3.g">Arrange a license →</span>
       </a>
     </div>
@@ -358,7 +467,7 @@ footer a{color:var(--copper)}
 
 <footer>
   <div class="wrap row">
-    <span data-i18n="f.left">© 2026 · <b>AGPL-3.0</b>: free for any use under AGPL terms.<br>Commercial license available for use cases that cannot comply with copyleft; <a href="https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml">open an issue</a> to arrange one.</span>
+    <span data-i18n="f.left">© 2026 · <b>AGPL-3.0</b>: free for individuals and personal use.<br>Companies building it into their own products need a commercial license; <a href="https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml">open an issue</a> and we will talk it through.</span>
     <span style="text-align:right" data-i18n="f.right"><a href="https://github.com/nometalalchemist/KitchenSink4Word">github.com/nometalalchemist/KitchenSink4Word</a> · <a href="https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose">report a glitch</a><br>Prototyped with Claude Code in a day, hardened through thousands of adversarial test calls, and flow-tested on real manuscripts exceeding 65,000 words and 250 pages. That's a lotta pipe! 🚰</span>
   </div>
   <div class="wrap" style="text-align:center;padding:6px 0;opacity:.5;font-size:11px">Not affiliated with or endorsed by Microsoft Corporation. Microsoft and Word are trademarks of Microsoft Corporation.</div>
@@ -374,6 +483,29 @@ footer a{color:var(--copper)}
 var I18N = {
 en: {
 "pageTitle": "KitchenSink4Word: Everything plus the kitchen sink for Microsoft Word",
+"sw.here": "(you are here)",
+"sw.store": "The storefront",
+"h2.new": "New in this version",
+"new.label": "JUST IN",
+"new.t": "Five things this release changed",
+"new.sub": "The whole list, no release notes required.",
+"new1": "<b>More reach, fewer tools.</b> 219 operations now, up from 200 in v1.6, and that v1.6 surface of 189 tools became 108 under one verb grammar, so your agent picks the right tool the first time.",
+"new2": "<b>Starts small, grows on demand.</b> A session opens on a 28-tool core costing about 7,600 tokens and switches on capability packs only when a task actually calls for them.",
+"new3": "<b>Live editing you can leave running.</b> Several agents can now work an open document without colliding, and a Word dialog waiting on a human is caught at the operating-system level instead of quietly freezing the session.",
+"new4": "<b>Read once, edit in bulk.</b> The anchored document view hands back addresses that survive your edits, and the batch editor applies dozens of changes against them in a single all-or-nothing pass.",
+"new5": "<b>Comment back and forth with your AI.</b> Leave a comment in Word the way you would for a colleague, and the agent reads it, does the work as tracked changes, and replies in the thread. (Preview.)",
+"mxr0": "GitHub stars&dagger;",
+"eff.growth": "<b>MORE REACH, FEWER TOOLS</b> &middot; v1.6 measured 200 operations across 189 tools; v2.0 delivers 219 across 108. Measured with one yardstick on both trees, so the comparison holds.",
+"inst.lead": "Pick the line that describes you. Most people are the first one.",
+"inst.b1": "Easiest",
+"inst.p1": "Download the installer bundle from the latest release and double-click it, or drag it into the Claude Desktop window. Desktop adds it as an extension and the sink is connected. Nothing to type, nothing to configure.",
+"inst.g1": "Download the .mcpb bundle &rarr;",
+"inst.p1b": "One-time requirement: <a href='https://docs.astral.sh/uv/'>uv</a> on your PATH, which the bundle uses to start the server.",
+"inst.b2": "One command",
+"inst.p2": "One line in a terminal and you are done. It fetches and runs the server for you, so there is nothing to install first.",
+"inst.dev": "For developers: pip, uvx, source, other MCP clients",
+"inst.dp1": "Install the package and point any MCP client at the executable:",
+"inst.dp2": "Then in any client's config: <code>{&quot;mcpServers&quot;: {&quot;word&quot;: {&quot;command&quot;: &quot;kitchensink4word&quot;}}}</code>. Running from a clone works the same way; point the command at the <code>word-mcp</code> executable in the clone's virtual environment. Full setup, including the sandbox options, is in the <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>.",
 "m.left": "<b>EST. 2026</b> · FINE INSTRUMENTS FOR DOCUMENT PLUMBING",
 "m.catalog": "CATALOG № 219",
 "m.service": "SERVICE",
@@ -390,7 +522,7 @@ en: {
 "btn.source": "Read the Source",
 "no0": "DEPT. 00", "no1": "DEPT. 01", "no2": "DEPT. 02", "no3": "DEPT. 03", "no4": "DEPT. 04", "no5": "DEPT. 05",
 "h2.for": "What this is actually for",
-"for.lead": "Plenty of tools can write a paragraph into a .docx file. This catalog exists for the work nobody else solved: editing real Word documents, live in the window, one undo step per call, with merge-aware table surgery, citations, footnotes, and the table of contents handled as first-class fixtures, edits written as tracked changes, redaction with verification, and publication style conversion. It was built for people whose documents are too important to lose.",
+"for.lead": "This is the last Word MCP server you will need to install. Nothing else in the category comes close on capability: 219 operations reach every part of a Word document that serious work touches, and the survey further down this page is mostly empty columns. Completeness is only half of it. Your documents stay open in Word while the agent edits them, so each change appears in the window in front of you rather than arriving as a file you have to reload, and every change is preceded by an automatic backup and committed through an atomic validated save. Nothing you have written gets lost here.",
 "for1.t": "For the academic",
 "for1.p": "A committee returns the manuscript covered in tracked revisions, and the citation apparatus has to survive the rewrite. Citations, footnotes, cross-references, APA parity checks, and the table of contents are first-class here, so an agent can take on the revision pass without breaking any of it.",
 "for2.t": "For legal, compliance &amp; HR",
@@ -431,13 +563,12 @@ en: {
 "mxr9": "Accessibility audit",
 "mxr10": "Equations (LaTeX to Word math)",
 "mxr11": "Zotero integration",
-"mxr12": "International style names",
 "mxr13": "Works without Word installed",
 "mxr14": "Live editing while open in Word",
 "mxr16": "Tiered context loading (lite core, packs on demand)",
 "mxr15": "Anti-corruption evidence (tests / corruptions)",
 "mv.s12": "✔ 12 styles", "mv.s8": "✔ 8 styles", "mv.both": "✔ both directions", "mv.sha": "✔ Word-compatible SHA-512", "mv.file": "✔ file tools; COM optional", "mv.undo": "✔ one Ctrl+Z per call", "mv.evid": "✔ 1,255 / 0", "mv.inapp": "✔ in-app",
-"mx.note": "Capability survey as of 2026-08-28, compiled from public repositories, documentation, and issue trackers. n/d: not documented in the sources surveyed (not a claimed absence). * Official add-ins covers Microsoft's Word AI offerings and the Claude for Word add-in: cloud-based or Team/Enterprise scoped, not local MCP servers. Corrections welcome: open an issue.",
+"mx.note": "Capability survey as of 2026-08-28, compiled from public repositories, documentation, and issue trackers. n/d: not documented in the sources surveyed (not a claimed absence). * Official add-ins covers Microsoft's Word AI offerings and the Claude for Word add-in: cloud-based or Team/Enterprise scoped, not local MCP servers. Corrections welcome: open an issue. &dagger; Star counts read from the GitHub API on 2026-09-04, shown for context: stars say how long a project has been in view, not what it can do.",
 "h2.eff": "Context efficiency",
 "eff.lead": "Every MCP server occupies part of an agent's context window before any work starts, and almost none of them tell you how much. Here is our bill, measured: a fresh session starts on the lite core, 28 tools for about 7,600 tokens, and turns on capability packs only when a task needs them. Load every pack and the full surface measures about 26,600 tokens, down from about 34,400 in v1.6, roughly 23 percent less for the whole sink and about 78 percent less at lite start. Clients that defer tool schemas, as Claude Code does, pay close to zero until a tool is actually called.",
 "eff.s1": "Lite start · 28 tools",
@@ -455,21 +586,44 @@ en: {
 "dept9.e": "e.g. insert text at the cursor while the document is open · scroll the window to what changed · toggle track changes mid-session",
 "dept10.e": "e.g. run a mail merge from a CSV · redact a name and verify it is gone · audit a report for accessibility",
 "dept11.e": "e.g. turn LaTeX into native Word equations · cite straight from a Zotero library · anonymize a manuscript for peer review",
-"inst.s1": "① GET THE FIXTURE",
-"inst.s2": "② CONNECT THE PLUMBING (Claude Code)",
-"inst.note": "Windows. File-based tools need no Word installation; the Word-app tools (TOC refresh, PDF, proofing…) use a local Microsoft Word. Full setup in the <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>.",
+"inst.s1": "Using Claude Desktop? One double-click.",
+"inst.s2": "Using Claude Code? Paste this.",
+"inst.note": "Windows. File-based tools need no Word installation; the Word-app tools (TOC refresh, PDF, proofing&hellip;) use a local Microsoft Word.",
 "svc1.t": "Found a leak?", "svc1.p": "Something glitched, refused, or misbehaved. File a report at the repair counter: the form asks exactly what a fix needs. Never attach a private document; rebuild the structure with placeholder text.", "svc1.g": "File a bug report →",
 "svc2.t": "Missing an attachment?", "svc2.p": "A Word capability the sink should also have. Describe the real task behind it and it goes on the workbench.", "svc2.g": "Request a feature →",
-"svc3.t": "Commercial fitting?", "svc3.p": "Free for any use under AGPL-3.0 terms. Commercial license available for use cases that cannot comply with copyleft; this counter is where you arrange one.", "svc3.g": "Arrange a license →",
+"svc3.t": "Commercial fitting?", "svc3.p": "Free for individuals and personal use, and it stays that way. If your company wants to build it into a product of its own, that needs a commercial license, with terms worked out case by case. This counter is where you start that conversation.", "svc3.g": "Arrange a license →",
 "svc.note": "Reports are public GitHub issues (a free GitHub account is needed to file one). Every report lands in the maintainer's inbox.",
 "g.t": "Engineered Not to Corrupt",
 "g.p1": "Atomic validated saves. Automatic backups before every change. Byte-identical passthrough of anything not being edited: equations, textboxes, and content controls pass through untouched. Battle-tested on long, heavily formatted real-world documents: one carrying 171 footnotes, one carrying 126 tracked revisions and reviewer comments, plus two insane-mode stress campaigns without a single Word repair prompt.",
 "g.p2": "Provided as-is, without warranty of any kind, per the license; the engineering above is simply how seriously your documents are taken. Keep backups. (It makes them for you.)",
-"f.left": "© 2026 · <b>AGPL-3.0</b>: free for any use under AGPL terms.<br>Commercial license available for use cases that cannot comply with copyleft; <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>open an issue</a> to arrange one.",
+"f.left": "&copy; 2026 &middot; <b>AGPL-3.0</b>: free for individuals and personal use.<br>Companies building it into their own products need a commercial license; <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>open an issue</a> and we will talk it through.",
 "f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>report a glitch</a><br>Prototyped with Claude Code in a day, hardened through thousands of adversarial test calls, and flow-tested on real manuscripts exceeding 65,000 words and 250 pages. That's a lotta pipe! 🚰"
 },
 ko: {
 "pageTitle": "KitchenSink4Word: Microsoft Word 도구라면 없는 게 없는 MCP 서버",
+"sw.here": "(현재 페이지)",
+"sw.store": "스토어",
+"h2.new": "이번 버전의 새 기능",
+"new.label": "신규 입고",
+"new.t": "이번 릴리스가 바꾼 다섯 가지",
+"new.sub": "릴리스 노트를 읽을 필요 없이, 이게 전부입니다.",
+"new1": "<b>더 넓어지고, 도구는 줄었습니다.</b> 작업 수는 v1.6의 200개에서 219개로 늘었고, 189개였던 v1.6 도구 표면은 하나의 동사 문법 아래 108개로 정리되었습니다. 덕분에 에이전트가 처음부터 맞는 도구를 고릅니다.",
+"new2": "<b>가볍게 시작해 필요할 때 커집니다.</b> 세션은 약 7,600 토큰짜리 28개 도구 코어로 열리고, 작업에 실제로 필요할 때만 기능 팩을 켭니다.",
+"new3": "<b>켜 둔 채 맡길 수 있는 라이브 편집.</b> 이제 여러 에이전트가 열려 있는 문서를 함께 다뤄도 충돌하지 않고, 사람의 응답을 기다리는 Word 대화 상자는 운영체제 수준에서 감지되므로 세션이 조용히 멈추는 일이 없습니다.",
+"new4": "<b>한 번 읽고, 한꺼번에 고칩니다.</b> 앵커가 붙은 문서 뷰가 편집 뒤에도 유효한 주소를 돌려주고, 일괄 편집기가 그 주소들에 수십 건의 변경을 전부 아니면 전무로 한 번에 적용합니다.",
+"new5": "<b>AI와 메모를 주고받으세요.</b> 동료에게 하듯 Word에 메모를 남기면, 에이전트가 그것을 읽고 추적 변경으로 작업한 뒤 같은 스레드에 답글을 답니다. (프리뷰)",
+"mxr0": "GitHub 스타&dagger;",
+"eff.growth": "<b>더 넓어지고, 도구는 줄었습니다</b> &middot; v1.6은 도구 189개로 작업 200개를 수행했고, v2.0은 108개로 219개를 수행합니다. 같은 잣대로 두 트리를 함께 측정했으므로 비교가 성립합니다.",
+"inst.lead": "자신에게 해당하는 줄을 고르세요. 대부분은 첫 번째입니다.",
+"inst.b1": "가장 쉬움",
+"inst.p1": "최신 릴리스에서 설치 번들을 내려받아 더블클릭하거나 Claude Desktop 창에 끌어다 놓으세요. Desktop이 확장으로 추가하면 싱크대가 연결됩니다. 입력할 것도, 설정할 것도 없습니다.",
+"inst.g1": ".mcpb 번들 내려받기 &rarr;",
+"inst.p1b": "한 번만 필요한 것: PATH에 <a href='https://docs.astral.sh/uv/'>uv</a>. 번들이 서버를 실행할 때 사용합니다.",
+"inst.b2": "명령 한 줄",
+"inst.p2": "터미널에 한 줄이면 끝입니다. 서버를 알아서 받아 실행하므로 미리 설치할 것이 없습니다.",
+"inst.dev": "개발자용: pip, uvx, 소스, 다른 MCP 클라이언트",
+"inst.dp1": "패키지를 설치하고 원하는 MCP 클라이언트가 실행 파일을 가리키게 하면 됩니다:",
+"inst.dp2": "그다음 클라이언트 설정에 <code>{&quot;mcpServers&quot;: {&quot;word&quot;: {&quot;command&quot;: &quot;kitchensink4word&quot;}}}</code>를 넣으세요. 클론에서 실행할 때도 같은 방식이며, 클론의 가상 환경에 있는 <code>word-mcp</code> 실행 파일을 가리키면 됩니다. 샌드박스 옵션을 포함한 전체 설정은 <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>에 있습니다.",
 "m.left": "<b>EST. 2026</b> · 문서 배관을 위한 정밀 기구점",
 "m.catalog": "카탈로그 № 219",
 "m.service": "서비스",
@@ -486,7 +640,7 @@ ko: {
 "btn.source": "소스 읽어보기",
 "no0": "부문 00", "no1": "부문 01", "no2": "부문 02", "no3": "부문 03", "no4": "부문 04", "no5": "부문 05",
 "h2.for": "무엇을 위한 도구인가",
-"for.lead": ".docx 파일에 문단을 써 넣는 도구는 이미 많습니다. 이 카탈로그는 아직 아무도 풀지 못한 작업을 위해 존재합니다: Word에 열려 있는 진짜 문서를 그대로 편집하고, 호출 하나가 실행 취소 한 단계이며, 병합을 인식하는 표 수술, 일급으로 다뤄지는 인용·각주·목차, 추적 변경으로 기록되는 편집, 검증을 동반한 검열 삭제, 출판 스타일 변환까지 갖췄습니다. 잃어버리기에는 너무 중요한 문서를 다루는 사람들을 위해 만들어졌습니다.",
+"for.lead": "설치할 Word MCP 서버는 이것이 마지막입니다. 기능 면에서 근접한 경쟁자는 없습니다. 219개의 작업이 진지한 작업에서 손대는 Word 문서의 모든 부분에 닿고, 이 페이지 아래의 비교표는 대부분 빈칸입니다. 완전함은 그중 절반일 뿐입니다. 에이전트가 편집하는 동안에도 문서는 Word에 열린 채로 있어서, 변경은 다시 열어 봐야 하는 파일이 아니라 눈앞의 창에 바로 나타납니다. 그리고 모든 변경 앞에는 자동 백업이 있고, 저장은 원자적으로 검증된 뒤에야 확정됩니다. 여기서 쓴 것은 사라지지 않습니다.",
 "for1.t": "연구자에게",
 "for1.p": "심사위원회가 추적 변경으로 가득한 원고를 돌려보내도, 인용 장치는 수정 과정에서 살아남아야 합니다. 여기서는 인용, 각주, 상호 참조, APA 일치 검사, 목차가 모두 일급으로 다뤄지므로, 에이전트가 그 어느 것도 깨뜨리지 않고 수정 작업을 맡을 수 있습니다.",
 "for2.t": "법무·컴플라이언스·인사 담당자에게",
@@ -527,13 +681,12 @@ ko: {
 "mxr9": "접근성 감사",
 "mxr10": "수식 (LaTeX → Word 수식)",
 "mxr11": "Zotero 연동",
-"mxr12": "다국어 스타일 이름",
 "mxr13": "Word 미설치 환경에서 동작",
 "mxr14": "Word에 열린 채 라이브 편집",
 "mxr16": "계층형 컨텍스트 로딩 (라이트 코어, 필요 시 팩)",
 "mxr15": "손상 방지 테스트 근거 공개",
 "mv.s12": "✔ 12개 스타일", "mv.s8": "✔ 8개 스타일", "mv.both": "✔ 양방향", "mv.sha": "✔ Word 호환 SHA-512", "mv.file": "✔ 파일 도구; COM은 선택", "mv.undo": "✔ 호출당 Ctrl+Z 한 단계", "mv.evid": "✔ 1,255 / 0", "mv.inapp": "✔ 앱 내",
-"mx.note": "2026-08-28 기준 기능 조사. 공개 저장소, 문서, 이슈 트래커에서 취합했습니다. n/d: 조사한 자료에서 확인되지 않음(없다는 주장이 아닙니다). * 공식 추가 기능 열은 Microsoft의 Word AI 제품군과 Claude for Word 추가 기능을 묶은 것으로, 클라우드 기반이거나 Team/Enterprise 요금제 전용이며 로컬 MCP 서버가 아닙니다. 정정은 환영합니다. 이슈를 열어 주세요.",
+"mx.note": "2026-08-28 기준 기능 조사. 공개 저장소, 문서, 이슈 트래커에서 취합했습니다. n/d: 조사한 자료에서 확인되지 않음(없다는 주장이 아닙니다). * 공식 추가 기능 열은 Microsoft의 Word AI 제품군과 Claude for Word 추가 기능을 묶은 것으로, 클라우드 기반이거나 Team/Enterprise 요금제 전용이며 로컬 MCP 서버가 아닙니다. 정정은 환영합니다. 이슈를 열어 주세요. &dagger; 스타 수는 2026-09-04에 GitHub API로 읽은 값이며 참고용입니다. 스타는 프로젝트가 얼마나 오래 알려져 왔는지를 보여줄 뿐, 무엇을 할 수 있는지를 보여주지는 않습니다.",
 "h2.eff": "컨텍스트 효율",
 "eff.lead": "모든 MCP 서버는 작업을 시작하기도 전에 에이전트의 컨텍스트 창 일부를 차지하지만, 그 비용을 알려주는 서버는 거의 없습니다. 여기 측정한 우리 청구서가 있습니다: 새 세션은 라이트 코어(도구 28종, 약 7,600 토큰)로 시작하고, 기능 팩은 작업에 필요할 때만 켭니다. 모든 팩을 불러온 전체 표면은 약 26,600 토큰으로, v1.6의 약 34,400 토큰에서 줄어든 값입니다. 전체 기준 약 23퍼센트, 라이트 시작 기준 약 78퍼센트 적습니다. Claude Code처럼 도구 스키마를 지연 로드하는 클라이언트라면 도구가 실제로 호출되기 전까지 비용이 거의 0에 가깝습니다.",
 "eff.s1": "라이트 시작 · 도구 28종",
@@ -551,21 +704,44 @@ ko: {
 "dept9.e": "예: 문서가 열린 채 커서 위치에 텍스트 삽입 · 바뀐 곳으로 화면 스크롤 · 세션 중 변경 추적 토글",
 "dept10.e": "예: CSV로 편지 병합 실행 · 이름을 검열 삭제하고 사라졌는지 검증 · 보고서 접근성 감사",
 "dept11.e": "예: LaTeX를 Word 네이티브 수식으로 변환 · Zotero 라이브러리에서 바로 인용 · 피어 리뷰용 원고 익명화",
-"inst.s1": "① 기구 받기",
-"inst.s2": "② 배관 연결 (Claude Code)",
-"inst.note": "Windows 전용. 파일 기반 도구는 Word 설치가 필요 없고, Word 앱 도구(목차 새로 고침, PDF, 문법 검사…)만 로컬 Microsoft Word를 사용합니다. 전체 설정은 <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>에 있습니다.",
+"inst.s1": "Claude Desktop을 쓰시나요? 더블클릭 한 번.",
+"inst.s2": "Claude Code를 쓰시나요? 이걸 붙여넣으세요.",
+"inst.note": "Windows 환경입니다. 파일 기반 도구는 Word 설치 없이 동작하고, Word 앱 도구(목차 새로 고침, PDF, 맞춤법 검사&hellip;)는 로컬 Microsoft Word를 사용합니다.",
 "svc1.t": "물이 샙니까?", "svc1.p": "무언가 오작동하거나, 거부하거나, 이상하게 굴었다면 수리 창구에 신고서를 내 주세요. 양식은 수리에 필요한 것만 정확히 묻습니다. 개인 문서는 절대 첨부하지 말고, 자리표시 텍스트로 구조만 재현해 주세요.", "svc1.g": "버그 신고하기 →",
 "svc2.t": "부속이 빠졌습니까?", "svc2.p": "싱크대에 마땅히 있어야 할 Word 기능이 있다면, 그 뒤에 있는 실제 작업을 설명해 주세요. 작업대에 올라갑니다.", "svc2.g": "기능 요청하기 →",
-"svc3.t": "영업용 설비가 필요합니까?", "svc3.p": "AGPL-3.0 조건 아래 모든 용도로 무료입니다. 카피레프트 준수가 어려운 사용처에는 상업용 라이선스를 제공합니다. 그 절차를 진행하는 곳이 바로 이 창구입니다.", "svc3.g": "라이선스 문의하기 →",
+"svc3.t": "영업용 설비가 필요합니까?", "svc3.p": "개인과 개인적 용도에는 무료이며, 앞으로도 그렇습니다. 회사가 이 서버를 자사 제품에 넣어 만들려면 상업용 라이선스가 필요하고, 조건은 사안마다 협의해서 정합니다. 그 이야기는 이 창구에서 시작하시면 됩니다.", "svc3.g": "라이선스 문의하기 →",
 "svc.note": "신고는 공개 GitHub 이슈로 접수됩니다(제출에는 무료 GitHub 계정이 필요합니다). 모든 신고는 관리자의 수신함에 바로 도착합니다.",
 "g.t": "손상시키지 않도록 설계",
 "g.p1": "원자적 검증 저장. 모든 변경 전 자동 백업. 편집하지 않는 부분은 바이트 단위 그대로 통과합니다. 수식, 텍스트 상자, 콘텐츠 컨트롤은 손대지 않고 지나갑니다. 길고 서식이 복잡한 실제 문서로 단련했습니다: 각주 171개짜리 하나, 추적 변경 126건과 검토자 메모를 실은 하나, 여기에 두 차례의 극한 모드 스트레스 캠페인까지 Word 복구 알림 한 번 없이 통과했습니다.",
 "g.p2": "라이선스에 따라 어떤 종류의 보증도 없이 있는 그대로 제공됩니다. 위의 공학적 장치들은 여러분의 문서를 얼마나 진지하게 다루는지를 보여줄 뿐입니다. 백업을 유지하세요. (백업은 이 서버가 대신 만들어 줍니다.)",
-"f.left": "© 2026 · <b>AGPL-3.0</b>: 모든 용도 무료 (AGPL 조건).<br>카피레프트 준수가 어려운 경우 상업용 라이선스를 제공합니다. <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>이슈를 열어</a> 진행하세요.",
+"f.left": "&copy; 2026 &middot; <b>AGPL-3.0</b>: 개인과 개인적 용도에는 무료.<br>자사 제품에 넣어 만드는 회사에는 상업용 라이선스가 필요합니다. <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>이슈를 열어</a> 주시면 함께 이야기하겠습니다.",
 "f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>오작동 신고</a><br>Claude Code로 하루 만에 프로토타입을 만들고, 수천 건의 적대적 테스트로 다듬은 뒤, 65,000단어 250페이지 이상의 실제 원고에서 실전 테스트를 완료했습니다. 없는 게 없습니다! 🚰"
 },
 ja: {
 "pageTitle": "KitchenSink4Word: Microsoft Word のための、何でも揃う MCP サーバー",
+"sw.here": "(現在のページ)",
+"sw.store": "ストアトップ",
+"h2.new": "このバージョンの新機能",
+"new.label": "新入荷",
+"new.t": "このリリースで変わった5つのこと",
+"new.sub": "リリースノートを読まなくても、これで全部です。",
+"new1": "<b>守備範囲は広く、ツールは少なく。</b> 操作は v1.6 の200から219に増え、189本あった v1.6 のツール表面はひとつの動詞文法のもとで108本に整理されました。エージェントは最初から正しいツールを選べます。",
+"new2": "<b>小さく始まり、必要に応じて広がる。</b> セッションは約7,600トークン、28ツールのコアで開き、タスクが実際に必要とするときだけ機能パックを有効にします。",
+"new3": "<b>動かしっぱなしにできるライブ編集。</b> 複数のエージェントが開いた文書を同時に扱っても衝突せず、人の操作を待つ Word のダイアログは OS レベルで検出されるため、セッションが黙って止まることはありません。",
+"new4": "<b>一度読んで、まとめて直す。</b> アンカー付きの文書ビューが編集後も有効な位置情報を返し、バッチ編集がその位置に数十件の変更を、全部か無かの一括処理で適用します。",
+"new5": "<b>AI とコメントでやり取りする。</b> 同僚に書くように Word にコメントを残せば、エージェントがそれを読み、変更履歴として作業し、同じスレッドに返信します。(プレビュー)",
+"mxr0": "GitHub スター&dagger;",
+"eff.growth": "<b>守備範囲は広く、ツールは少なく</b> &middot; v1.6 はツール189本で200操作、v2.0 は108本で219操作。同じ物差しで両方のツリーを測っているので、この比較は成立します。",
+"inst.lead": "自分に当てはまる行を選んでください。ほとんどの方は最初の行です。",
+"inst.b1": "いちばん簡単",
+"inst.p1": "最新リリースからインストーラーバンドルをダウンロードしてダブルクリックするか、Claude Desktop のウィンドウにドラッグしてください。Desktop が拡張として追加し、それで接続完了です。入力するものも設定するものもありません。",
+"inst.g1": ".mcpb バンドルをダウンロード &rarr;",
+"inst.p1b": "一度だけ必要なもの: PATH の通った <a href='https://docs.astral.sh/uv/'>uv</a>。バンドルがサーバーの起動に使います。",
+"inst.b2": "コマンド一行",
+"inst.p2": "ターミナルに一行で終わりです。サーバーは自動で取得して実行されるので、先に入れておくものはありません。",
+"inst.dev": "開発者向け: pip、uvx、ソース、その他の MCP クライアント",
+"inst.dp1": "パッケージを入れて、任意の MCP クライアントから実行ファイルを指すだけです:",
+"inst.dp2": "そのうえでクライアントの設定に <code>{&quot;mcpServers&quot;: {&quot;word&quot;: {&quot;command&quot;: &quot;kitchensink4word&quot;}}}</code> を書きます。クローンから動かす場合も同じで、クローンの仮想環境にある <code>word-mcp</code> 実行ファイルを指してください。サンドボックス設定を含む完全な手順は <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a> にあります。",
 "m.left": "<b>EST. 2026</b> · 文書配管のための精密器具",
 "m.catalog": "カタログ № 219",
 "m.service": "サービス",
@@ -582,7 +758,7 @@ ja: {
 "btn.source": "ソースを読む",
 "no0": "第00部", "no1": "第01部", "no2": "第02部", "no3": "第03部", "no4": "第04部", "no5": "第05部",
 "h2.for": "何のための道具か",
-"for.lead": ".docx に段落を書き込める道具なら、いくらでもあります。このカタログは、まだ誰も解いていなかった仕事のためにあります。Word で開いたままの本物の文書を編集し、呼び出し1回が元に戻す1段階。結合を認識する表の外科手術、一級品として扱われる引用・脚注・目次、変更履歴として書き込まれる編集、検証付きの墨消し、出版スタイルへの変換。失うわけにはいかない文書を扱う人のために作られました。",
+"for.lead": "インストールする Word MCP サーバーは、これが最後になります。能力の面で肩を並べるものはありません。219の操作が、本気の作業で触れる Word 文書のあらゆる部分に届き、このページの下にある比較表はほとんど空欄です。完全さは半分にすぎません。エージェントが編集している間も文書は Word で開いたままなので、変更は開き直すファイルとしてではなく、目の前のウィンドウにそのまま現れます。そしてすべての変更の前には自動バックアップがあり、保存はアトミックに検証されてから確定します。ここで書いたものが失われることはありません。",
 "for1.t": "研究者のために",
 "for1.p": "審査委員会から変更履歴だらけの原稿が戻ってきても、引用の装置は書き直しを生き延びなければなりません。ここでは引用、脚注、相互参照、APA 整合チェック、目次がすべて一級品として扱われるので、エージェントはどれも壊さずに修正作業を引き受けられます。",
 "for2.t": "法務・コンプライアンス・人事のために",
@@ -623,13 +799,12 @@ ja: {
 "mxr9": "アクセシビリティ監査",
 "mxr10": "数式 (LaTeX → Word 数式)",
 "mxr11": "Zotero 連携",
-"mxr12": "多言語スタイル名",
 "mxr13": "Word 未インストールでも動作",
 "mxr14": "Word で開いたままライブ編集",
 "mxr16": "段階式コンテキスト読み込み(ライトコア、必要時にパック)",
 "mxr15": "破損防止テストの証跡を公開",
 "mv.s12": "✔ 12 スタイル", "mv.s8": "✔ 8 スタイル", "mv.both": "✔ 双方向", "mv.sha": "✔ Word 互換 SHA-512", "mv.file": "✔ ファイルツール、COM は任意", "mv.undo": "✔ 呼び出し1回 = Ctrl+Z 1段階", "mv.evid": "✔ 1,255 / 0", "mv.inapp": "✔ アプリ内",
-"mx.note": "2026-08-28 時点の機能調査。公開リポジトリ、ドキュメント、Issue トラッカーから集約しました。n/d：調査した資料では確認できず(欠如の断定ではありません)。* 公式アドインは Microsoft の Word AI 製品群と Claude for Word アドインをまとめた列で、クラウドまたは Team/Enterprise 限定のもの。ローカル MCP サーバーではありません。訂正歓迎、Issue をどうぞ。",
+"mx.note": "2026-08-28 時点の機能調査。公開リポジトリ、ドキュメント、Issue トラッカーから集約しました。n/d：調査した資料では確認できず(欠如の断定ではありません)。* 公式アドインは Microsoft の Word AI 製品群と Claude for Word アドインをまとめた列で、クラウドまたは Team/Enterprise 限定のもの。ローカル MCP サーバーではありません。訂正歓迎、Issue をどうぞ。 &dagger; スター数は 2026-09-04 に GitHub API から取得した参考値です。スターはプロジェクトがどれだけ長く知られてきたかを示すもので、何ができるかを示すものではありません。",
 "h2.eff": "コンテキスト効率",
 "eff.lead": "どの MCP サーバーも、仕事を始める前からエージェントのコンテキストウィンドウの一部を占めます。それなのに、その量を教えてくれるサーバーはほとんどありません。これが計測した当方の請求書です：新しいセッションはライトコア(ツール28種、約 7,600 トークン)で始まり、機能パックは作業に必要になったときだけ有効化します。すべてのパックを読み込んだ全表面は約 26,600 トークンで、v1.6 の約 34,400 トークンから減りました。全体でおよそ 23 パーセント、ライト起動時ではおよそ 78 パーセント少なくなります。Claude Code のようにツールスキーマを遅延読み込みするクライアントなら、ツールが実際に呼ばれるまでコストはほぼゼロです。",
 "eff.s1": "ライト起動 · ツール28種",
@@ -647,21 +822,44 @@ ja: {
 "dept9.e": "例：文書を開いたままカーソル位置にテキストを挿入 · 変更箇所まで画面をスクロール · セッション中に変更履歴を切り替え",
 "dept10.e": "例：CSV から差し込み印刷を実行 · 名前を墨消しして消えたことを検証 · 報告書のアクセシビリティを監査",
 "dept11.e": "例：LaTeX を Word ネイティブ数式へ変換 · Zotero ライブラリから直接引用 · 査読用に原稿を匿名化",
-"inst.s1": "① 器具を入手",
-"inst.s2": "② 配管を接続 (Claude Code)",
-"inst.note": "Windows 用。ファイルベースのツールに Word のインストールは不要、Word アプリ用ツール(目次更新、PDF、文章校正…)のみローカルの Microsoft Word を使います。詳しい設定は <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a> へ。",
+"inst.s1": "Claude Desktop をお使いですか? ダブルクリック一回。",
+"inst.s2": "Claude Code をお使いですか? これを貼り付けてください。",
+"inst.note": "Windows 向けです。ファイルベースのツールは Word のインストールなしで動作し、Word アプリのツール(目次の更新、PDF、文章校正&hellip;)はローカルの Microsoft Word を使います。",
 "svc1.t": "水漏れですか？", "svc1.p": "何かが誤動作した、拒否した、様子がおかしい。修理窓口に報告書をどうぞ。フォームは修理に必要なことだけを尋ねます。私的な文書は決して添付せず、プレースホルダーのテキストで構造だけ再現してください。", "svc1.g": "バグを報告する →",
 "svc2.t": "部品が足りませんか？", "svc2.p": "この流しにあるべき Word の機能。その裏にある実際の作業を説明してもらえれば、作業台に載ります。", "svc2.g": "機能を要望する →",
-"svc3.t": "業務用の取り付けですか？", "svc3.p": "AGPL-3.0 の条件のもと、あらゆる用途で無料です。コピーレフトに従えない用途には商用ライセンスを用意しています。その手続きをするのがこの窓口です。", "svc3.g": "ライセンスの相談 →",
+"svc3.t": "業務用の取り付けですか？", "svc3.p": "個人利用と私的な用途は無料で、これからも無料のままです。会社としてこれを自社製品に組み込みたい場合は商用ライセンスが必要で、条件は案件ごとに相談して決めます。その話はこの窓口から始めてください。", "svc3.g": "ライセンスの相談 →",
 "svc.note": "報告は公開の GitHub Issue になります(提出には無料の GitHub アカウントが必要です)。すべての報告はメンテナーの受信箱に届きます。",
 "g.t": "壊さないための設計",
 "g.p1": "アトミックな検証付き保存。すべての変更前に自動バックアップ。編集しない部分はバイト単位でそのまま通過します。数式、テキストボックス、コンテンツコントロールには手を触れません。長く書式の重い実際の文書で鍛えました：脚注171個の文書、変更履歴126件と校閲コメントを抱えた文書、さらに2回の極限モードの負荷キャンペーンを、Word の修復ダイアログを一度も出さずに。",
 "g.p2": "ライセンスのとおり、現状有姿・無保証で提供されます。上記の工学は、あなたの文書をどれだけ真剣に扱っているかを示すものにすぎません。バックアップは取っておいてください。(バックアップはこのサーバーが作ってくれます。)",
-"f.left": "© 2026 · <b>AGPL-3.0</b>：全用途無料(AGPL条件)。<br>コピーレフト準拠が困難な場合、商用ライセンスを提供しています。<a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>Issue を開いて</a>ご相談ください。",
+"f.left": "&copy; 2026 &middot; <b>AGPL-3.0</b>:個人利用と私的な用途は無料。<br>自社製品に組み込む企業には商用ライセンスが必要です。<a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>Issue を開いて</a>いただければ、そこから話を進めます。",
 "f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>不具合を報告</a><br>Claude Code で一日でプロトタイプを作り、数千件の敵対的テストで鍛え上げ、65,000語・250ページ超の実際の原稿で実地テスト済み。何でも揃います！🚰"
 },
 zh: {
 "pageTitle": "KitchenSink4Word: 为 Microsoft Word 而备，应有尽有的 MCP 服务器",
+"sw.here": "(当前页面)",
+"sw.store": "商店首页",
+"h2.new": "本版本新增",
+"new.label": "新到货",
+"new.t": "这一版改变的五件事",
+"new.sub": "不用翻发布说明,就这些。",
+"new1": "<b>覆盖更广,工具更少。</b> 操作从 v1.6 的 200 个增加到 219 个,而 v1.6 那 189 件工具在统一的动词语法下收拢为 108 件,你的智能体第一次就能挑对工具。",
+"new2": "<b>起步小,按需长大。</b> 会话以 28 件工具、约 7,600 tokens 的内核开启,只有任务真正需要时才打开能力包。",
+"new3": "<b>可以一直开着的实时编辑。</b> 现在多个智能体可以同时处理一份打开的文档而不相撞,等待人操作的 Word 对话框在操作系统层面被检测到,不会让会话悄悄卡死。",
+"new4": "<b>读一次,批量改。</b> 带锚点的文档视图返回的地址在你编辑之后依然有效,批量编辑器把几十处改动按全成或全不成的方式一次性应用上去。",
+"new5": "<b>用批注和你的 AI 一来一往。</b> 像给同事留言那样在 Word 里写下批注,智能体会读它、以修订方式完成工作,并在同一条线程里回复。(预览)",
+"mxr0": "GitHub 星标&dagger;",
+"eff.growth": "<b>覆盖更广,工具更少</b> &middot; v1.6 用 189 件工具完成 200 个操作,v2.0 用 108 件完成 219 个。两棵树用同一把尺子测量,所以这个对比站得住脚。",
+"inst.lead": "挑一句符合你情况的。大多数人是第一句。",
+"inst.b1": "最省事",
+"inst.p1": "从最新发布页下载安装包,双击它,或者直接拖进 Claude Desktop 窗口。Desktop 会把它装成扩展,水槽就接通了。不用输入,不用配置。",
+"inst.g1": "下载 .mcpb 安装包 &rarr;",
+"inst.p1b": "只需一次的前提:PATH 中要有 <a href='https://docs.astral.sh/uv/'>uv</a>,安装包用它来启动服务器。",
+"inst.b2": "一条命令",
+"inst.p2": "在终端里贴一行就完事了。它会替你取回并运行服务器,不需要事先安装任何东西。",
+"inst.dev": "开发者选项:pip、uvx、源码、其他 MCP 客户端",
+"inst.dp1": "安装这个包,然后让任意 MCP 客户端指向可执行文件:",
+"inst.dp2": "然后在客户端配置里写 <code>{&quot;mcpServers&quot;: {&quot;word&quot;: {&quot;command&quot;: &quot;kitchensink4word&quot;}}}</code>。从克隆仓库运行的方式相同,指向克隆虚拟环境里的 <code>word-mcp</code> 可执行文件即可。包含沙箱选项的完整说明见 <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>。",
 "m.left": "<b>EST. 2026</b> · 文档管道精密器具行",
 "m.catalog": "目录 № 219",
 "m.service": "服务",
@@ -678,7 +876,7 @@ zh: {
 "btn.source": "阅读源码",
 "no0": "第00部", "no1": "第01部", "no2": "第02部", "no3": "第03部", "no4": "第04部", "no5": "第05部",
 "h2.for": "它究竟是干什么用的",
-"for.lead": "能往 .docx 里写几段话的工具遍地都是。这份目录为的是那些至今无人解决的活儿：在 Word 窗口里实时编辑真实文档，每次调用就是一步撤销；识别合并单元格的表格手术；被当作头等公民的引文、脚注与目录；写成修订的编辑；带验证的真正涂黑；还有出版样式转换。它是为那些文档重要到丢不起的人造的。",
+"for.lead": "这是你需要安装的最后一个 Word MCP 服务器。论能力,没有对手接近:219 个操作覆盖了正经工作会碰到的 Word 文档的每一个部分,而本页下方那张对比表大半是空格。完整只是其中一半。智能体编辑时文档一直开在 Word 里,改动直接出现在你眼前的窗口中,而不是变成一个需要重新打开的文件;每一次改动之前都有自动备份,保存也要经过原子校验才落定。在这里,你写下的东西不会丢。",
 "for1.t": "给学者",
 "for1.p": "评审委员会把满是修订的稿子退回来，引文体系还得在改稿中活下来。在这里，引文、脚注、交叉引用、APA 一致性检查和目录都是头等公民，智能体可以接手整轮修改而不碰坏其中任何一样。",
 "for2.t": "给法务、合规与人事",
@@ -719,13 +917,12 @@ zh: {
 "mxr9": "无障碍审计",
 "mxr10": "公式 (LaTeX → Word 公式)",
 "mxr11": "Zotero 集成",
-"mxr12": "多语言样式名",
 "mxr13": "无需安装 Word 即可运行",
 "mxr14": "文档在 Word 中打开时实时编辑",
 "mxr16": "分层上下文加载(精简内核，能力包按需)",
 "mxr15": "公开的防损坏测试证据",
 "mv.s12": "✔ 12 种样式", "mv.s8": "✔ 8 种样式", "mv.both": "✔ 双向", "mv.sha": "✔ Word 兼容 SHA-512", "mv.file": "✔ 文件工具；COM 可选", "mv.undo": "✔ 每次调用一步 Ctrl+Z", "mv.evid": "✔ 1,255 / 0", "mv.inapp": "✔ 应用内",
-"mx.note": "能力调查，截至 2026-08-28，汇总自公开仓库、文档与 issue 跟踪器。n/d：在所查资料中未见记载(并非断言其没有)。* 官方加载项一栏合并了 Microsoft 的 Word AI 产品与 Claude for Word 加载项：皆为云端或 Team/Enterprise 专属，不是本地 MCP 服务器。欢迎指正，请开 issue。",
+"mx.note": "能力调查，截至 2026-08-28，汇总自公开仓库、文档与 issue 跟踪器。n/d：在所查资料中未见记载(并非断言其没有)。* 官方加载项一栏合并了 Microsoft 的 Word AI 产品与 Claude for Word 加载项：皆为云端或 Team/Enterprise 专属，不是本地 MCP 服务器。欢迎指正，请开 issue。 &dagger; 星标数于 2026-09-04 通过 GitHub API 读取,仅供参考:星标反映一个项目被看见了多久,而不是它能做什么。",
 "h2.eff": "上下文效率",
 "eff.lead": "每个 MCP 服务器在干活之前就要占用智能体的一部分上下文窗口，却几乎没有服务器告诉你占多少。这是我们量出来的账单：新会话从精简内核(28 件工具，约 7,600 token)启动，能力包只在任务需要时才打开。载入全部能力包后，完整表面约为 26,600 token，低于 v1.6 的约 34,400 token，整体少约 23%，精简启动时少约 78%。像 Claude Code 这样延迟加载工具 schema 的客户端，在工具真正被调用之前成本几乎为零。",
 "eff.s1": "精简启动 · 28 件工具",
@@ -743,21 +940,44 @@ zh: {
 "dept9.e": "例：文档开着就在光标处插入文字 · 把窗口滚动到改动处 · 会话中切换修订开关",
 "dept10.e": "例：用 CSV 跑一次邮件合并 · 涂黑一个名字并验证它确实消失 · 审计报告的无障碍性",
 "dept11.e": "例：把 LaTeX 转成 Word 原生公式 · 直接引用 Zotero 文献库 · 为同行评审匿名化稿件",
-"inst.s1": "① 领取器具",
-"inst.s2": "② 接好管道(Claude Code)",
-"inst.note": "Windows 平台。基于文件的工具无需安装 Word；驱动 Word 应用的工具(目录刷新、PDF、校对…)使用本机的 Microsoft Word。完整设置见 <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>。",
+"inst.s1": "用 Claude Desktop?双击一次就好。",
+"inst.s2": "用 Claude Code?把这行贴上。",
+"inst.note": "Windows 平台。基于文件的工具无需安装 Word;Word 应用类工具(刷新目录、导出 PDF、校对&hellip;)会调用本机的 Microsoft Word。",
 "svc1.t": "漏水了？", "svc1.p": "有东西出错、拒绝干活或行为异常？到维修柜台填一份报告，表单只问修复所需的信息。切勿附上私人文档；请用占位文字重建结构。", "svc1.g": "提交缺陷报告 →",
 "svc2.t": "缺个配件？", "svc2.p": "这台水槽还该有的某项 Word 能力。说明它背后的真实任务，它就会上工作台。", "svc2.g": "提出功能请求 →",
-"svc3.t": "商用装配？", "svc3.p": "在 AGPL-3.0 条款下，任何用途都免费。无法遵守 copyleft 的使用场景可获取商业许可；办手续就在这个柜台。", "svc3.g": "洽谈许可 →",
+"svc3.t": "商用装配？", "svc3.p": "个人和个人用途一直免费,以后也是。如果贵公司想把它做进自家产品里,那就需要商业许可,条款按具体情况一事一议。这个柜台就是开始谈的地方。", "svc3.g": "洽谈许可 →",
 "svc.note": "报告以公开 GitHub issue 的形式提交(需要一个免费的 GitHub 账号)。每份报告都会直达维护者的收件箱。",
 "g.t": "为“不损坏”而设计",
 "g.p1": "原子化的校验保存。每次改动前自动生成备份。未被编辑的内容逐字节原样通过：公式、文本框、内容控件一概不动。在篇幅长、格式重的真实文档上久经考验：一份带 171 个脚注，一份载有 126 条修订与审阅批注，外加两轮疯狂模式压力测试，全程未触发一次 Word 修复提示。",
 "g.p2": "依许可证按现状提供，不附带任何形式的担保。上述工程设计，只是说明你的文档被多么认真地对待。请保留备份。(它会替你做备份。)",
-"f.left": "© 2026 · <b>AGPL-3.0</b>：所有用途免费(AGPL条款)。<br>无法遵守 copyleft 的使用场景可获取商业许可，请<a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>开一个 issue</a> 办理。",
+"f.left": "&copy; 2026 &middot; <b>AGPL-3.0</b>:个人和个人用途免费。<br>把它做进自家产品的公司需要商业许可,<a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>开一个 issue</a>,我们细谈。",
 "f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>报告故障</a><br>与 Claude Code 一天完成原型，经数千次对抗性测试反复锤炼，并在超过65,000字、250页的真实稿件上实测通过。应有尽有！🚰"
 },
 de: {
 "pageTitle": "KitchenSink4Word: Microsoft Word mit allem Drum und Dran",
+"sw.here": "(Sie sind hier)",
+"sw.store": "Zum Laden",
+"h2.new": "Neu in dieser Version",
+"new.label": "NEU EINGETROFFEN",
+"new.t": "Fünf Dinge, die dieses Release geändert hat",
+"new.sub": "Die ganze Liste, ganz ohne Release Notes.",
+"new1": "<b>Mehr Reichweite, weniger Werkzeuge.</b> 219 Operationen statt 200 in v1.6, und die 189 Werkzeuge der v1.6-Oberfläche wurden zu 108 unter einer einzigen Verbgrammatik zusammengeführt, sodass Ihr Agent gleich beim ersten Versuch das richtige Werkzeug greift.",
+"new2": "<b>Fängt klein an, wächst auf Zuruf.</b> Eine Sitzung startet mit einem Kern aus 28 Werkzeugen für rund 7.600 Tokens und schaltet Fähigkeitspakete erst dann zu, wenn eine Aufgabe sie wirklich braucht.",
+"new3": "<b>Live-Bearbeitung, die laufen bleiben darf.</b> Mehrere Agenten können jetzt an einem offenen Dokument arbeiten, ohne sich in die Quere zu kommen, und ein Word-Dialog, der auf einen Menschen wartet, wird auf Betriebssystemebene erkannt, statt die Sitzung stillschweigend einzufrieren.",
+"new4": "<b>Einmal lesen, gesammelt bearbeiten.</b> Die verankerte Dokumentansicht liefert Adressen zurück, die Ihre Bearbeitungen überleben, und der Stapeleditor wendet Dutzende Änderungen in einem einzigen Alles-oder-nichts-Durchgang darauf an.",
+"new5": "<b>Mit Ihrer KI über Kommentare hin und her.</b> Hinterlassen Sie in Word einen Kommentar wie für eine Kollegin, und der Agent liest ihn, erledigt die Arbeit als nachverfolgte Änderung und antwortet im selben Thread. (Vorschau.)",
+"mxr0": "GitHub-Sterne&dagger;",
+"eff.growth": "<b>MEHR REICHWEITE, WENIGER WERKZEUGE</b> &middot; v1.6 kam auf 200 Operationen über 189 Werkzeuge; v2.0 liefert 219 über 108. Beide Bäume wurden mit demselben Maßstab gemessen, der Vergleich trägt also.",
+"inst.lead": "Suchen Sie sich die Zeile, die auf Sie zutrifft. Für die meisten ist es die erste.",
+"inst.b1": "Am einfachsten",
+"inst.p1": "Laden Sie das Installationsbündel aus dem neuesten Release herunter und doppelklicken Sie es, oder ziehen Sie es in das Claude-Desktop-Fenster. Desktop fügt es als Erweiterung hinzu, und die Spüle ist angeschlossen. Nichts zu tippen, nichts zu konfigurieren.",
+"inst.g1": ".mcpb-Bündel herunterladen &rarr;",
+"inst.p1b": "Einmalige Voraussetzung: <a href='https://docs.astral.sh/uv/'>uv</a> im PATH, damit startet das Bündel den Server.",
+"inst.b2": "Ein Befehl",
+"inst.p2": "Eine Zeile im Terminal, fertig. Der Server wird dabei geholt und gestartet, vorher ist nichts zu installieren.",
+"inst.dev": "Für Entwickler: pip, uvx, Quellcode, andere MCP-Clients",
+"inst.dp1": "Paket installieren und einen beliebigen MCP-Client auf die ausführbare Datei zeigen lassen:",
+"inst.dp2": "Dann in der Konfiguration des Clients: <code>{&quot;mcpServers&quot;: {&quot;word&quot;: {&quot;command&quot;: &quot;kitchensink4word&quot;}}}</code>. Aus einem Klon heraus läuft es genauso, dann zeigt der Befehl auf die ausführbare Datei <code>word-mcp</code> in der virtuellen Umgebung des Klons. Das vollständige Setup samt Sandbox-Optionen steht in der <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>.",
 "m.left": "<b>GEGR. 2026</b> · FEINE INSTRUMENTE FÜR DOKUMENTEN-KLEMPNEREI",
 "m.catalog": "KATALOG № 219",
 "m.service": "SERVICE",
@@ -774,7 +994,7 @@ de: {
 "btn.source": "Quelltext lesen",
 "no0": "ABT. 00", "no1": "ABT. 01", "no2": "ABT. 02", "no3": "ABT. 03", "no4": "ABT. 04", "no5": "ABT. 05",
 "h2.for": "Wofür das Ganze da ist",
-"for.lead": "Werkzeuge, die einen Absatz in eine .docx-Datei schreiben, gibt es genug. Dieser Katalog ist für die Arbeit da, die sonst niemand gelöst hat: echte Word-Dokumente bearbeiten, live im Fenster, ein Rückgängig-Schritt pro Aufruf, mit verbund-bewusster Tabellenchirurgie, Zitaten, Fußnoten und Inhaltsverzeichnis als Armaturen erster Klasse, Änderungen geschrieben als nachverfolgte Änderungen, Schwärzung mit Verifikation und Umwandlung in Publikationsstile. Gebaut für Menschen, deren Dokumente zu wichtig sind, um sie zu verlieren.",
+"for.lead": "Dies ist der letzte Word-MCP-Server, den Sie installieren werden. In der Kategorie kommt niemand an die Fähigkeiten heran: 219 Operationen erreichen jeden Teil eines Word-Dokuments, den ernsthafte Arbeit berührt, und die Übersicht weiter unten auf dieser Seite besteht überwiegend aus leeren Spalten. Vollständigkeit ist nur die eine Hälfte. Ihre Dokumente bleiben in Word geöffnet, während der Agent sie bearbeitet, jede Änderung erscheint also im Fenster vor Ihnen statt als Datei, die Sie neu laden müssen, und vor jeder Änderung steht ein automatisches Backup, festgeschrieben durch ein atomares, validiertes Speichern. Was Sie geschrieben haben, geht hier nicht verloren.",
 "for1.t": "Für die Wissenschaft",
 "for1.p": "Das Komitee schickt das Manuskript voller nachverfolgter Änderungen zurück, und der Zitierapparat muss die Überarbeitung überstehen. Zitate, Fußnoten, Querverweise, APA-Paritätsprüfung und Inhaltsverzeichnis sind hier erste Klasse, sodass ein Agent die Überarbeitungsrunde übernehmen kann, ohne irgendetwas davon zu zerbrechen.",
 "for2.t": "Für Recht, Compliance und Personal",
@@ -815,13 +1035,12 @@ de: {
 "mxr9": "Barrierefreiheits-Audit",
 "mxr10": "Formeln (LaTeX zu Word-Mathematik)",
 "mxr11": "Zotero-Integration",
-"mxr12": "Internationale Stilnamen",
 "mxr13": "Läuft ohne installiertes Word",
 "mxr14": "Live-Bearbeitung bei in Word geöffnetem Dokument",
 "mxr16": "Gestuftes Kontext-Laden (Lite-Kern, Pakete bei Bedarf)",
 "mxr15": "Veröffentlichte Testbelege gegen Dateibeschädigung",
 "mv.s12": "✔ 12 Stile", "mv.s8": "✔ 8 Stile", "mv.both": "✔ beide Richtungen", "mv.sha": "✔ Word-kompatibles SHA-512", "mv.file": "✔ Dateiwerkzeuge; COM optional", "mv.undo": "✔ ein Strg+Z pro Aufruf", "mv.evid": "✔ 1.255 / 0", "mv.inapp": "✔ in der App",
-"mx.note": "Fähigkeitserhebung, Stand 2026-08-28, zusammengetragen aus öffentlichen Repositories, Dokumentation und Issue-Trackern. n/d: in den gesichteten Quellen nicht dokumentiert (keine behauptete Abwesenheit). * Offizielle Add-ins bündelt Microsofts Word-KI-Angebote und das Claude-for-Word-Add-in: cloudbasiert oder auf Team/Enterprise beschränkt, keine lokalen MCP-Server. Korrekturen willkommen: einfach ein Issue öffnen.",
+"mx.note": "Fähigkeitserhebung, Stand 2026-08-28, zusammengetragen aus öffentlichen Repositories, Dokumentation und Issue-Trackern. n/d: in den gesichteten Quellen nicht dokumentiert (keine behauptete Abwesenheit). * Offizielle Add-ins bündelt Microsofts Word-KI-Angebote und das Claude-for-Word-Add-in: cloudbasiert oder auf Team/Enterprise beschränkt, keine lokalen MCP-Server. Korrekturen willkommen: einfach ein Issue öffnen. &dagger; Sternzahlen am 2026-09-04 über die GitHub-API gelesen, zur Einordnung: Sterne zeigen, wie lange ein Projekt schon sichtbar ist, nicht was es kann.",
 "h2.eff": "Kontext-Effizienz",
 "eff.lead": "Jeder MCP-Server belegt einen Teil des Kontextfensters eines Agenten, bevor die Arbeit überhaupt beginnt, und kaum einer sagt, wie viel. Hier ist unsere gemessene Rechnung: Eine frische Sitzung startet mit dem Lite-Kern, 28 Werkzeuge für rund 7.600 Token, und schaltet Fähigkeitspakete erst zu, wenn eine Aufgabe sie braucht. Mit allen Paketen misst die volle Oberfläche etwa 26.600 Token, gegenüber rund 34.400 in v1.6, also etwa 23 Prozent weniger für die ganze Spüle und rund 78 Prozent weniger beim Lite-Start. Clients, die Werkzeugschemata aufschieben, wie Claude Code, zahlen nahezu nichts, bis ein Werkzeug tatsächlich aufgerufen wird.",
 "eff.s1": "Lite-Start · 28 Werkzeuge",
@@ -839,21 +1058,44 @@ de: {
 "dept9.e": "z. B. Text an der Cursorposition einfügen, während das Dokument offen ist · das Fenster zur Änderung scrollen · die Änderungsnachverfolgung mitten in der Sitzung umschalten",
 "dept10.e": "z. B. einen Serienbrief aus einer CSV fahren · einen Namen schwärzen und das Verschwinden verifizieren · einen Bericht auf Barrierefreiheit prüfen",
 "dept11.e": "z. B. LaTeX in native Word-Formeln übersetzen · direkt aus der Zotero-Bibliothek zitieren · ein Manuskript für Peer-Review anonymisieren",
-"inst.s1": "① DIE ARMATUR BESORGEN",
-"inst.s2": "② DIE ROHRE ANSCHLIESSEN (Claude Code)",
-"inst.note": "Windows. Dateibasierte Werkzeuge brauchen kein installiertes Word; die Word-App-Werkzeuge (Inhaltsverzeichnis-Aktualisierung, PDF, Korrekturhilfen…) nutzen ein lokales Microsoft Word. Vollständige Einrichtung im <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>.",
+"inst.s1": "Sie nutzen Claude Desktop? Ein Doppelklick.",
+"inst.s2": "Sie nutzen Claude Code? Fügen Sie das ein.",
+"inst.note": "Windows. Dateibasierte Werkzeuge brauchen keine Word-Installation; die Word-App-Werkzeuge (Inhaltsverzeichnis aktualisieren, PDF, Rechtschreibprüfung&hellip;) nutzen ein lokales Microsoft Word.",
 "svc1.t": "Ein Leck gefunden?", "svc1.p": "Etwas hat gehakt, verweigert oder sich danebenbenommen. Geben Sie am Reparaturschalter einen Bericht ab; das Formular fragt genau das ab, was eine Reparatur braucht. Hängen Sie nie ein privates Dokument an; bauen Sie die Struktur mit Platzhaltertext nach.", "svc1.g": "Fehler melden →",
 "svc2.t": "Fehlt ein Anbauteil?", "svc2.p": "Eine Word-Fähigkeit, die die Spüle auch haben sollte. Beschreiben Sie die echte Aufgabe dahinter, und sie kommt auf die Werkbank.", "svc2.g": "Funktion wünschen →",
-"svc3.t": "Gewerbliche Montage?", "svc3.p": "Kostenlos für jede Nutzung unter AGPL-3.0-Bedingungen. Für Anwendungsfälle, die das Copyleft nicht einhalten können, gibt es eine kommerzielle Lizenz; an diesem Schalter wird sie vereinbart.", "svc3.g": "Lizenz vereinbaren →",
+"svc3.t": "Gewerbliche Montage?", "svc3.p": "Für Privatpersonen und private Nutzung kostenlos, und das bleibt so. Will ein Unternehmen das in ein eigenes Produkt einbauen, braucht es eine kommerzielle Lizenz, deren Konditionen im Einzelfall besprochen werden. An diesem Schalter fängt das Gespräch an.", "svc3.g": "Lizenz vereinbaren →",
 "svc.note": "Berichte sind öffentliche GitHub-Issues (zum Einreichen genügt ein kostenloses GitHub-Konto). Jeder Bericht landet im Posteingang des Maintainers.",
 "g.t": "Konstruiert mit dem Ziel, nichts zu beschädigen",
 "g.p1": "Atomares, validiertes Speichern. Automatische Backups vor jeder Änderung. Byte-identische Durchleitung von allem, was nicht bearbeitet wird: Formeln, Textfelder und Inhaltssteuerelemente passieren unangetastet. Erprobt an langen, stark formatierten realen Dokumenten: eines mit 171 Fußnoten, eines mit 126 nachverfolgten Änderungen und Prüferkommentaren, dazu zwei Stresskampagnen im Irrsinnsmodus ohne einen einzigen Word-Reparaturdialog.",
 "g.p2": "Bereitgestellt wie besehen, ohne Gewährleistung jeglicher Art, gemäß Lizenz; die obige Ingenieursarbeit zeigt lediglich, wie ernst Ihre Dokumente genommen werden. Behalten Sie Backups. (Es legt sie für Sie an.)",
-"f.left": "© 2026 · <b>AGPL-3.0</b>: kostenlos unter AGPL-Bedingungen.<br>Kommerzielle Lizenz verfügbar, wenn Copyleft nicht umsetzbar; <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>ein Issue öffnen</a>, um sie zu vereinbaren.",
+"f.left": "&copy; 2026 &middot; <b>AGPL-3.0</b>: kostenlos für Privatpersonen und private Nutzung.<br>Unternehmen, die es in eigene Produkte einbauen, brauchen eine kommerzielle Lizenz; <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>ein Issue öffnen</a>, dann klären wir das.",
 "f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>Störung melden</a><br>Mit Claude Code an einem Tag prototypisiert, gehärtet durch Tausende adversarialer Testaufrufe und an echten Manuskripten mit über 65.000 Wörtern und 250 Seiten getestet. So viel Rohrleitung! 🚰"
 },
 fr: {
 "pageTitle": "KitchenSink4Word : absolument tout pour Microsoft Word, jusqu'au moindre détail",
+"sw.here": "(vous êtes ici)",
+"sw.store": "La boutique",
+"h2.new": "Nouveautés de cette version",
+"new.label": "ARRIVAGE",
+"new.t": "Cinq choses que cette version change",
+"new.sub": "La liste complète, sans passer par les notes de version.",
+"new1": "<b>Plus de portée, moins d'outils.</b> 219 opérations désormais, contre 200 en v1.6, et les 189 outils de la surface v1.6 sont devenus 108 sous une seule grammaire de verbes, si bien que votre agent choisit le bon outil du premier coup.",
+"new2": "<b>Démarre léger, grandit à la demande.</b> Une session s'ouvre sur un noyau de 28 outils coûtant environ 7 600 tokens et n'active un lot de capacités que lorsqu'une tâche en a réellement besoin.",
+"new3": "<b>Une édition en direct qu'on peut laisser tourner.</b> Plusieurs agents peuvent maintenant travailler sur un document ouvert sans se gêner, et une boîte de dialogue Word qui attend un humain est détectée au niveau du système d'exploitation au lieu de geler la session en silence.",
+"new4": "<b>Lire une fois, corriger en masse.</b> La vue ancrée du document renvoie des adresses qui survivent à vos modifications, et l'éditeur par lots y applique des dizaines de changements en une seule passe, tout ou rien.",
+"new5": "<b>Échangez avec votre IA par commentaires.</b> Laissez un commentaire dans Word comme vous le feriez pour un collègue : l'agent le lit, fait le travail en suivi des modifications et répond dans le fil. (Aperçu.)",
+"mxr0": "Étoiles GitHub&dagger;",
+"eff.growth": "<b>PLUS DE PORTÉE, MOINS D'OUTILS</b> &middot; v1.6 comptait 200 opérations réparties sur 189 outils ; v2.0 en livre 219 sur 108. Les deux arbres ont été mesurés avec la même règle, la comparaison tient donc.",
+"inst.lead": "Choisissez la ligne qui vous correspond. Pour la plupart des gens, c'est la première.",
+"inst.b1": "Le plus simple",
+"inst.p1": "Téléchargez le paquet d'installation depuis la dernière version et double-cliquez dessus, ou faites-le glisser dans la fenêtre de Claude Desktop. Desktop l'ajoute comme extension et l'évier est raccordé. Rien à taper, rien à configurer.",
+"inst.g1": "Télécharger le paquet .mcpb &rarr;",
+"inst.p1b": "Prérequis unique : <a href='https://docs.astral.sh/uv/'>uv</a> dans votre PATH, que le paquet utilise pour lancer le serveur.",
+"inst.b2": "Une commande",
+"inst.p2": "Une ligne dans un terminal et c'est fini. Le serveur est récupéré et lancé pour vous, il n'y a rien à installer avant.",
+"inst.dev": "Pour les développeurs : pip, uvx, sources, autres clients MCP",
+"inst.dp1": "Installez le paquet, puis pointez n'importe quel client MCP sur l'exécutable :",
+"inst.dp2": "Ensuite, dans la configuration du client : <code>{&quot;mcpServers&quot;: {&quot;word&quot;: {&quot;command&quot;: &quot;kitchensink4word&quot;}}}</code>. Depuis un clone, c'est identique : pointez la commande sur l'exécutable <code>word-mcp</code> de l'environnement virtuel du clone. L'installation complète, options de bac à sable comprises, est dans le <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>.",
 "m.left": "<b>FONDÉ EN 2026</b> · INSTRUMENTS DE PRÉCISION POUR PLOMBERIE DOCUMENTAIRE",
 "m.catalog": "CATALOGUE № 219",
 "m.service": "SERVICE",
@@ -870,7 +1112,7 @@ fr: {
 "btn.source": "Lire la source",
 "no0": "RAYON 00", "no1": "RAYON 01", "no2": "RAYON 02", "no3": "RAYON 03", "no4": "RAYON 04", "no5": "RAYON 05",
 "h2.for": "À quoi ça sert, au juste",
-"for.lead": "Des outils capables d'écrire un paragraphe dans un .docx, il y en a plein. Ce catalogue existe pour le travail que personne d'autre n'a résolu : modifier de vrais documents Word, en direct dans la fenêtre, un cran d'annulation par appel, avec la chirurgie de tableaux tenant compte des fusions, les citations, notes de bas de page et table des matières traitées en pièces de première classe, les modifications écrites en suivi des modifications, le caviardage avec vérification et la conversion aux styles de publication. Il a été construit pour ceux dont les documents sont trop importants pour être perdus.",
+"for.lead": "C'est le dernier serveur MCP Word que vous aurez à installer. Sur la capacité, personne n'approche : 219 opérations atteignent chaque partie d'un document Word que le travail sérieux touche, et le tableau comparatif plus bas sur cette page est fait surtout de colonnes vides. La complétude n'est que la moitié de l'affaire. Vos documents restent ouverts dans Word pendant que l'agent les modifie, si bien que chaque changement apparaît dans la fenêtre devant vous au lieu d'arriver sous forme de fichier à recharger, et chaque changement est précédé d'une sauvegarde automatique et validé par un enregistrement atomique. Ici, ce que vous avez écrit ne se perd pas.",
 "for1.t": "Pour l'universitaire",
 "for1.p": "Le comité renvoie le manuscrit couvert de révisions suivies, et l'appareil critique doit survivre à la réécriture. Ici, citations, notes de bas de page, renvois, contrôle de parité APA et table des matières sont de première classe : un agent peut prendre en charge la passe de révision sans rien casser.",
 "for2.t": "Pour le juridique, la conformité et les RH",
@@ -911,13 +1153,12 @@ fr: {
 "mxr9": "Audit d'accessibilité",
 "mxr10": "Équations (LaTeX vers maths Word)",
 "mxr11": "Intégration Zotero",
-"mxr12": "Noms de styles internationaux",
 "mxr13": "Fonctionne sans Word installé",
 "mxr14": "Édition en direct, document ouvert dans Word",
 "mxr16": "Chargement de contexte par paliers (noyau allégé, packs à la demande)",
 "mxr15": "Preuves publiées des tests anti-corruption",
 "mv.s12": "✔ 12 styles", "mv.s8": "✔ 8 styles", "mv.both": "✔ dans les deux sens", "mv.sha": "✔ SHA-512 compatible Word", "mv.file": "✔ outils fichier ; COM en option", "mv.undo": "✔ un Ctrl+Z par appel", "mv.evid": "✔ 1 255 / 0", "mv.inapp": "✔ dans l'application",
-"mx.note": "Recensement des capacités au 2026-08-28, compilé à partir des dépôts publics, de la documentation et des traqueurs de tickets. n/d : non documenté dans les sources consultées (ce n'est pas une absence affirmée). * Compléments officiels regroupe les offres IA de Microsoft pour Word et le complément Claude for Word : en nuage ou réservés aux offres Team/Enterprise, pas des serveurs MCP locaux. Corrections bienvenues : ouvrez un ticket.",
+"mx.note": "Recensement des capacités au 2026-08-28, compilé à partir des dépôts publics, de la documentation et des traqueurs de tickets. n/d : non documenté dans les sources consultées (ce n'est pas une absence affirmée). * Compléments officiels regroupe les offres IA de Microsoft pour Word et le complément Claude for Word : en nuage ou réservés aux offres Team/Enterprise, pas des serveurs MCP locaux. Corrections bienvenues : ouvrez un ticket. &dagger; Nombres d'étoiles relevés via l'API GitHub le 2026-09-04, à titre de contexte : les étoiles disent depuis combien de temps un projet est visible, pas ce qu'il sait faire.",
 "h2.eff": "Efficacité de contexte",
 "eff.lead": "Chaque serveur MCP occupe une partie de la fenêtre de contexte d'un agent avant même que le travail commence, et presque aucun ne dit combien. Voici notre facture, mesurée : une session neuve démarre sur le noyau allégé, 28 outils pour environ 7 600 tokens, et n'active des packs de capacités que lorsqu'une tâche les demande. Tous les packs chargés, la surface complète mesure environ 26 600 tokens, contre près de 34 400 en v1.6, soit à peu près 23 pour cent de moins pour l'évier entier et environ 78 pour cent de moins au démarrage allégé. Les clients qui diffèrent les schémas d'outils, comme Claude Code, ne paient presque rien tant qu'un outil n'est pas réellement appelé.",
 "eff.s1": "Démarrage allégé · 28 outils",
@@ -935,21 +1176,44 @@ fr: {
 "dept9.e": "p. ex. insérer du texte au curseur pendant que le document est ouvert · faire défiler la fenêtre jusqu'au changement · basculer le suivi des modifications en pleine session",
 "dept10.e": "p. ex. lancer un publipostage depuis un CSV · caviarder un nom et vérifier qu'il a disparu · auditer l'accessibilité d'un rapport",
 "dept11.e": "p. ex. traduire du LaTeX en équations Word natives · citer directement depuis une bibliothèque Zotero · anonymiser un manuscrit pour l'évaluation par les pairs",
-"inst.s1": "① SE PROCURER LA ROBINETTERIE",
-"inst.s2": "② RACCORDER LA TUYAUTERIE (Claude Code)",
-"inst.note": "Windows. Les outils sur fichier ne demandent aucune installation de Word ; les outils de l'application Word (actualisation de la table des matières, PDF, vérification linguistique…) utilisent un Microsoft Word local. Configuration complète dans le <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>.",
+"inst.s1": "Vous utilisez Claude Desktop ? Un double-clic.",
+"inst.s2": "Vous utilisez Claude Code ? Collez ceci.",
+"inst.note": "Windows. Les outils sur fichier n'exigent aucune installation de Word ; les outils applicatifs (rafraîchissement de la table des matières, PDF, correction&hellip;) utilisent un Microsoft Word local.",
 "svc1.t": "Une fuite ?", "svc1.p": "Quelque chose a buggé, refusé ou déraillé. Déposez un signalement au comptoir des réparations : le formulaire demande exactement ce qu'il faut pour réparer. Ne joignez jamais un document privé ; reconstruisez la structure avec du texte de substitution.", "svc1.g": "Signaler un bogue →",
 "svc2.t": "Un accessoire manquant ?", "svc2.p": "Une capacité de Word que l'évier devrait aussi avoir. Décrivez la tâche réelle qui la motive et elle rejoint l'établi.", "svc2.g": "Demander une fonction →",
-"svc3.t": "Installation commerciale ?", "svc3.p": "Gratuit pour tout usage aux conditions AGPL-3.0. Une licence commerciale est disponible pour les cas qui ne peuvent pas respecter le copyleft ; c'est à ce comptoir qu'elle se négocie.", "svc3.g": "Convenir d'une licence →",
+"svc3.t": "Installation commerciale ?", "svc3.p": "Gratuit pour les particuliers et l'usage personnel, et cela ne changera pas. Si votre entreprise veut l'intégrer dans un produit à elle, il lui faut une licence commerciale, dont les conditions se discutent au cas par cas. C'est à ce comptoir que la conversation commence.", "svc3.g": "Convenir d'une licence →",
 "svc.note": "Les signalements sont des tickets GitHub publics (un compte GitHub gratuit suffit pour en déposer un). Chaque signalement atterrit dans la boîte du mainteneur.",
 "g.t": "Conçu pour ne pas corrompre",
 "g.p1": "Enregistrements atomiques validés. Sauvegardes automatiques avant chaque modification. Passage à l'identique, octet pour octet, de tout ce qui n'est pas modifié : équations, zones de texte et contrôles de contenu traversent intacts. Éprouvé sur de vrais documents longs et lourdement mis en forme : l'un portant 171 notes de bas de page, l'autre 126 révisions suivies et commentaires de relecteurs, plus deux campagnes d'endurance en mode démentiel sans une seule invite de réparation de Word.",
 "g.p2": "Fourni tel quel, sans garantie d'aucune sorte, conformément à la licence ; l'ingénierie ci-dessus dit simplement avec quel sérieux vos documents sont traités. Gardez des sauvegardes. (Il les fait pour vous.)",
-"f.left": "© 2026 · <b>AGPL-3.0</b> : gratuit sous conditions AGPL.<br>Licence commerciale disponible si le copyleft n'est pas applicable ; <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>ouvrez un ticket</a> pour la convenir.",
+"f.left": "&copy; 2026 &middot; <b>AGPL-3.0</b> : gratuit pour les particuliers et l'usage personnel.<br>Les entreprises qui l'intègrent dans leurs propres produits ont besoin d'une licence commerciale ; <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>ouvrez un ticket</a> et nous en parlerons.",
 "f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>signaler un pépin</a><br>Prototypé avec Claude Code en une journée, endurci par des milliers de tests adversariaux et testé sur de vrais manuscrits de plus de 65 000 mots et 250 pages. C'est de la belle tuyauterie&nbsp;! 🚰"
 },
 es: {
 "pageTitle": "KitchenSink4Word: de todo para Microsoft Word, hasta lo que no imaginas",
+"sw.here": "(está aquí)",
+"sw.store": "La tienda",
+"h2.new": "Novedades de esta versión",
+"new.label": "RECIÉN LLEGADO",
+"new.t": "Cinco cosas que cambia esta versión",
+"new.sub": "La lista entera, sin tener que leer las notas de la versión.",
+"new1": "<b>Más alcance, menos herramientas.</b> Ahora 219 operaciones, frente a 200 en v1.6, y aquellas 189 herramientas de la superficie v1.6 pasaron a ser 108 bajo una sola gramática de verbos, así que su agente acierta con la herramienta a la primera.",
+"new2": "<b>Empieza pequeño y crece cuando hace falta.</b> Una sesión abre con un núcleo de 28 herramientas que cuesta unos 7.600 tokens y solo enciende paquetes de capacidades cuando una tarea los necesita de verdad.",
+"new3": "<b>Edición en vivo que puede dejar funcionando.</b> Ahora varios agentes pueden trabajar sobre un documento abierto sin chocar, y un cuadro de diálogo de Word que espera a una persona se detecta en el nivel del sistema operativo en lugar de congelar la sesión en silencio.",
+"new4": "<b>Lea una vez, edite en bloque.</b> La vista anclada del documento devuelve direcciones que sobreviven a sus ediciones, y el editor por lotes les aplica decenas de cambios en una sola pasada de todo o nada.",
+"new5": "<b>Converse con su IA a base de comentarios.</b> Deje un comentario en Word como se lo dejaría a un colega: el agente lo lee, hace el trabajo como cambios rastreados y responde en el mismo hilo. (Vista previa.)",
+"mxr0": "Estrellas de GitHub&dagger;",
+"eff.growth": "<b>MÁS ALCANCE, MENOS HERRAMIENTAS</b> &middot; v1.6 medía 200 operaciones repartidas en 189 herramientas; v2.0 entrega 219 en 108. Los dos árboles se midieron con el mismo rasero, así que la comparación se sostiene.",
+"inst.lead": "Elija la línea que le describa. Casi todo el mundo es la primera.",
+"inst.b1": "Lo más fácil",
+"inst.p1": "Descargue el paquete de instalación de la última versión y haga doble clic, o arrástrelo a la ventana de Claude Desktop. Desktop lo añade como extensión y el fregadero queda conectado. Nada que escribir, nada que configurar.",
+"inst.g1": "Descargar el paquete .mcpb &rarr;",
+"inst.p1b": "Requisito de una sola vez: <a href='https://docs.astral.sh/uv/'>uv</a> en su PATH, que el paquete usa para arrancar el servidor.",
+"inst.b2": "Un comando",
+"inst.p2": "Una línea en la terminal y listo. El servidor se descarga y se ejecuta solo, no hay que instalar nada antes.",
+"inst.dev": "Para desarrolladores: pip, uvx, código fuente, otros clientes MCP",
+"inst.dp1": "Instale el paquete y apunte cualquier cliente MCP al ejecutable:",
+"inst.dp2": "Después, en la configuración del cliente: <code>{&quot;mcpServers&quot;: {&quot;word&quot;: {&quot;command&quot;: &quot;kitchensink4word&quot;}}}</code>. Desde un clon funciona igual: apunte el comando al ejecutable <code>word-mcp</code> del entorno virtual del clon. La instalación completa, con las opciones de espacio aislado, está en el <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>.",
 "m.left": "<b>EST. 2026</b> · INSTRUMENTOS FINOS PARA FONTANERÍA DOCUMENTAL",
 "m.catalog": "CATÁLOGO № 219",
 "m.service": "SERVICIO",
@@ -966,7 +1230,7 @@ es: {
 "btn.source": "Leer el código",
 "no0": "DEPTO. 00", "no1": "DEPTO. 01", "no2": "DEPTO. 02", "no3": "DEPTO. 03", "no4": "DEPTO. 04", "no5": "DEPTO. 05",
 "h2.for": "Para qué sirve realmente",
-"for.lead": "Herramientas que escriben un párrafo en un .docx hay de sobra. Este catálogo existe para el trabajo que nadie más había resuelto: editar documentos de Word reales, en vivo en la ventana, un paso de deshacer por llamada, con cirugía de tablas consciente de las combinaciones, citas, notas al pie y tabla de contenido tratadas como piezas de primera clase, ediciones escritas como cambios rastreados, censura con verificación y conversión a estilos de publicación. Se construyó para quienes tienen documentos demasiado importantes como para perderlos.",
+"for.lead": "Este es el último servidor MCP de Word que va a necesitar instalar. En capacidad no hay nadie cerca: 219 operaciones llegan a cada parte de un documento de Word que toca el trabajo serio, y la tabla comparativa más abajo en esta página está hecha sobre todo de columnas vacías. La completitud es solo la mitad del asunto. Sus documentos siguen abiertos en Word mientras el agente los edita, así que cada cambio aparece en la ventana que tiene delante en vez de llegar como un archivo que hay que recargar, y cada cambio va precedido de una copia de seguridad automática y se confirma con un guardado atómico validado. Aquí no se pierde lo que ha escrito.",
 "for1.t": "Para el académico",
 "for1.p": "El comité devuelve el manuscrito lleno de revisiones rastreadas y el aparato de citas tiene que sobrevivir a la reescritura. Aquí las citas, las notas al pie, las referencias cruzadas, la comprobación de paridad APA y la tabla de contenido son de primera clase, así que un agente puede encargarse de la pasada de revisión sin romper nada de eso.",
 "for2.t": "Para legal, cumplimiento y RR. HH.",
@@ -1007,13 +1271,12 @@ es: {
 "mxr9": "Auditoría de accesibilidad",
 "mxr10": "Ecuaciones (LaTeX a matemáticas de Word)",
 "mxr11": "Integración con Zotero",
-"mxr12": "Nombres de estilo internacionales",
 "mxr13": "Funciona sin Word instalado",
 "mxr14": "Edición en vivo con el documento abierto en Word",
 "mxr16": "Carga de contexto por niveles (núcleo ligero, paquetes bajo demanda)",
 "mxr15": "Evidencia publicada de pruebas contra la corrupción de archivos",
 "mv.s12": "✔ 12 estilos", "mv.s8": "✔ 8 estilos", "mv.both": "✔ en ambos sentidos", "mv.sha": "✔ SHA-512 compatible con Word", "mv.file": "✔ herramientas de archivo; COM opcional", "mv.undo": "✔ un Ctrl+Z por llamada", "mv.evid": "✔ 1.255 / 0", "mv.inapp": "✔ dentro de la aplicación",
-"mx.note": "Estudio de capacidades a 2026-08-28, compilado de repositorios públicos, documentación y gestores de incidencias. n/d: no documentado en las fuentes consultadas (no es una ausencia afirmada). * Complementos oficiales agrupa las ofertas de IA de Microsoft para Word y el complemento Claude for Word: en la nube o limitados a planes Team/Enterprise, no servidores MCP locales. Correcciones bienvenidas: abra un issue.",
+"mx.note": "Estudio de capacidades a 2026-08-28, compilado de repositorios públicos, documentación y gestores de incidencias. n/d: no documentado en las fuentes consultadas (no es una ausencia afirmada). * Complementos oficiales agrupa las ofertas de IA de Microsoft para Word y el complemento Claude for Word: en la nube o limitados a planes Team/Enterprise, no servidores MCP locales. Correcciones bienvenidas: abra un issue. &dagger; Recuento de estrellas leído de la API de GitHub el 2026-09-04, a modo de contexto: las estrellas dicen cuánto tiempo lleva un proyecto a la vista, no lo que sabe hacer.",
 "h2.eff": "Eficiencia de contexto",
 "eff.lead": "Todo servidor MCP ocupa parte de la ventana de contexto de un agente antes de empezar a trabajar, y casi ninguno dice cuánto. Esta es nuestra factura, medida: una sesión nueva arranca con el núcleo ligero, 28 herramientas por unos 7.600 tokens, y activa paquetes de capacidades solo cuando una tarea los necesita. Con todos los paquetes cargados, la superficie completa mide unos 26.600 tokens, frente a unos 34.400 en la v1.6, aproximadamente un 23 por ciento menos para todo el fregadero y alrededor de un 78 por ciento menos al arrancar ligero. Los clientes que aplazan los esquemas, como Claude Code, no pagan casi nada hasta que una herramienta se invoca de verdad.",
 "eff.s1": "Arranque ligero · 28 herramientas",
@@ -1031,17 +1294,17 @@ es: {
 "dept9.e": "p. ej. insertar texto en el cursor con el documento abierto · desplazar la ventana hasta el cambio · alternar el control de cambios en plena sesión",
 "dept10.e": "p. ej. ejecutar una combinación de correspondencia desde un CSV · censurar un nombre y verificar que desapareció · auditar la accesibilidad de un informe",
 "dept11.e": "p. ej. convertir LaTeX en ecuaciones nativas de Word · citar directamente desde una biblioteca Zotero · anonimizar un manuscrito para revisión por pares",
-"inst.s1": "① CONSIGA LA GRIFERÍA",
-"inst.s2": "② CONECTE LA TUBERÍA (Claude Code)",
-"inst.note": "Windows. Las herramientas basadas en archivo no necesitan Word instalado; las herramientas de la aplicación Word (actualización de la tabla de contenido, PDF, revisión…) usan un Microsoft Word local. Configuración completa en el <a href='https://github.com/nometalalchemist/KitchenSink4Word#install'>README</a>.",
+"inst.s1": "¿Usa Claude Desktop? Un doble clic.",
+"inst.s2": "¿Usa Claude Code? Pegue esto.",
+"inst.note": "Windows. Las herramientas basadas en archivo no requieren instalar Word; las herramientas de la aplicación (actualizar el índice, PDF, revisión&hellip;) usan un Microsoft Word local.",
 "svc1.t": "¿Encontró una fuga?", "svc1.p": "Algo falló, se negó o se portó mal. Presente un parte en el mostrador de reparaciones: el formulario pregunta exactamente lo que un arreglo necesita. Nunca adjunte un documento privado; reconstruya la estructura con texto de relleno.", "svc1.g": "Informar de un fallo →",
 "svc2.t": "¿Falta un accesorio?", "svc2.p": "Una capacidad de Word que el fregadero también debería tener. Describa la tarea real que hay detrás y pasará al banco de trabajo.", "svc2.g": "Pedir una función →",
-"svc3.t": "¿Instalación comercial?", "svc3.p": "Gratis para cualquier uso bajo los términos de AGPL-3.0. Hay licencia comercial para los casos que no puedan cumplir el copyleft; en este mostrador se gestiona.", "svc3.g": "Gestionar una licencia →",
+"svc3.t": "¿Instalación comercial?", "svc3.p": "Gratis para particulares y uso personal, y seguirá siéndolo. Si su empresa quiere integrarlo en un producto propio, hace falta una licencia comercial, con las condiciones acordadas caso por caso. En este mostrador empieza esa conversación.", "svc3.g": "Gestionar una licencia →",
 "svc.note": "Los partes son issues públicos de GitHub (hace falta una cuenta gratuita de GitHub para presentarlos). Cada parte llega a la bandeja del mantenedor.",
 "g.t": "Diseñado para no corromper",
 "g.p1": "Guardados atómicos validados. Copias de seguridad automáticas antes de cada cambio. Paso idéntico byte a byte de todo lo que no se edita: ecuaciones, cuadros de texto y controles de contenido pasan intactos. Curtido en documentos reales largos y muy formateados: uno con 171 notas al pie, otro con 126 revisiones rastreadas y comentarios de revisores, más dos campañas de estrés en modo demencial sin un solo aviso de reparación de Word.",
 "g.p2": "Se ofrece tal cual, sin garantía de ningún tipo, según la licencia: la ingeniería anterior solo muestra con cuánta seriedad se tratan sus documentos. Conserve copias de seguridad. (Él las hace por usted.)",
-"f.left": "© 2026 · <b>AGPL-3.0</b>: gratis bajo los términos de AGPL.<br>Licencia comercial disponible si el copyleft no es viable; <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>abra un issue</a> para gestionarla.",
+"f.left": "&copy; 2026 &middot; <b>AGPL-3.0</b>: gratis para particulares y uso personal.<br>Las empresas que lo integren en productos propios necesitan una licencia comercial; <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>abra un issue</a> y lo hablamos.",
 "f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>informar de un fallo</a><br>Prototipado con Claude Code en un día, endurecido con miles de pruebas adversariales y probado en manuscritos reales de más de 65.000 palabras y 250 páginas. ¡Eso sí que es fontanería! 🚰"
 }
 };
