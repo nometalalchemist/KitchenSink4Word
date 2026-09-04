@@ -355,7 +355,7 @@ footer a{color:var(--copper)}
         <tr><td data-i18n="mxr13">Works without Word installed</td><td class="us yes" data-i18n="mv.file">✔ file tools; COM optional</td><td class="nd">n/d</td><td class="nd">n/d</td><td class="yes">✔</td><td class="no">✘</td></tr>
         <tr><td data-i18n="mxr14">Live editing while open in Word</td><td class="us yes" data-i18n="mv.undo">✔ one Ctrl+Z per call</td><td class="yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="yes" data-i18n="mv.inapp">✔ in-app</td></tr>
         <tr><td data-i18n="mxr16">Tiered context loading (lite core, packs on demand)</td><td class="us yes">✔</td><td class="no">✘</td><td class="no">✘</td><td class="no">✘</td><td class="nd">n/d</td></tr>
-        <tr><td data-i18n="mxr15">Anti-corruption evidence (tests / corruptions)</td><td class="us yes" data-i18n="mv.evid">✔ 1,255 / 0</td><td class="nd">n/d</td><td class="nd">n/d</td><td class="nd">n/d</td><td class="nd">n/d</td></tr>
+        <tr><td data-i18n="mxr15">Anti-corruption evidence (tests / corruptions)</td><td class="us yes" data-i18n="mv.evid">✔ 1,324 / 0</td><td class="nd">n/d</td><td class="nd">n/d</td><td class="nd">n/d</td><td class="nd">n/d</td></tr>
       </table>
     </div>
     <p class="foot-note" data-i18n="mx.note">Capability survey as of 2026-08-28, compiled from public repositories, documentation, and issue trackers. n/d: not documented in the sources surveyed (not a claimed absence). * Official add-ins covers Microsoft's Word AI offerings and the Claude for Word add-in: cloud-based or Team/Enterprise scoped, not local MCP servers. Corrections welcome: open an issue. † Star counts read from the GitHub API on 2026-09-04, shown for context: stars say how long a project has been in view, not what it can do.</p>
@@ -567,7 +567,7 @@ en: {
 "mxr14": "Live editing while open in Word",
 "mxr16": "Tiered context loading (lite core, packs on demand)",
 "mxr15": "Anti-corruption evidence (tests / corruptions)",
-"mv.s12": "✔ 12 styles", "mv.s8": "✔ 8 styles", "mv.both": "✔ both directions", "mv.sha": "✔ Word-compatible SHA-512", "mv.file": "✔ file tools; COM optional", "mv.undo": "✔ one Ctrl+Z per call", "mv.evid": "✔ 1,255 / 0", "mv.inapp": "✔ in-app",
+"mv.s12": "✔ 12 styles", "mv.s8": "✔ 8 styles", "mv.both": "✔ both directions", "mv.sha": "✔ Word-compatible SHA-512", "mv.file": "✔ file tools; COM optional", "mv.undo": "✔ one Ctrl+Z per call", "mv.evid": "✔ 1,324 / 0", "mv.inapp": "✔ in-app",
 "mx.note": "Capability survey as of 2026-08-28, compiled from public repositories, documentation, and issue trackers. n/d: not documented in the sources surveyed (not a claimed absence). * Official add-ins covers Microsoft's Word AI offerings and the Claude for Word add-in: cloud-based or Team/Enterprise scoped, not local MCP servers. Corrections welcome: open an issue. &dagger; Star counts read from the GitHub API on 2026-09-04, shown for context: stars say how long a project has been in view, not what it can do.",
 "h2.eff": "Context efficiency",
 "eff.lead": "Every MCP server occupies part of an agent's context window before any work starts, and almost none of them tell you how much. Here is our bill, measured: a fresh session starts on the lite core, 28 tools for about 7,600 tokens, and turns on capability packs only when a task needs them. Load every pack and the full surface measures about 26,600 tokens, down from about 34,400 in v1.6, roughly 23 percent less for the whole sink and about 78 percent less at lite start. Clients that defer tool schemas, as Claude Code does, pay close to zero until a tool is actually called.",
@@ -685,7 +685,7 @@ ko: {
 "mxr14": "Word에 열린 채 라이브 편집",
 "mxr16": "계층형 컨텍스트 로딩 (라이트 코어, 필요 시 팩)",
 "mxr15": "손상 방지 테스트 근거 공개",
-"mv.s12": "✔ 12개 스타일", "mv.s8": "✔ 8개 스타일", "mv.both": "✔ 양방향", "mv.sha": "✔ Word 호환 SHA-512", "mv.file": "✔ 파일 도구; COM은 선택", "mv.undo": "✔ 호출당 Ctrl+Z 한 단계", "mv.evid": "✔ 1,255 / 0", "mv.inapp": "✔ 앱 내",
+"mv.s12": "✔ 12개 스타일", "mv.s8": "✔ 8개 스타일", "mv.both": "✔ 양방향", "mv.sha": "✔ Word 호환 SHA-512", "mv.file": "✔ 파일 도구; COM은 선택", "mv.undo": "✔ 호출당 Ctrl+Z 한 단계", "mv.evid": "✔ 1,324 / 0", "mv.inapp": "✔ 앱 내",
 "mx.note": "2026-08-28 기준 기능 조사. 공개 저장소, 문서, 이슈 트래커에서 취합했습니다. n/d: 조사한 자료에서 확인되지 않음(없다는 주장이 아닙니다). * 공식 추가 기능 열은 Microsoft의 Word AI 제품군과 Claude for Word 추가 기능을 묶은 것으로, 클라우드 기반이거나 Team/Enterprise 요금제 전용이며 로컬 MCP 서버가 아닙니다. 정정은 환영합니다. 이슈를 열어 주세요. &dagger; 스타 수는 2026-09-04에 GitHub API로 읽은 값이며 참고용입니다. 스타는 프로젝트가 얼마나 오래 알려져 왔는지를 보여줄 뿐, 무엇을 할 수 있는지를 보여주지는 않습니다.",
 "h2.eff": "컨텍스트 효율",
 "eff.lead": "모든 MCP 서버는 작업을 시작하기도 전에 에이전트의 컨텍스트 창 일부를 차지하지만, 그 비용을 알려주는 서버는 거의 없습니다. 여기 측정한 우리 청구서가 있습니다: 새 세션은 라이트 코어(도구 28종, 약 7,600 토큰)로 시작하고, 기능 팩은 작업에 필요할 때만 켭니다. 모든 팩을 불러온 전체 표면은 약 26,600 토큰으로, v1.6의 약 34,400 토큰에서 줄어든 값입니다. 전체 기준 약 23퍼센트, 라이트 시작 기준 약 78퍼센트 적습니다. Claude Code처럼 도구 스키마를 지연 로드하는 클라이언트라면 도구가 실제로 호출되기 전까지 비용이 거의 0에 가깝습니다.",
@@ -803,7 +803,7 @@ ja: {
 "mxr14": "Word で開いたままライブ編集",
 "mxr16": "段階式コンテキスト読み込み(ライトコア、必要時にパック)",
 "mxr15": "破損防止テストの証跡を公開",
-"mv.s12": "✔ 12 スタイル", "mv.s8": "✔ 8 スタイル", "mv.both": "✔ 双方向", "mv.sha": "✔ Word 互換 SHA-512", "mv.file": "✔ ファイルツール、COM は任意", "mv.undo": "✔ 呼び出し1回 = Ctrl+Z 1段階", "mv.evid": "✔ 1,255 / 0", "mv.inapp": "✔ アプリ内",
+"mv.s12": "✔ 12 スタイル", "mv.s8": "✔ 8 スタイル", "mv.both": "✔ 双方向", "mv.sha": "✔ Word 互換 SHA-512", "mv.file": "✔ ファイルツール、COM は任意", "mv.undo": "✔ 呼び出し1回 = Ctrl+Z 1段階", "mv.evid": "✔ 1,324 / 0", "mv.inapp": "✔ アプリ内",
 "mx.note": "2026-08-28 時点の機能調査。公開リポジトリ、ドキュメント、Issue トラッカーから集約しました。n/d：調査した資料では確認できず(欠如の断定ではありません)。* 公式アドインは Microsoft の Word AI 製品群と Claude for Word アドインをまとめた列で、クラウドまたは Team/Enterprise 限定のもの。ローカル MCP サーバーではありません。訂正歓迎、Issue をどうぞ。 &dagger; スター数は 2026-09-04 に GitHub API から取得した参考値です。スターはプロジェクトがどれだけ長く知られてきたかを示すもので、何ができるかを示すものではありません。",
 "h2.eff": "コンテキスト効率",
 "eff.lead": "どの MCP サーバーも、仕事を始める前からエージェントのコンテキストウィンドウの一部を占めます。それなのに、その量を教えてくれるサーバーはほとんどありません。これが計測した当方の請求書です：新しいセッションはライトコア(ツール28種、約 7,600 トークン)で始まり、機能パックは作業に必要になったときだけ有効化します。すべてのパックを読み込んだ全表面は約 26,600 トークンで、v1.6 の約 34,400 トークンから減りました。全体でおよそ 23 パーセント、ライト起動時ではおよそ 78 パーセント少なくなります。Claude Code のようにツールスキーマを遅延読み込みするクライアントなら、ツールが実際に呼ばれるまでコストはほぼゼロです。",
@@ -921,7 +921,7 @@ zh: {
 "mxr14": "文档在 Word 中打开时实时编辑",
 "mxr16": "分层上下文加载(精简内核，能力包按需)",
 "mxr15": "公开的防损坏测试证据",
-"mv.s12": "✔ 12 种样式", "mv.s8": "✔ 8 种样式", "mv.both": "✔ 双向", "mv.sha": "✔ Word 兼容 SHA-512", "mv.file": "✔ 文件工具；COM 可选", "mv.undo": "✔ 每次调用一步 Ctrl+Z", "mv.evid": "✔ 1,255 / 0", "mv.inapp": "✔ 应用内",
+"mv.s12": "✔ 12 种样式", "mv.s8": "✔ 8 种样式", "mv.both": "✔ 双向", "mv.sha": "✔ Word 兼容 SHA-512", "mv.file": "✔ 文件工具；COM 可选", "mv.undo": "✔ 每次调用一步 Ctrl+Z", "mv.evid": "✔ 1,324 / 0", "mv.inapp": "✔ 应用内",
 "mx.note": "能力调查，截至 2026-08-28，汇总自公开仓库、文档与 issue 跟踪器。n/d：在所查资料中未见记载(并非断言其没有)。* 官方加载项一栏合并了 Microsoft 的 Word AI 产品与 Claude for Word 加载项：皆为云端或 Team/Enterprise 专属，不是本地 MCP 服务器。欢迎指正，请开 issue。 &dagger; 星标数于 2026-09-04 通过 GitHub API 读取,仅供参考:星标反映一个项目被看见了多久,而不是它能做什么。",
 "h2.eff": "上下文效率",
 "eff.lead": "每个 MCP 服务器在干活之前就要占用智能体的一部分上下文窗口，却几乎没有服务器告诉你占多少。这是我们量出来的账单：新会话从精简内核(28 件工具，约 7,600 token)启动，能力包只在任务需要时才打开。载入全部能力包后，完整表面约为 26,600 token，低于 v1.6 的约 34,400 token，整体少约 23%，精简启动时少约 78%。像 Claude Code 这样延迟加载工具 schema 的客户端，在工具真正被调用之前成本几乎为零。",
@@ -1039,7 +1039,7 @@ de: {
 "mxr14": "Live-Bearbeitung bei in Word geöffnetem Dokument",
 "mxr16": "Gestuftes Kontext-Laden (Lite-Kern, Pakete bei Bedarf)",
 "mxr15": "Veröffentlichte Testbelege gegen Dateibeschädigung",
-"mv.s12": "✔ 12 Stile", "mv.s8": "✔ 8 Stile", "mv.both": "✔ beide Richtungen", "mv.sha": "✔ Word-kompatibles SHA-512", "mv.file": "✔ Dateiwerkzeuge; COM optional", "mv.undo": "✔ ein Strg+Z pro Aufruf", "mv.evid": "✔ 1.255 / 0", "mv.inapp": "✔ in der App",
+"mv.s12": "✔ 12 Stile", "mv.s8": "✔ 8 Stile", "mv.both": "✔ beide Richtungen", "mv.sha": "✔ Word-kompatibles SHA-512", "mv.file": "✔ Dateiwerkzeuge; COM optional", "mv.undo": "✔ ein Strg+Z pro Aufruf", "mv.evid": "✔ 1.324 / 0", "mv.inapp": "✔ in der App",
 "mx.note": "Fähigkeitserhebung, Stand 2026-08-28, zusammengetragen aus öffentlichen Repositories, Dokumentation und Issue-Trackern. n/d: in den gesichteten Quellen nicht dokumentiert (keine behauptete Abwesenheit). * Offizielle Add-ins bündelt Microsofts Word-KI-Angebote und das Claude-for-Word-Add-in: cloudbasiert oder auf Team/Enterprise beschränkt, keine lokalen MCP-Server. Korrekturen willkommen: einfach ein Issue öffnen. &dagger; Sternzahlen am 2026-09-04 über die GitHub-API gelesen, zur Einordnung: Sterne zeigen, wie lange ein Projekt schon sichtbar ist, nicht was es kann.",
 "h2.eff": "Kontext-Effizienz",
 "eff.lead": "Jeder MCP-Server belegt einen Teil des Kontextfensters eines Agenten, bevor die Arbeit überhaupt beginnt, und kaum einer sagt, wie viel. Hier ist unsere gemessene Rechnung: Eine frische Sitzung startet mit dem Lite-Kern, 28 Werkzeuge für rund 7.600 Token, und schaltet Fähigkeitspakete erst zu, wenn eine Aufgabe sie braucht. Mit allen Paketen misst die volle Oberfläche etwa 26.600 Token, gegenüber rund 34.400 in v1.6, also etwa 23 Prozent weniger für die ganze Spüle und rund 78 Prozent weniger beim Lite-Start. Clients, die Werkzeugschemata aufschieben, wie Claude Code, zahlen nahezu nichts, bis ein Werkzeug tatsächlich aufgerufen wird.",
@@ -1157,7 +1157,7 @@ fr: {
 "mxr14": "Édition en direct, document ouvert dans Word",
 "mxr16": "Chargement de contexte par paliers (noyau allégé, packs à la demande)",
 "mxr15": "Preuves publiées des tests anti-corruption",
-"mv.s12": "✔ 12 styles", "mv.s8": "✔ 8 styles", "mv.both": "✔ dans les deux sens", "mv.sha": "✔ SHA-512 compatible Word", "mv.file": "✔ outils fichier ; COM en option", "mv.undo": "✔ un Ctrl+Z par appel", "mv.evid": "✔ 1 255 / 0", "mv.inapp": "✔ dans l'application",
+"mv.s12": "✔ 12 styles", "mv.s8": "✔ 8 styles", "mv.both": "✔ dans les deux sens", "mv.sha": "✔ SHA-512 compatible Word", "mv.file": "✔ outils fichier ; COM en option", "mv.undo": "✔ un Ctrl+Z par appel", "mv.evid": "✔ 1 324 / 0", "mv.inapp": "✔ dans l'application",
 "mx.note": "Recensement des capacités au 2026-08-28, compilé à partir des dépôts publics, de la documentation et des traqueurs de tickets. n/d : non documenté dans les sources consultées (ce n'est pas une absence affirmée). * Compléments officiels regroupe les offres IA de Microsoft pour Word et le complément Claude for Word : en nuage ou réservés aux offres Team/Enterprise, pas des serveurs MCP locaux. Corrections bienvenues : ouvrez un ticket. &dagger; Nombres d'étoiles relevés via l'API GitHub le 2026-09-04, à titre de contexte : les étoiles disent depuis combien de temps un projet est visible, pas ce qu'il sait faire.",
 "h2.eff": "Efficacité de contexte",
 "eff.lead": "Chaque serveur MCP occupe une partie de la fenêtre de contexte d'un agent avant même que le travail commence, et presque aucun ne dit combien. Voici notre facture, mesurée : une session neuve démarre sur le noyau allégé, 28 outils pour environ 7 600 tokens, et n'active des packs de capacités que lorsqu'une tâche les demande. Tous les packs chargés, la surface complète mesure environ 26 600 tokens, contre près de 34 400 en v1.6, soit à peu près 23 pour cent de moins pour l'évier entier et environ 78 pour cent de moins au démarrage allégé. Les clients qui diffèrent les schémas d'outils, comme Claude Code, ne paient presque rien tant qu'un outil n'est pas réellement appelé.",
@@ -1275,7 +1275,7 @@ es: {
 "mxr14": "Edición en vivo con el documento abierto en Word",
 "mxr16": "Carga de contexto por niveles (núcleo ligero, paquetes bajo demanda)",
 "mxr15": "Evidencia publicada de pruebas contra la corrupción de archivos",
-"mv.s12": "✔ 12 estilos", "mv.s8": "✔ 8 estilos", "mv.both": "✔ en ambos sentidos", "mv.sha": "✔ SHA-512 compatible con Word", "mv.file": "✔ herramientas de archivo; COM opcional", "mv.undo": "✔ un Ctrl+Z por llamada", "mv.evid": "✔ 1.255 / 0", "mv.inapp": "✔ dentro de la aplicación",
+"mv.s12": "✔ 12 estilos", "mv.s8": "✔ 8 estilos", "mv.both": "✔ en ambos sentidos", "mv.sha": "✔ SHA-512 compatible con Word", "mv.file": "✔ herramientas de archivo; COM opcional", "mv.undo": "✔ un Ctrl+Z por llamada", "mv.evid": "✔ 1.324 / 0", "mv.inapp": "✔ dentro de la aplicación",
 "mx.note": "Estudio de capacidades a 2026-08-28, compilado de repositorios públicos, documentación y gestores de incidencias. n/d: no documentado en las fuentes consultadas (no es una ausencia afirmada). * Complementos oficiales agrupa las ofertas de IA de Microsoft para Word y el complemento Claude for Word: en la nube o limitados a planes Team/Enterprise, no servidores MCP locales. Correcciones bienvenidas: abra un issue. &dagger; Recuento de estrellas leído de la API de GitHub el 2026-09-04, a modo de contexto: las estrellas dicen cuánto tiempo lleva un proyecto a la vista, no lo que sabe hacer.",
 "h2.eff": "Eficiencia de contexto",
 "eff.lead": "Todo servidor MCP ocupa parte de la ventana de contexto de un agente antes de empezar a trabajar, y casi ninguno dice cuánto. Esta es nuestra factura, medida: una sesión nueva arranca con el núcleo ligero, 28 herramientas por unos 7.600 tokens, y activa paquetes de capacidades solo cuando una tarea los necesita. Con todos los paquetes cargados, la superficie completa mide unos 26.600 tokens, frente a unos 34.400 en la v1.6, aproximadamente un 23 por ciento menos para todo el fregadero y alrededor de un 78 por ciento menos al arrancar ligero. Los clientes que aplazan los esquemas, como Claude Code, no pagan casi nada hasta que una herramienta se invoca de verdad.",

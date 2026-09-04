@@ -159,26 +159,39 @@ validation on Windows.
 
 ## Install
 
-Two minutes, start to editing:
+### Claude Desktop: one click
+
+Download `kitchensink4word.mcpb` from the
+[latest release](https://github.com/nometalalchemist/KitchenSink4Word/releases/latest)
+and double-click it, or drag it into the Claude Desktop window. Desktop adds
+it as an extension and the sink is connected. Nothing to type, nothing to
+configure. The bundle launches the server with
+[uv](https://docs.astral.sh/uv/), so uv needs to be on your PATH
+(`pip install uv`); if Desktop does not pick the file up on a double-click,
+use Settings > Extensions > Advanced settings > Install extension.
+
+### Claude Code: one line
+
+```
+claude mcp add word -s user -- uvx kitchensink4word
+```
+
+That fetches and runs the server for you, so there is nothing to install
+first.
+
+### For developers: pip, source, other MCP clients
+
+Install the package and point any MCP client at the executable:
 
 ```
 pip install kitchensink4word
-claude mcp add word -s user -- kitchensink4word
 ```
-
-Claude Desktop one-click: download `kitchensink4word.mcpb` from the latest
-release, then in Desktop use Settings > Extensions > Advanced settings >
-Install extension and pick the file. Requires [uv](https://docs.astral.sh/uv/)
-on your PATH (`pip install uv`), which the bundle uses to launch the server.
-
-For other MCP clients, point the server command at the installed
-`kitchensink4word` (or `word-mcp`) executable:
 
 ```json
 {"mcpServers": {"word": {"command": "kitchensink4word"}}}
 ```
 
-From source instead:
+The `word-mcp` executable is an equivalent entry point. From a clone:
 
 ```
 git clone https://github.com/nometalalchemist/KitchenSink4Word
@@ -247,7 +260,7 @@ runs against untrusted or semi-trusted agent traffic.
 
 ## Testing
 
-1,255 tests (1,193 run everywhere; 62 live-marked tests drive a real Word
+1,324 tests (1,258 run everywhere; 66 live-marked tests drive a real Word
 instance on Windows): the suite was developed against a private corpus of
 real-world documents (book-length chapters, a document with 171 footnotes, a
 manuscript with 126 tracked changes and reviewer comments), and CI

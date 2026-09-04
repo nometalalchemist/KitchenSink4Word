@@ -3,7 +3,7 @@
   "name": "io.github.nometalalchemist/kitchensink4word",
   "title": "KitchenSink4Word",
   "description": "Everything plus the kitchen sink for Microsoft Word: 219 document ops, one grammar, tiered loading.",
-  "version": "1.6.0",
+  "version": "2.0.0",
   "websiteUrl": "https://nometalalchemist.github.io/KitchenSink4Word/",
   "repository": {
     "url": "https://github.com/nometalalchemist/KitchenSink4Word",
@@ -13,7 +13,7 @@
     {
       "registryType": "pypi",
       "identifier": "kitchensink4word",
-      "version": "1.6.0",
+      "version": "2.0.0",
       "transport": {
         "type": "stdio"
       }

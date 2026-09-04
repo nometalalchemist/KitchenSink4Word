@@ -39,7 +39,7 @@ below is a behavior you can rely on without testing it first.
 - File-mode tools refuse a document that is open in Word and name the `live_*` or `com_*` route that handles the open case.
 - Live edits land as one Ctrl+Z step per tool call and leave the user's cursor and selection where they were.
 - Tracked-changes authoring is a parameter, not a mode: pass `track=true` and an author name to a text mutation and the edit is written as a revision.
-- Test evidence for v2.0.0: 1,255 tests, adversarial rounds driven through the raw MCP stdio transport, zero corruptions, outputs verified by opening them in invisible Word and failing on any repair prompt.
+- Test evidence for v2.0.0: 1,324 tests, adversarial rounds driven through the raw MCP stdio transport, zero corruptions, outputs verified by opening them in invisible Word and failing on any repair prompt.
 
 ## 3. Addressing model
 
