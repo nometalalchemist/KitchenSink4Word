@@ -298,7 +298,7 @@ footer a{color:var(--copper)}
     <div class="newin">
       <p class="sub" data-i18n="new.sub">The whole list, no release notes required.</p>
       <ul>
-        <li data-i18n="new1"><b>Fewer tools, and your agent stops guessing.</b> Version 1 had 189 tools with a lot of overlapping names, and agents burned time and tokens picking between them. Version 2 rebuilds everything as 108 tools under one consistent grammar that covers more ground than before, not less. The agent picks right the first time and spends your session on the document instead.</li>
+        <li data-i18n="new1"><b>Fewer tools, and your agent stops guessing.</b> v1.6 had 189 tools with a lot of overlapping names, and agents burned time and tokens picking between them. Version 2 rebuilds everything as 108 tools under one consistent grammar that covers more ground than before, not less. The agent picks right the first time and spends your session on the document instead.</li>
         <li data-i18n="new2"><b>Starts light, stays light.</b> A fresh session loads a small core instead of the whole toolbox, and reaches for the specialty shelves only when your task actually needs them. Your assistant keeps more of its attention on your document, and none of the old capabilities went anywhere.</li>
         <li data-i18n="new3"><b>Live editing you can leave running.</b> Several agents can now work an open document without colliding, and a Word dialog waiting on a human gets noticed and reported, instead of leaving your agent hanging.</li>
         <li data-i18n="new4"><b>Fifty edits, one pass, nothing drifts.</b> Ask for a view of the document and every paragraph comes back with a stable address, so the agent can point at the exact spot it means even after the text shifts. Then the batch editor lands dozens of changes in one pass that either all succeed or leave the file untouched. No more edit number thirty-seven landing on the wrong paragraph.</li>
@@ -377,7 +377,8 @@ footer a{color:var(--copper)}
       <div class="spec"><span class="n">~26.6k</span><span class="l" data-i18n="eff.s2">Full surface · all packs</span></div>
       <div class="spec"><span class="n">~0</span><span class="l" data-i18n="eff.s3">Practical cost when schemas are deferred (Claude Code)</span></div>
     </div>
-    <p class="foot-note" style="margin-top:18px" data-i18n="eff.growth"><b>MORE REACH, FEWER TOOLS</b> · v1.6 measured 200 operations across 189 tools; v2.0 delivers 219 across 108. Measured with one yardstick on both trees, so the comparison holds.</p>
+    <p class="foot-note" style="margin-top:18px" data-i18n="eff.fig">The measured bill: about 7,600 tokens to start, about 26,700 with every pack on, down from about 34,400 in v1.6.</p>
+    <p class="foot-note" style="margin-top:10px" data-i18n="eff.growth"><b>MORE REACH, FEWER TOOLS</b> · v1.6 measured 200 operations across 189 tools; v2.0 delivers 219 across 108. Measured with one yardstick on both trees, so the comparison holds.</p>
     <p class="foot-note" style="margin-top:10px" data-i18n="eff.road"><b>TIERED LOADING</b> · Shipped. A session starts on the 28-tool lite core and turns on packs with one enable_tools call. Starts lite, the whole sink one call away.</p>
   </div>
 </section>
@@ -495,7 +496,7 @@ en: {
 "new.label": "JUST IN",
 "new.t": "Five things this release changed",
 "new.sub": "The whole list, no release notes required.",
-"new1": "<b>Fewer tools, and your agent stops guessing.</b> Version 1 had 189 tools with a lot of overlapping names, and agents burned time and tokens picking between them. Version 2 rebuilds everything as 108 tools under one consistent grammar that covers more ground than before, not less. The agent picks right the first time and spends your session on the document instead.",
+"new1": "<b>Fewer tools, and your agent stops guessing.</b> v1.6 had 189 tools with a lot of overlapping names, and agents burned time and tokens picking between them. Version 2 rebuilds everything as 108 tools under one consistent grammar that covers more ground than before, not less. The agent picks right the first time and spends your session on the document instead.",
 "new2": "<b>Starts light, stays light.</b> A fresh session loads a small core instead of the whole toolbox, and reaches for the specialty shelves only when your task actually needs them. Your assistant keeps more of its attention on your document, and none of the old capabilities went anywhere.",
 "new3": "<b>Live editing you can leave running.</b> Several agents can now work an open document without colliding, and a Word dialog waiting on a human gets noticed and reported, instead of leaving your agent hanging.",
 "new4": "<b>Fifty edits, one pass, nothing drifts.</b> Ask for a view of the document and every paragraph comes back with a stable address, so the agent can point at the exact spot it means even after the text shifts. Then the batch editor lands dozens of changes in one pass that either all succeed or leave the file untouched. No more edit number thirty-seven landing on the wrong paragraph.",
@@ -591,6 +592,7 @@ en: {
 "eff.s1": "Lite start · 28 tools",
 "eff.s2": "Full surface · all packs",
 "eff.s3": "Practical cost when schemas are deferred (Claude Code)",
+"eff.fig": "The measured bill: about 7,600 tokens to start, about 26,700 with every pack on, down from about 34,400 in v1.6.",
 "eff.road": "<b>TIERED LOADING</b> · Shipped. A session starts on the 28-tool lite core and turns on packs with one enable_tools call. Starts lite, the whole sink one call away.",
 "dept1.e": "e.g. add a column to a table full of merged cells · rewrite twenty cells in one call · sort a table by any column",
 "dept2.e": "e.g. insert a citation and build the bibliography · convert every footnote to an endnote · refresh the table of contents",
@@ -624,7 +626,7 @@ ko: {
 "new.label": "신규 입고",
 "new.t": "이번 릴리스가 바꾼 다섯 가지",
 "new.sub": "릴리스 노트를 읽을 필요 없이, 이게 전부입니다.",
-"new1": "<b>도구가 줄어드니 에이전트가 더 이상 헤매지 않습니다.</b> 버전 1에는 이름이 겹치는 도구가 189종이나 있었고, 에이전트는 그중에서 고르느라 시간과 토큰을 태웠습니다. 버전 2는 전부를 108종의 도구로 다시 지었습니다. 하나의 일관된 문법을 따르면서도 다루는 범위는 예전보다 줄지 않고 오히려 넓어졌습니다. 에이전트는 첫 번에 제대로 고르고, 남은 세션은 문서에 씁니다.",
+"new1": "<b>도구가 줄어드니 에이전트가 더 이상 헤매지 않습니다.</b> v1.6에는 이름이 겹치는 도구가 189종 있었고, 에이전트는 그중에서 고르느라 시간과 토큰을 태웠습니다. 버전 2는 전부를 108종의 도구로 다시 지었습니다. 하나의 일관된 문법을 따르면서도 다루는 범위는 예전보다 줄지 않고 오히려 넓어졌습니다. 에이전트는 첫 번에 제대로 고르고, 남은 세션은 문서에 씁니다.",
 "new2": "<b>가볍게 시작해서 계속 가볍습니다.</b> 새 세션은 공구함 전체가 아니라 작은 코어만 불러오고, 전문 선반은 작업에 정말 필요할 때만 꺼냅니다. 어시스턴트는 문서에 더 많은 주의를 남겨 두게 되고, 기존 기능은 어디로도 사라지지 않았습니다.",
 "new3": "<b>켜 둔 채 맡길 수 있는 라이브 편집.</b> 이제 여러 에이전트가 열려 있는 문서를 함께 다뤄도 충돌하지 않고, 사람의 응답을 기다리는 Word 대화 상자는 감지되어 보고되므로 에이전트가 마냥 기다리는 일이 없습니다.",
 "new4": "<b>쉰 군데를 한 번에 고쳐도 어긋나지 않습니다.</b> 문서 보기를 요청하면 모든 문단이 고정된 주소를 달고 돌아오므로, 텍스트가 밀린 뒤에도 에이전트는 자기가 말한 바로 그 자리를 가리킬 수 있습니다. 그다음 일괄 편집기가 수십 건의 변경을 한 번에 적용하는데, 전부 성공하거나 파일을 그대로 두거나 둘 중 하나입니다. 서른일곱 번째 편집이 엉뚱한 문단에 떨어지는 일은 이제 없습니다.",
@@ -720,6 +722,7 @@ ko: {
 "eff.s1": "라이트 시작 · 도구 28종",
 "eff.s2": "전체 표면 · 모든 팩",
 "eff.s3": "스키마 지연 로드 시 실질 비용 (Claude Code)",
+"eff.fig": "측정한 청구서: 시작은 약 7,600 토큰, 모든 팩을 켜면 약 26,700 토큰, v1.6의 약 34,400 토큰에서 줄어든 값입니다.",
 "eff.road": "<b>계층형 로딩</b> · 적용 완료. 세션은 도구 28종의 라이트 코어로 시작하고, enable_tools 호출 한 번으로 팩을 켭니다. 가볍게 시작하고, 싱크대 전체는 호출 한 번 거리에 있습니다.",
 "dept1.e": "예: 병합 셀이 가득한 표에 열 추가 · 셀 스무 개를 호출 한 번에 수정 · 아무 열로나 표 정렬",
 "dept2.e": "예: 인용 삽입과 참고문헌 생성 · 모든 각주를 미주로 변환 · 목차 새로 고침",
@@ -753,7 +756,7 @@ ja: {
 "new.label": "新入荷",
 "new.t": "このリリースで変わった5つのこと",
 "new.sub": "リリースノートを読まなくても、これで全部です。",
-"new1": "<b>ツールが減れば、エージェントは迷わなくなります。</b> バージョン1には名前の重なるツールが189種もあり、エージェントはその中から選ぶだけで時間とトークンを使っていました。バージョン2はすべてを108種のツールとして作り直しました。ひとつの一貫した文法にまとめながら、扱える範囲は以前より狭まるどころか広がっています。エージェントは一度目で正しく選び、残りのセッションを文書そのものに使います。",
+"new1": "<b>ツールが減れば、エージェントは迷わなくなります。</b> v1.6 には名前の重なるツールが189種あり、エージェントはその中から選ぶだけで時間とトークンを使っていました。バージョン2はすべてを108種のツールとして作り直しました。ひとつの一貫した文法にまとめながら、扱える範囲は以前より狭まるどころか広がっています。エージェントは一度目で正しく選び、残りのセッションを文書そのものに使います。",
 "new2": "<b>軽く始まり、軽いままです。</b> 新しいセッションは道具箱ごとではなく小さなコアだけを読み込み、専門の棚に手を伸ばすのは作業が本当に必要としたときだけです。アシスタントは文書のほうに多くの注意を残せますし、これまでの機能はどこにも消えていません。",
 "new3": "<b>動かしっぱなしにできるライブ編集。</b> 複数のエージェントが開いた文書を同時に扱っても衝突せず、人の操作を待つ Word のダイアログは検出して知らせるので、エージェントが待たされたままになることはありません。",
 "new4": "<b>50か所を一度に直しても、ずれません。</b> 文書のビューを求めれば、どの段落も動かない住所を付けて返ってきます。だから本文がずれたあとでも、エージェントは自分が指したその場所を正確に指せます。続けて一括編集ツールが数十件の変更を一度に適用します。すべて成功するか、ファイルに何も起きないかのどちらかです。37番目の編集が別の段落に落ちることは、もうありません。",
@@ -849,6 +852,7 @@ ja: {
 "eff.s1": "ライト起動 · ツール28種",
 "eff.s2": "全表面 · 全パック",
 "eff.s3": "スキーマ遅延読み込み時の実質コスト (Claude Code)",
+"eff.fig": "計測した請求書：開始時およそ 7,600 トークン、全パックを入れておよそ 26,700 トークン、v1.6 のおよそ 34,400 トークンから減っています。",
 "eff.road": "<b>段階式読み込み</b> · 提供済み。セッションはツール28種のライトコアで始まり、enable_tools の呼び出し1回でパックを有効化します。軽く始めて、流し一式は呼び出し1回の距離に。",
 "dept1.e": "例：結合セルだらけの表に列を追加 · セル 20 個を呼び出し1回で書き換え · 任意の列で表を並べ替え",
 "dept2.e": "例：引用を挿入して文献目録を生成 · 全脚注を文末脚注へ変換 · 目次を更新",
@@ -882,7 +886,7 @@ zh: {
 "new.label": "新到货",
 "new.t": "这一版改变的五件事",
 "new.sub": "不用翻发布说明,就这些。",
-"new1": "<b>工具少了,智能体就不再瞎猜。</b> 版本 1 有 189 件工具,名字大量重叠,智能体光是在里面挑就烧掉了时间和 token。版本 2 把一切重建为 108 件工具,统一在一套语法之下,覆盖的范围比从前更大,而不是更小。智能体第一次就选对,把这一场会话花在文档上。",
+"new1": "<b>工具少了,智能体就不再瞎猜。</b> v1.6 有 189 件工具,名字大量重叠,智能体光是在里面挑就烧掉了时间和 token。版本 2 把一切重建为 108 件工具,统一在一套语法之下,覆盖的范围比从前更大,而不是更小。智能体第一次就选对,把这一场会话花在文档上。",
 "new2": "<b>轻装启动,一路都轻。</b> 新会话只载入一个小内核,而不是整箱工具,只有任务真正需要时才去够专门的货架。你的助手能把更多注意力留给文档,而原有的能力一样都没少。",
 "new3": "<b>可以一直开着的实时编辑。</b> 现在多个智能体可以同时处理一份打开的文档而不相撞,等待人操作的 Word 对话框会被发现并报告,不会让你的智能体一直干等。",
 "new4": "<b>五十处改动,一趟完成,不会跑偏。</b> 请求查看文档时,每个段落都会带着一个稳定的地址回来,所以正文挪动之后,智能体依然能指到它说的那一处。接着批量编辑器一趟落下几十项改动:要么全部成功,要么文件原封不动。第三十七项改动落到错误段落的事,不会再有了。",
@@ -978,6 +982,7 @@ zh: {
 "eff.s1": "精简启动 · 28 件工具",
 "eff.s2": "完整表面 · 全部能力包",
 "eff.s3": "schema 延迟加载时的实际成本 (Claude Code)",
+"eff.fig": "量出来的账单:起步约 7,600 token,全部能力包打开约 26,700 token,低于 v1.6 的约 34,400 token。",
 "eff.road": "<b>分层加载</b> · 已上线。会话从 28 件工具的精简内核启动，用一次 enable_tools 调用即可打开能力包。轻装上阵，整台水槽只隔一次调用。",
 "dept1.e": "例：给满是合并单元格的表格加一列 · 一次调用改写二十个单元格 · 按任意列给表格排序",
 "dept2.e": "例：插入引文并生成参考文献 · 把全部脚注转为尾注 · 刷新目录",
@@ -1011,7 +1016,7 @@ de: {
 "new.label": "NEU EINGETROFFEN",
 "new.t": "Fünf Dinge, die dieses Release geändert hat",
 "new.sub": "Die ganze Liste, ganz ohne Release Notes.",
-"new1": "<b>Weniger Werkzeuge, und Ihr Agent hört auf zu raten.</b> Version 1 hatte 189 Werkzeuge mit vielen überlappenden Namen, und Agenten verbrannten Zeit und Token damit, zwischen ihnen zu wählen. Version 2 baut alles als 108 Werkzeuge unter einer einheitlichen Grammatik neu auf, die mehr abdeckt als zuvor, nicht weniger. Der Agent greift beim ersten Mal richtig zu und verbringt Ihre Sitzung stattdessen mit dem Dokument.",
+"new1": "<b>Weniger Werkzeuge, und Ihr Agent hört auf zu raten.</b> v1.6 hatte 189 Werkzeuge mit vielen überlappenden Namen, und Agenten verbrannten Zeit und Token damit, zwischen ihnen zu wählen. Version 2 baut alles als 108 Werkzeuge unter einer einheitlichen Grammatik neu auf, die mehr abdeckt als zuvor, nicht weniger. Der Agent greift beim ersten Mal richtig zu und verbringt Ihre Sitzung stattdessen mit dem Dokument.",
 "new2": "<b>Startet leicht, bleibt leicht.</b> Eine frische Sitzung lädt einen kleinen Kern statt des ganzen Werkzeugkastens und greift erst dann zu den Spezialregalen, wenn Ihre Aufgabe sie wirklich braucht. Ihr Assistent behält mehr Aufmerksamkeit für Ihr Dokument, und keine der alten Fähigkeiten ist verschwunden.",
 "new3": "<b>Live-Bearbeitung, die laufen bleiben darf.</b> Mehrere Agenten können jetzt an einem offenen Dokument arbeiten, ohne sich in die Quere zu kommen, und ein Word-Dialog, der auf einen Menschen wartet, wird bemerkt und gemeldet, statt Ihren Agenten hängen zu lassen.",
 "new4": "<b>Fünfzig Änderungen, ein Durchgang, nichts verrutscht.</b> Fordern Sie eine Ansicht des Dokuments an, und jeder Absatz kommt mit einer stabilen Adresse zurück, sodass der Agent genau auf die Stelle zeigen kann, die er meint, auch nachdem sich der Text verschoben hat. Dann setzt der Stapeleditor Dutzende Änderungen in einem Durchgang, die entweder alle gelingen oder die Datei unangetastet lassen. Nie wieder landet Änderung Nummer siebenunddreißig im falschen Absatz.",
@@ -1107,6 +1112,7 @@ de: {
 "eff.s1": "Lite-Start · 28 Werkzeuge",
 "eff.s2": "Volle Oberfläche · alle Pakete",
 "eff.s3": "Praktische Kosten bei aufgeschobenen Schemata (Claude Code)",
+"eff.fig": "Die gemessene Rechnung: rund 7.600 Token zu Beginn, rund 26.700 mit allen Paketen, gegenüber rund 34.400 in v1.6.",
 "eff.road": "<b>GESTUFTES LADEN</b> · Ausgeliefert. Eine Sitzung startet mit dem 28-Werkzeuge-Lite-Kern und schaltet Pakete mit einem enable_tools-Aufruf zu. Startet leicht, die ganze Spüle ist einen Aufruf entfernt.",
 "dept1.e": "z. B. einer Tabelle voller verbundener Zellen eine Spalte hinzufügen · zwanzig Zellen in einem Aufruf umschreiben · eine Tabelle nach beliebiger Spalte sortieren",
 "dept2.e": "z. B. ein Zitat einfügen und das Literaturverzeichnis aufbauen · alle Fußnoten in Endnoten umwandeln · das Inhaltsverzeichnis aktualisieren",
@@ -1140,7 +1146,7 @@ fr: {
 "new.label": "ARRIVAGE",
 "new.t": "Cinq choses que cette version change",
 "new.sub": "La liste complète, sans passer par les notes de version.",
-"new1": "<b>Moins d'outils, et votre agent cesse de deviner.</b> La version 1 comptait 189 outils aux noms largement redondants, et les agents brûlaient du temps et des tokens à choisir entre eux. La version 2 reconstruit le tout en 108 outils sous une seule grammaire cohérente, qui couvre plus de terrain qu'avant, pas moins. L'agent choisit juste du premier coup et passe votre session sur le document.",
+"new1": "<b>Moins d'outils, et votre agent cesse de deviner.</b> La v1.6 comptait 189 outils aux noms largement redondants, et les agents brûlaient du temps et des tokens à choisir entre eux. La version 2 reconstruit le tout en 108 outils sous une seule grammaire cohérente, qui couvre plus de terrain qu'avant, pas moins. L'agent choisit juste du premier coup et passe votre session sur le document.",
 "new2": "<b>Démarre léger, reste léger.</b> Une session neuve charge un petit noyau plutôt que toute la caisse à outils, et ne va chercher les étagères spécialisées que lorsque votre tâche en a réellement besoin. Votre assistant garde davantage d'attention pour votre document, et aucune des anciennes capacités n'a disparu.",
 "new3": "<b>Une édition en direct qu'on peut laisser tourner.</b> Plusieurs agents peuvent maintenant travailler sur un document ouvert sans se gêner, et une boîte de dialogue Word qui attend un humain est repérée et signalée, au lieu de laisser votre agent en plan.",
 "new4": "<b>Cinquante modifications, une seule passe, rien ne dérive.</b> Demandez une vue du document et chaque paragraphe revient avec une adresse stable, si bien que l'agent peut désigner exactement l'endroit qu'il vise, même après que le texte a bougé. Ensuite, l'éditeur par lots pose des dizaines de changements en une passe qui, ou bien réussissent tous, ou bien laissent le fichier intact. Fini, la trente-septième modification qui atterrit sur le mauvais paragraphe.",
@@ -1236,6 +1242,7 @@ fr: {
 "eff.s1": "Démarrage allégé · 28 outils",
 "eff.s2": "Surface complète · tous les packs",
 "eff.s3": "Coût pratique avec schémas différés (Claude Code)",
+"eff.fig": "La facture mesurée : environ 7 600 tokens au départ, environ 26 700 avec tous les packs, contre près de 34 400 en v1.6.",
 "eff.road": "<b>CHARGEMENT PAR PALIERS</b> · Livré. Une session démarre sur le noyau allégé de 28 outils et active des packs avec un seul appel enable_tools. On part léger, l'évier complet est à un appel de distance.",
 "dept1.e": "p. ex. ajouter une colonne à un tableau plein de cellules fusionnées · réécrire vingt cellules en un appel · trier un tableau par n'importe quelle colonne",
 "dept2.e": "p. ex. insérer une citation et bâtir la bibliographie · convertir toutes les notes de bas de page en notes de fin · actualiser la table des matières",
@@ -1269,7 +1276,7 @@ es: {
 "new.label": "RECIÉN LLEGADO",
 "new.t": "Cinco cosas que cambia esta versión",
 "new.sub": "La lista entera, sin tener que leer las notas de la versión.",
-"new1": "<b>Menos herramientas, y su agente deja de adivinar.</b> La versión 1 tenía 189 herramientas con muchos nombres solapados, y los agentes quemaban tiempo y tokens eligiendo entre ellas. La versión 2 lo reconstruye todo como 108 herramientas bajo una sola gramática coherente, que abarca más terreno que antes, no menos. El agente acierta a la primera y dedica su sesión al documento.",
+"new1": "<b>Menos herramientas, y su agente deja de adivinar.</b> La v1.6 tenía 189 herramientas con muchos nombres solapados, y los agentes quemaban tiempo y tokens eligiendo entre ellas. La versión 2 lo reconstruye todo como 108 herramientas bajo una sola gramática coherente, que abarca más terreno que antes, no menos. El agente acierta a la primera y dedica su sesión al documento.",
 "new2": "<b>Arranca ligero y sigue ligero.</b> Una sesión nueva carga un núcleo pequeño en vez de toda la caja de herramientas, y solo echa mano de los estantes especializados cuando su tarea de verdad los necesita. Su asistente reserva más atención para el documento, y ninguna de las capacidades de antes se ha ido a ninguna parte.",
 "new3": "<b>Edición en vivo que puede dejar funcionando.</b> Ahora varios agentes pueden trabajar sobre un documento abierto sin chocar, y un cuadro de diálogo de Word que espera a una persona se detecta y se informa, en lugar de dejar a su agente colgado.",
 "new4": "<b>Cincuenta ediciones, una pasada, nada se descoloca.</b> Pida una vista del documento y cada párrafo vuelve con una dirección estable, así que el agente puede señalar el punto exacto al que se refiere incluso después de que el texto se haya movido. Luego el editor por lotes deja decenas de cambios en una sola pasada que, o bien salen todos, o bien dejan el archivo intacto. Se acabó que la edición número treinta y siete caiga en el párrafo equivocado.",
@@ -1365,6 +1372,7 @@ es: {
 "eff.s1": "Arranque ligero · 28 herramientas",
 "eff.s2": "Superficie completa · todos los paquetes",
 "eff.s3": "Coste práctico con esquemas aplazados (Claude Code)",
+"eff.fig": "La factura medida: unos 7.600 tokens al arrancar, unos 26.700 con todos los paquetes, frente a unos 34.400 en la v1.6.",
 "eff.road": "<b>CARGA POR NIVELES</b> · Disponible. Una sesión arranca con el núcleo ligero de 28 herramientas y activa paquetes con una sola llamada a enable_tools. Arranca ligero, con el fregadero entero a una llamada de distancia.",
 "dept1.e": "p. ej. añadir una columna a una tabla llena de celdas combinadas · reescribir veinte celdas en una llamada · ordenar una tabla por cualquier columna",
 "dept2.e": "p. ej. insertar una cita y construir la bibliografía · convertir todas las notas al pie en notas al final · actualizar la tabla de contenido",
