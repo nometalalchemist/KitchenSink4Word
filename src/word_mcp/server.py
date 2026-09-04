@@ -212,21 +212,46 @@ def _edit(file_path: str, fn, *, backup: bool = True) -> dict:
     return result
 
 
-def _route_live(live: str, file_call, live_call) -> dict:
+def _route_live(live: str, file_call, live_call, *, backup: bool | None = None) -> dict:
     """live='auto': file-based first, live layer when the doc is open in Word.
-    'force': straight to the live layer. 'off': locked = refuse."""
+    'force': straight to the live layer. 'off': locked = refuse.
+
+    backup: pass the tool's own backup argument when it has one. The live
+    route never writes the file, so it never takes a backup; the tools
+    nevertheless accepted backup=True and said nothing, and a caller who
+    passed it and got live: true had no way to learn no restore point
+    existed (concurrency matrix L1). A silent no-op is not something this
+    family ships, so a live result now reports backup: false and, when one
+    was asked for, why."""
     from .core.errors import DocumentLocked
 
     if live not in ("auto", "force", "off"):
         raise ValueError(f"live must be auto|force|off, got {live!r}")
     if live == "force":
-        return live_call()
+        return _note_no_backup(live_call(), backup)
     try:
         return file_call()
     except DocumentLocked:
         if live == "off":
             raise
-        return live_call()
+        return _note_no_backup(live_call(), backup)
+
+
+_LIVE_BACKUP_NOTE = (
+    "live route: the document is open in Word and was edited in place, so "
+    "no file backup was taken (backups belong to the file route, which "
+    "needs the document closed). For a restore point, save and close the "
+    "document, then use manage_backups action='snapshot'."
+)
+
+
+def _note_no_backup(result: dict, backup: bool | None) -> dict:
+    if backup is None or not isinstance(result, dict):
+        return result
+    result["backup"] = False
+    if backup:
+        result["backup_skipped"] = _LIVE_BACKUP_NOTE
+    return result
 
 
 # ------------------------------------------------------- location adapters
@@ -1595,7 +1620,7 @@ def insert_paragraphs(
             at_end=at_end, track=track, author=author, verify_text=verify,
         )
 
-    return _route_live(live, _file_call, _live_call)
+    return _route_live(live, _file_call, _live_call, backup=backup)
 
 
 @_tool("lite")
@@ -1606,18 +1631,19 @@ def delete_paragraphs(
     range: dict | None = None,
     track: bool = False,
     author: str = "Claude",
+    expect_start: str | None = None,
+    expect_end: str | None = None,
     backup: bool = True,
     live: str = "auto",
 ) -> dict:
     """Delete body paragraphs by 0-based inclusive index (start, end; end
     defaults to start) or by range={start, end} location objects. Refuses
-    ranges that cut through a field or carry a section break; deleting
-    every paragraph leaves one empty one behind. track records tracked
-    deletions by author instead of removing. Auto-backup in file mode:
-    prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
-    atomic validated save. Documents open in Word are edited live
-    (serialized), unsaved
-    until the user saves.
+    ranges cutting a field or a section break; deleting every paragraph
+    leaves one empty one behind. track records tracked deletions.
+    expect_start/expect_end delete nothing unless that index still holds
+    the given text. Auto-backup in file mode: prev/anchor slots in
+    .ks4w-backups (backup=False skips rotation). Open documents edit
+    live (serialized), unsaved until saved.
     """
     from .com import live_ops as _lo
 
@@ -1636,7 +1662,9 @@ def delete_paragraphs(
             else:
                 s, e = start, end
             return _tx.delete_paragraphs(pkg, s, e, track=track,
-                                         author=author)
+                                         author=author,
+                                         expect_start=expect_start,
+                                         expect_end=expect_end)
 
         return _edit(file_path, _do, backup=backup)
 
@@ -1651,9 +1679,11 @@ def delete_paragraphs(
             s, e = start, end
         return _lo.delete_paragraphs(file_path, s, e, track=track,
                                      author=author, verify_start_text=vs,
-                                     verify_end_text=ve)
+                                     verify_end_text=ve,
+                                     expect_start=expect_start,
+                                     expect_end=expect_end)
 
-    return _route_live(live, _file_call, _live_call)
+    return _route_live(live, _file_call, _live_call, backup=backup)
 
 
 @_tool("lite")
@@ -1690,7 +1720,7 @@ def set_paragraph_text(
                                           new_text, expect=expect,
                                           verify_text=verify)
 
-    return _route_live(live, _file_call, _live_call)
+    return _route_live(live, _file_call, _live_call, backup=backup)
 
 
 @_tool("lite")
@@ -1805,6 +1835,7 @@ def search_and_replace(
         lambda: _lo.search_and_replace(
             file_path, replacements, scope, max_replacements, track, author
         ),
+        backup=backup,
     )
 
 
@@ -1935,7 +1966,7 @@ def apply_edits(
             file_path, edits, plans, len(snap_texts), snap_texts
         )
 
-    return _route_live(live, _file_call, _live_call)
+    return _route_live(live, _file_call, _live_call, backup=backup)
 
 
 @_tool("lite")
@@ -2032,7 +2063,7 @@ def format_text(
             occurrence=occ, verify_text=verify,
         )
 
-    return _route_live(live, _file_call, _live_call)
+    return _route_live(live, _file_call, _live_call, backup=backup)
 
 
 @_tool("lite")
@@ -2599,6 +2630,7 @@ def set_cells(
         lambda: _lo.set_cells(
             file_path, table_index, edits, track=track, author=author
         ),
+        backup=backup,
     )
 
 

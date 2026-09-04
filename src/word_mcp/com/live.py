@@ -25,6 +25,7 @@ from pathlib import Path
 from ..core.errors import (
     DocumentNotOpenInWord,
     DocumentProtected,
+    LiveLockTimeout,
     ProtectedViewRefused,
     WordBlocked,
     WordBusy,
@@ -32,7 +33,9 @@ from ..core.errors import (
     WordMcpError,
     WordNotRunning,
 )
+from . import dialogs as _dialogs
 from . import serial as _serial
+from . import xproc as _xproc
 
 # HRESULTs (as signed ints, the way pywin32 surfaces them)
 RPC_E_CALL_REJECTED = -2147418111        # modal dialog / call rejected
@@ -97,8 +100,48 @@ def _hresults(exc) -> set:
     return out
 
 
+def _dialog_note() -> str:
+    """Name the modal dialog that is actually up, when one is.
+
+    COM cannot see Word's modal dialogs — the dialogs are exactly what
+    blocks COM — but com/dialogs reads them off the OS window layer. A
+    busy refusal that can say WHICH dialog is open turns an unactionable
+    error into an instruction (matrix M1/H3)."""
+    try:
+        pending = _dialogs.pending_dialogs()
+    except Exception:
+        return ""
+    if not pending:
+        return ""
+    named = [d.get("title") or d.get("text") or d.get("class") for d in pending]
+    return " Open dialog(s) detected in Word: " + "; ".join(
+        str(n) for n in named[:3]
+    ) + "."
+
+
+def _busy_error(reason: str) -> WordBusy:
+    return WordBusy(reason + _dialog_note())
+
+
 def _classify(exc):
-    """Map a com_error to our typed errors, or return None if unrecognized."""
+    """Map a com_error (or a late-bound AttributeError) to our typed errors,
+    or return None if unrecognized.
+
+    AttributeError is here because of matrix finding H3. These are LATE-BOUND
+    proxies: pywin32's ``dynamic.__getattr__`` turns a property call that
+    Word refused into a plain ``AttributeError: <unknown>.FullName``, with the
+    HRESULT discarded. Guards that caught only ``pywintypes.com_error`` let
+    that escape, which is how one Word instance sitting behind a modal dialog
+    took down live editing for every OTHER instance: the fallback path that
+    exists precisely for that case was never reached, and the caller got an
+    unintelligible Python error instead of a typed refusal naming the dialog.
+    """
+    if isinstance(exc, AttributeError):
+        return _busy_error(
+            "Word refused a property read on the document (late-bound COM "
+            "returns this when the instance is blocked by a dialog, the "
+            "Backstage view, or a running command). Close it and retry."
+        )
     hrs = _hresults(exc)
     if hrs & GONE_HRESULTS:
         return WordDisconnected(
@@ -107,7 +150,7 @@ def _classify(exc):
             "the partial step."
         )
     if hrs & BUSY_HRESULTS:
-        return WordBusy(
+        return _busy_error(
             "Word is busy or has a dialog open (a dialog box, the File "
             "menu/Backstage, or a running command). Close it and retry."
         )
@@ -134,27 +177,53 @@ def _ensure_com(pythoncom):
     pythoncom.CoInitialize()
 
 
+_UNSET = object()
+
+
 class StateGuard:
     """Snapshot-on-mutate for interactive-instance state; LIFO restore.
 
     Tools must change app/doc state ONLY through set(); restore() runs in the
     session finally and reports (not raises) anything it could not put back.
+
+    Two behaviours the concurrency matrix (H2) forced:
+
+    - ``restore_to`` overrides the snapshot. Snapshot-and-restore is only
+      correct when the value we read really was the user's; when it was
+      another server's leaked suppression, restoring it re-leaks it.
+    - restore VERIFIES. A ``setattr`` that raised nothing is not proof the
+      value went back — Word accepts writes it later discards, and the whole
+      point of this guard is that the user's Word is left as we found it. The
+      value is read back and a mismatch is reported like a failure.
     """
 
     def __init__(self):
         self._stack = []
 
-    def set(self, obj, attr, value):
-        self._stack.append((obj, attr, getattr(obj, attr)))
+    def set(self, obj, attr, value, *, restore_to=_UNSET):
+        saved = getattr(obj, attr)
+        target = saved if restore_to is _UNSET else restore_to
+        self._stack.append((obj, attr, target))
         setattr(obj, attr, value)
+        return saved
 
     def restore(self) -> list:
         failed = []
-        for obj, attr, saved in reversed(self._stack):
+        for obj, attr, target in reversed(self._stack):
             try:
-                setattr(obj, attr, saved)
+                setattr(obj, attr, target)
             except Exception:
                 failed.append(attr)
+                continue
+            try:
+                observed = getattr(obj, attr)
+            except Exception:
+                continue  # cannot verify; do not invent a failure
+            if observed != target:
+                failed.append(
+                    f"{attr} (restore accepted but reads back {observed!r}, "
+                    f"wanted {target!r})"
+                )
         self._stack.clear()
         return failed
 
@@ -273,10 +342,20 @@ def _resolve_document(pythoncom, pywintypes, win32com, app, path: str):
             open_names.append(full)
             if full.lower() == target_lower:
                 return app, doc
-    except pywintypes.com_error as exc:
+    except (pywintypes.com_error, AttributeError) as exc:
         # The GetActiveObject instance may be busy or mid-shutdown while a
         # DIFFERENT instance holds the target — fall through to the ROT
         # scan before giving up on it.
+        #
+        # AttributeError belongs here (matrix H3): these are late-bound
+        # proxies, so a wedged instance refusing doc.FullName arrives as
+        # ``AttributeError: <unknown>.FullName``, not as com_error. Catching
+        # only com_error meant one Word stuck behind a modal dialog made
+        # every OTHER instance unreachable — this fall-through to the ROT
+        # scan, which would have found the healthy document immediately, was
+        # never executed. The only calls inside the guarded block are COM
+        # property reads, so an AttributeError here is always Word refusing,
+        # never a bug in our own attribute access.
         primary_error = _classify(exc) or exc
     other_app, other_doc = _find_doc_via_rot(pythoncom, win32com, target_lower)
     if other_doc is not None:
@@ -309,13 +388,19 @@ def _resolve_document(pythoncom, pywintypes, win32com, app, path: str):
 
 
 def probe_ready(pywintypes, app, doc, retries: int = 3, delay: float = 0.25):
-    """Cheap round-trip into Word's STA; refuse BEFORE any mutation."""
+    """Cheap round-trip into Word's STA; refuse BEFORE any mutation.
+
+    AttributeError is caught alongside com_error for the same reason as in
+    _resolve_document (matrix H3): a late-bound proxy whose property call
+    Word refused raises AttributeError with the HRESULT discarded, and a
+    probe whose whole job is to detect a blocked instance must not let the
+    clearest evidence of one escape untyped."""
     for attempt in range(retries):
         try:
             _ = app.Name
             _ = doc.Name
             return
-        except pywintypes.com_error as exc:
+        except (pywintypes.com_error, AttributeError) as exc:
             typed = _classify(exc)
             if isinstance(typed, WordDisconnected):
                 raise typed from exc
@@ -325,9 +410,18 @@ def probe_ready(pywintypes, app, doc, retries: int = 3, delay: float = 0.25):
             raise typed or exc from exc
 
 
-def probe_with_timeout(timeout: float = 5.0) -> str:
+def probe_with_timeout(timeout: float = 5.0, *, check_dialogs: bool = True) -> str:
     """'ready' | 'busy' | 'blocked' | 'not_running' — fresh attach on a helper
-    thread, so a Word stuck in a long synchronous op cannot hang the server."""
+    thread, so a Word stuck in a long synchronous op cannot hang the server.
+
+    M1 (concurrency matrix, 2026-09-05): a bare COM round trip is not enough
+    evidence for "ready". During a real dialog storm this probe answered
+    ``ready`` while every document resolution was failing, because simple
+    property reads still succeed with a modal pending. The window layer
+    already knows the truth, and it is consulted here: a Word process with a
+    visible dialog window reports ``blocked``, never ``ready``. Cheap ctypes
+    enumeration, no COM, so it works precisely when COM is the thing that is
+    stuck."""
     result = {}
 
     def _worker():
@@ -342,6 +436,9 @@ def probe_with_timeout(timeout: float = 5.0) -> str:
                 result["state"] = "busy"
             else:
                 result["state"] = "not_running"
+        except AttributeError:
+            # late-bound refusal: Word is there and will not answer (H3)
+            result["state"] = "busy"
         except Exception:
             result["state"] = "not_running"
         finally:
@@ -351,7 +448,19 @@ def probe_with_timeout(timeout: float = 5.0) -> str:
     t = threading.Thread(target=_worker, daemon=True)
     t.start()
     t.join(timeout)
-    return result.get("state", "blocked")
+    state = result.get("state", "blocked")
+    if check_dialogs and state == "ready" and pending_dialog_titles():
+        return "blocked"
+    return state
+
+
+def pending_dialog_titles() -> list:
+    """Modal dialogs currently up in any Word process (read-only, no COM).
+    Empty list on any failure — this must never be the reason a call fails."""
+    try:
+        return _dialogs.pending_dialogs()
+    except Exception:
+        return []
 
 
 def _screen_repair_async():
@@ -365,10 +474,14 @@ def _screen_repair_async():
                 continue
             pythoncom.CoInitialize()
             try:
-                app = win32com.GetActiveObject("Word.Application")
-                app.ScreenUpdating = True
-                app.ScreenRefresh()
-                return
+                # cross-process too: a repair that writes app state while
+                # ANOTHER server holds a session is the same lost update
+                # this daemon exists to clean up (H2)
+                with _xproc.cross_process_lock("screen_repair", wait=15.0):
+                    app = win32com.GetActiveObject("Word.Application")
+                    app.ScreenUpdating = True
+                    app.ScreenRefresh()
+                    return
             except Exception:
                 pass
             finally:
@@ -395,6 +508,9 @@ class LiveSession:
         # None = it did not answer, and read_only_probe_failed says why
         self.opened_read_only = False
         self.read_only_probe_failed = None
+        # set when this session found DisplayAlerts already suppressed and
+        # restored it to wdAlertsAll instead of re-leaking it (H2)
+        self.alerts_recovered = False
 
     def batch_screen_off(self):
         """Only for >20-mutation batches; auto-restored, watchdog-backed."""
@@ -412,6 +528,14 @@ class LiveSession:
             )
         if self.enforced_tracking:
             out["enforced_tracking"] = True
+        if self.alerts_recovered:
+            out["alerts_recovered"] = True
+            out["alerts_note"] = (
+                "Word's DisplayAlerts was already suppressed when this "
+                "session started; it was restored to wdAlertsAll rather "
+                "than left suppressed (a suppressed Word answers its own "
+                "save prompts and can discard unsaved work)"
+            )
         if self.opened_read_only:
             out["opened_read_only"] = True
         if self.read_only_probe_failed:
@@ -471,20 +595,70 @@ def probe_read_only(session: "LiveSession", doc) -> None:
         session.read_only_probe_failed = f"{type(exc).__name__}: {exc}"
 
 
+def _suppress_alerts_owned(guard: StateGuard, app) -> bool:
+    """Suppress DisplayAlerts for the session, restoring OWNERSHIP-AWARE.
+    Returns True when a leaked suppression was found and will be repaired.
+
+    H2 (concurrency matrix, 2026-09-05). DisplayAlerts is APPLICATION state,
+    and plain snapshot-and-restore is a lost update across processes: server
+    B snapshotted the wdAlertsNone that server A was holding, A restored the
+    real value, then B restored wdAlertsNone. Word was left suppressed after
+    both servers exited, and the measured cost was a dirty document closing
+    in 0.09 s with no prompt and the unsaved sentence gone.
+
+    The cross-process lock this session holds is the first half of the fix:
+    no other kitchensink4word live session can be mid-flight, so nobody
+    legitimately holds a suppression right now. The second half is here. A
+    value observed as wdAlertsNone under the lock cannot be the user's
+    setting — Word's UI offers no way to set it and it resets on restart —
+    so it is a leak from a crashed client or an older build, and restoring
+    it would re-leak it. The restore target becomes wdAlertsAll and the
+    result says so (alerts_recovered).
+    """
+    try:
+        observed = app.DisplayAlerts
+    except Exception:
+        return False
+    restore_to = observed
+    recovered = observed == _WD_ALERTS_NONE
+    if recovered:
+        restore_to = _WD_ALERTS_ALL
+    with contextlib.suppress(Exception):
+        guard.set(
+            app, "DisplayAlerts", _WD_ALERTS_NONE, restore_to=restore_to
+        )
+    return recovered
+
+
 @contextlib.contextmanager
 def live_session(path: str, tool_name: str, *, mutating: bool = True):
     """attach → resolve → probe → guard+undo → yield → restore, per call.
 
-    The WHOLE session runs under the process-wide COM serialization lock
-    (com/serial.py): exactly one tool call reaches Word at a time, which
-    is what makes concurrent multi-agent live editing safe (2026-09-03
-    stress report — unserialized Range writes interleave per character).
-    Alerts are suppressed (DisplayAlerts = wdAlertsNone) for the session
-    and restored by the StateGuard, so Word cannot raise a modal dialog
-    mid-operation; live_repair restores alerts if a client crashes."""
+    The WHOLE session runs under TWO locks:
+
+    - the process-wide COM serialization lock (com/serial.py): exactly one
+      tool call in this process reaches Word at a time (2026-09-03 stress
+      report — unserialized Range writes interleave per character);
+    - the cross-PROCESS live lock (com/xproc.py): exactly one live session
+      on this machine, in any kitchensink4word process, is inside its
+      resolve-then-write sequence at a time.
+
+    The second lock is the 2026-09-05 concurrency matrix's main result. The
+    in-process lock was honest about its scope, and the matrix measured what
+    that scope left open: two server processes against one Word instance
+    overlapped in 49 of 50 operation pairs, a find-then-assign replace
+    double-applied and reported success to both callers, and DisplayAlerts
+    leaked to wdAlertsNone whenever two processes overlapped.
+
+    Alerts are suppressed (DisplayAlerts = wdAlertsNone) for the session and
+    restored ownership-aware by the StateGuard (see _suppress_alerts_owned),
+    so Word cannot raise a modal dialog mid-operation; live_repair restores
+    alerts if a client crashes."""
     pythoncom, pywintypes, win32com = _com_modules()
     _ensure_com(pythoncom)
-    with _serial.com_operation(f"live:{tool_name}"):
+    with _serial.com_operation(f"live:{tool_name}"), _xproc.cross_process_lock(
+        f"live:{tool_name}"
+    ):
         app = doc = None
         guard = StateGuard()
         restore_failed: list = []
@@ -494,10 +668,10 @@ def live_session(path: str, tool_name: str, *, mutating: bool = True):
                 pythoncom, pywintypes, win32com, app, path
             )
             probe_ready(pywintypes, app, doc)
-            with contextlib.suppress(Exception):
-                guard.set(app, "DisplayAlerts", _WD_ALERTS_NONE)
+            alerts_recovered = _suppress_alerts_owned(guard, app)
             with undo_group(app, tool_name, doc=doc) as grouped:
                 session = LiveSession(app, doc, guard, grouped)
+                session.alerts_recovered = alerts_recovered
                 with contextlib.suppress(Exception):
                     session.had_unsaved_user_changes = not doc.Saved
                 probe_read_only(session, doc)
@@ -563,7 +737,12 @@ def live_repair() -> dict:
     pre-crash TrackRevisions value, so that one is reported, not reverted."""
     pythoncom, pywintypes, win32com = _com_modules()
     _ensure_com(pythoncom)
-    with _serial.com_operation("live_repair"):
+    # cross-process as well: repairing application state (alerts,
+    # ScreenUpdating, orphaned undo records) while another server process is
+    # mid-session would fight that session's own guard (H2).
+    with _serial.com_operation("live_repair"), _xproc.cross_process_lock(
+        "live_repair"
+    ):
         return _live_repair_locked(pythoncom, win32com)
 
 
@@ -633,15 +812,21 @@ def interactive_status() -> dict:
     reports interactive_state "serving" with the running operation's name
     so callers can back off instead of piling on. The probe itself runs
     lock-free on a helper thread (read-only; a stuck Word cannot hang the
-    server). Limits: Word does not expose modal-dialog state directly —
-    a dialog usually surfaces as "busy" (RPC call rejected), but simple
-    property reads can still succeed with a dialog pending, so "ready"
-    is evidence, not proof, of a dialog-free Word."""
+    server).
+
+    Dialog honesty (M1, concurrency matrix 2026-09-05): "ready" used to be
+    decided by a COM round trip alone, and during a real dialog storm that
+    answered "ready" while every document resolution was failing. The probe
+    now consults the OS window layer, so a Word with a modal up reports
+    "blocked" and the dialogs themselves are listed under pending_dialogs.
+    The cross-process live lock is reported too (live_lock), so a caller can
+    see when ANOTHER server process holds Word."""
     if not _serial.acquire(timeout=2.0):
         return {
             "interactive_state": "serving",
             "open_documents": [],
             "com_serialization": _serial.lock_snapshot(),
+            "live_lock": _xproc.holder_info(),
             "note": (
                 "another COM operation holds the serialization lock; "
                 "Word state was not probed to avoid queuing — retry "
@@ -653,12 +838,24 @@ def interactive_status() -> dict:
     finally:
         _serial.release()
     out["com_serialization"] = _serial.lock_snapshot()
+    out["live_lock"] = _xproc.holder_info()
     return out
 
 
 def _interactive_status_locked() -> dict:
     state = probe_with_timeout()
     out = {"interactive_state": state, "open_documents": []}
+    pending = pending_dialog_titles()
+    if pending:
+        # M1: name what is blocking, so "blocked" is actionable instead of
+        # a bare label. Detection runs on the window layer, which is the
+        # only layer that can see a modal while COM cannot.
+        out["pending_dialogs"] = pending
+        out["dialog_note"] = (
+            "Word has a modal dialog open; live tools against a blocked "
+            "instance will refuse until it is dismissed. Dismissal is the "
+            "user's decision — this server never clicks a dialog."
+        )
     if state != "ready":
         return out
     pythoncom, pywintypes, win32com = _com_modules()

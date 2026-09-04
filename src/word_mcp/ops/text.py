@@ -467,6 +467,27 @@ def insert_paragraphs(
     return result
 
 
+def _expect_guard(el, index: int, expect: str | None) -> None:
+    """Validate-at-execution for an index-addressed destructive call: the
+    paragraph must still carry the text the caller expected there, or
+    nothing happens. See com/live_ops._expect_guard for the race this
+    closes (concurrency matrix H4, 2026-09-05)."""
+    if expect is None:
+        return
+    from .read import paragraph_text
+
+    current = paragraph_text(el)
+    if expect not in current:
+        raise TargetNotFound(
+            f"delete_paragraphs: paragraph {index} does not contain the "
+            f"expected text {expect[:80]!r}; its current text begins: "
+            f"{current[:120]!r}. Paragraph indices shift after "
+            "insert/delete operations, including ones made by another "
+            "agent or by the user in Word — re-read with get_text and "
+            "retry. Nothing was changed."
+        )
+
+
 def delete_paragraphs(
     pkg: DocxPackage,
     start: int,
@@ -474,10 +495,20 @@ def delete_paragraphs(
     *,
     track: bool = False,
     author: str = "Claude",
+    expect_start: str | None = None,
+    expect_end: str | None = None,
 ) -> dict:
     """Delete body paragraphs [start, end] inclusive (end defaults to start).
     With track, nothing is removed — content and paragraph marks are recorded
-    as deletions by `author`, pending accept/reject."""
+    as deletions by `author`, pending accept/reject.
+
+    expect_start / expect_end: the paragraphs actually at those indices must
+    still contain the given text, or the deletion refuses with nothing
+    removed. Indices go stale whenever anything inserts or deletes above
+    them, which on a shared document means another agent's edit landing
+    between the read that produced the index and this call (concurrency
+    matrix H4). The guard is opt-in on both routes so the file route and the
+    live route behave identically."""
     end = start if end is None else end
     if end < start:
         raise WordMcpError("end must be >= start")
@@ -494,6 +525,8 @@ def delete_paragraphs(
             f"paragraph range {start}-{end} exceeds document "
             f"({len(targets)} of {end - start + 1} found)"
         )
+    _expect_guard(targets[0], start, expect_start)
+    _expect_guard(targets[-1], end, expect_end)
     if track:
         from . import _tracked
 
