@@ -1,5 +1,4 @@
-"""The .mcpb launch toggles: KS4W_ALL_TOOLS, KS4W_LOCK_TOOLS, and one
-KS4W_PACK_<NAME> per pack.
+"""The .mcpb launch toggles: KS4W_ALL_TOOLS and KS4W_LOCK_TOOLS.
 
 Claude Desktop writes the LITERAL strings "true" and "false" for a
 user_config boolean, so the parser is tested against exactly those first.
@@ -17,11 +16,10 @@ The three properties that matter, and that this file pins:
    accepted values, rather than shrugging into a default the operator did
    not ask for.
 
-Plus the composition matrix: KS4W_MODE beats every checkbox, the master
-KS4W_ALL_TOOLS beats the per-pack ones (so a pack ticked off still loads
-under "all"), the per-pack toggles compose into a pack list in menu order,
-and lite is what is left when nothing is set. Section 7 pins the manifest
-against the code so a pack cannot gain an env without gaining a checkbox.
+Plus precedence: KS4W_MODE beats the master checkbox and KS4W_PACK_POLICY
+beats the lock checkbox, in both directions, so a power user's pin survives
+whatever an installer wrote. Section 5 pins the author's ruling that there
+are exactly two toggles, and section 7 pins the manifest against the code.
 """
 
 from __future__ import annotations
@@ -35,7 +33,6 @@ from word_mcp import packs, server  # noqa: F401  (server populates the registry
 from word_mcp.core.errors import WordMcpError
 
 TOGGLES = (packs.ENV_ALL_TOOLS, packs.ENV_LOCK_TOOLS)
-PACK_ENVS = packs.pack_env_names()
 
 
 @pytest.fixture(autouse=True)
@@ -194,98 +191,18 @@ def test_lock_toggle_refuses_enable_tools(monkeypatch):
     assert getattr(exc.value, "code", None) == "CONFLICT"
 
 
-# --------------------------------------- 5. per-pack toggle composition
+# ------------------------------- 5. no per-pack toggles, by decision
 
 
-def test_every_pack_has_an_env():
-    """Seven packs, seven checkboxes, names derived not hand-written."""
-    assert set(PACK_ENVS) == set(packs.PACK_SUMMARIES)
-    assert PACK_ENVS["media-forms"] == "KS4W_PACK_MEDIA_FORMS"
-    assert PACK_ENVS["com-live"] == "KS4W_PACK_COM_LIVE"
-    assert PACK_ENVS["protection-io"] == "KS4W_PACK_PROTECTION_IO"
-
-
-def test_pack_envs_do_not_collide_with_pack_policy():
-    """KS4W_PACK_POLICY shares the prefix; no pack may claim that name."""
-    assert packs.ENV_PACK_POLICY not in PACK_ENVS.values()
-
-
-def test_toggle_env_names_are_unique():
-    names = packs.toggle_env_names()
-    assert len(names) == len(set(names)) == len(packs.PACK_SUMMARIES) + 2
-
-
-@pytest.mark.parametrize("pack,env", sorted(PACK_ENVS.items()))
-def test_one_pack_toggle_selects_that_pack(monkeypatch, pack, env):
-    monkeypatch.setenv(env, "true")
-    assert packs.resolve_startup_mode() == pack
-
-
-@pytest.mark.parametrize("env", sorted(PACK_ENVS.values()))
-def test_pack_toggle_false_stays_lite(monkeypatch, env):
-    monkeypatch.setenv(env, "false")
-    assert packs.resolve_startup_mode() == "lite"
-
-
-@pytest.mark.parametrize("env", sorted(PACK_ENVS.values()))
-def test_pack_toggle_empty_stays_lite(monkeypatch, env):
-    """Fail closed, per pack: an empty checkbox value loads nothing."""
-    monkeypatch.setenv(env, "")
-    assert packs.resolve_startup_mode() == "lite"
-
-
-@pytest.mark.parametrize("env", sorted(PACK_ENVS.values()))
-def test_pack_toggle_garbage_refuses_at_startup(monkeypatch, env):
-    monkeypatch.setenv(env, "sure")
-    with pytest.raises(WordMcpError) as exc:
-        packs.apply_startup_mode()
-    assert env in str(exc.value)
-
-
-def test_two_pack_toggles_compose(monkeypatch):
-    """Master off + two packs on = lite plus those two, in menu order."""
-    monkeypatch.setenv(PACK_ENVS["com-live"], "true")
-    monkeypatch.setenv(PACK_ENVS["references"], "true")
-    assert packs.resolve_startup_mode() == "references,com-live"
-    assert packs.selected_packs() == ["references", "com-live"]
-
-
-def test_master_on_beats_a_pack_toggled_off(monkeypatch):
-    """Master on + one pack explicitly off = that pack still loads. "All"
-    means all; the master switch is not narrowed by a stale checkbox."""
-    monkeypatch.setenv(packs.ENV_ALL_TOOLS, "true")
-    monkeypatch.setenv(PACK_ENVS["review"], "false")
-    assert packs.resolve_startup_mode() == "full"
-
-
-def test_master_on_ignores_pack_selection(monkeypatch):
-    monkeypatch.setenv(packs.ENV_ALL_TOOLS, "true")
-    monkeypatch.setenv(PACK_ENVS["review"], "true")
-    assert packs.resolve_startup_mode() == "full"
-
-
-def test_mode_pin_ignores_every_toggle(monkeypatch):
-    monkeypatch.setenv(packs.ENV_MODE, "academic")
-    monkeypatch.setenv(packs.ENV_ALL_TOOLS, "true")
-    for env in PACK_ENVS.values():
-        monkeypatch.setenv(env, "true")
-    assert packs.resolve_startup_mode() == "academic"
-
-
-def test_composed_list_applies_for_real(monkeypatch):
-    """End to end through apply_startup_mode: exactly the ticked packs are
-    enabled and nothing else."""
-    monkeypatch.setenv(PACK_ENVS["references"], "true")
-    monkeypatch.setenv(PACK_ENVS["review"], "true")
-    for name in packs._ENABLED:
-        packs._ENABLED[name] = packs.pack_of(name) == "lite"
-    assert packs.apply_startup_mode() == "references,review"
-    for pack in packs.PACK_SUMMARIES:
-        want = pack in ("references", "review")
-        tools = packs.pack_tools(pack)
-        assert tools, f"{pack} registered no tools; the check would be vacuous"
-        for name in tools:
-            assert packs.is_tool_enabled(name) is want, f"{pack}/{name}"
+def test_only_two_toggles_exist():
+    """Author ruling, 2026-09-05: no per-pack startup toggle. Claude
+    Desktop's own per-tool permissions own the consent layer and
+    enable_tools already loads a pack mid-session on demand, so a checkbox
+    per pack would duplicate both. This asserts the decision so a future
+    session does not quietly re-add them."""
+    assert packs.toggle_env_names() == [packs.ENV_ALL_TOOLS,
+                                        packs.ENV_LOCK_TOOLS]
+    assert not hasattr(packs, "pack_env_names")
 
 
 # ------------------------------------------------- 6. the startup note
@@ -300,21 +217,33 @@ def test_note_names_the_master_toggle(monkeypatch):
     assert packs.ENV_ALL_TOOLS in packs.startup_note()
 
 
-def test_note_names_each_chosen_pack(monkeypatch):
-    monkeypatch.setenv(PACK_ENVS["academic"], "true")
-    note = packs.startup_note()
-    assert "academic" in note and PACK_ENVS["academic"] in note
+def test_note_names_the_mode_pin(monkeypatch):
+    monkeypatch.setenv(packs.ENV_MODE, "academic")
+    assert "academic" in packs.startup_note()
 
 
-def test_note_says_the_mode_pin_ignored_the_checkboxes(monkeypatch):
-    """The case that most needs saying out loud: a human ticked boxes in an
-    installer and a KS4W_MODE pin quietly overrode them."""
+def test_note_says_the_mode_pin_ignored_the_checkbox(monkeypatch):
+    """The case that most needs saying out loud: a human ticked the box in
+    an installer and a KS4W_MODE pin quietly overrode it."""
     monkeypatch.setenv(packs.ENV_MODE, "lite")
-    monkeypatch.setenv(PACK_ENVS["review"], "true")
+    monkeypatch.setenv(packs.ENV_ALL_TOOLS, "true")
     note = packs.startup_note()
     assert packs.ENV_MODE in note
     assert "IGNORED" in note
-    assert PACK_ENVS["review"] in note
+
+
+def test_master_toggle_applies_for_real(monkeypatch):
+    """End to end through apply_startup_mode: the master checkbox alone
+    opens every pack."""
+    monkeypatch.setenv(packs.ENV_ALL_TOOLS, "true")
+    for name in packs._ENABLED:
+        packs._ENABLED[name] = packs.pack_of(name) == "lite"
+    assert packs.apply_startup_mode() == "full"
+    for pack in packs.PACK_SUMMARIES:
+        tools = packs.pack_tools(pack)
+        assert tools, f"{pack} registered no tools; the check would be vacuous"
+        for name in tools:
+            assert packs.is_tool_enabled(name), f"{pack}/{name}"
 
 
 # ------------------------------------------- 7. manifest <-> code parity
@@ -357,3 +286,11 @@ def test_note_reaches_stderr(monkeypatch, capsys):
     captured = capsys.readouterr()
     assert captured.out == "", "stdout carries the protocol and stays clean"
     assert PACK_ENVS["review"] in captured.err
+
+
+def test_note_reaches_stderr(monkeypatch, capsys):
+    monkeypatch.setenv(packs.ENV_ALL_TOOLS, "true")
+    packs.apply_startup_mode()
+    captured = capsys.readouterr()
+    assert captured.out == "", "stdout carries the protocol and stays clean"
+    assert packs.ENV_ALL_TOOLS in captured.err

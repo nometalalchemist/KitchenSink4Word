@@ -20,8 +20,8 @@ below is a behavior you can rely on without testing it first.
 - Pack costs, from `scripts/measure_surface.py`: references 8 tools / 2.4k, review 9 / 1.8k, academic 23 / 5.7k, assembly 7 / 1.7k, media-forms 16 / 4.1k, com-live 13 / 2.2k, protection-io 6 / 1.2k.
 - Everything enabled: 110 tools (108 document tools plus the two pack toggles), about 26,700 tokens.
 - Set `KS4W_MODE=full` at server start to skip tiering and load every pack at startup.
-- `KS4W_ALL_TOOLS=true` does the same from the `.mcpb` "Load every tool at startup" checkbox; `KS4W_PACK_<NAME>=true` (one per pack: `KS4W_PACK_REFERENCES`, `KS4W_PACK_REVIEW`, `KS4W_PACK_ACADEMIC`, `KS4W_PACK_ASSEMBLY`, `KS4W_PACK_MEDIA_FORMS`, `KS4W_PACK_COM_LIVE`, `KS4W_PACK_PROTECTION_IO`) loads just that pack; `KS4W_LOCK_TOOLS=true` fixes the surface at startup so `enable_tools` refuses. All of them accept `true`/`false`, treat empty as false, and refuse an unrecognized value at startup.
-- Startup precedence: `KS4W_MODE` (non-empty) beats `KS4W_ALL_TOOLS` beats the per-pack toggles beats lite; `KS4W_PACK_POLICY` beats `KS4W_LOCK_TOOLS`. One stderr line at startup names what decided the surface.
+- `KS4W_ALL_TOOLS=true` does the same from the `.mcpb` "Load every tool at startup" checkbox; `KS4W_LOCK_TOOLS=true` fixes the surface at startup so `enable_tools` refuses. Both accept `true`/`false`, treat empty as false, and refuse an unrecognized value at startup. There is no per-pack startup toggle by design: the client's own tool permissions and `enable_tools` already cover that ground.
+- Startup precedence: `KS4W_MODE` (non-empty) beats `KS4W_ALL_TOOLS` beats lite; `KS4W_PACK_POLICY` beats `KS4W_LOCK_TOOLS`. One stderr line at startup names what decided the surface.
 - A lite tool asked for out-of-scope work returns the pack name and the exact `enable_tools` call to run. You never have to guess which pack holds a capability.
 - `get_workflows` recipes name the packs each recipe needs before its first step.
 - Clients that defer tool schemas until first call pay close to zero at startup.

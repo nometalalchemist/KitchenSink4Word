@@ -34,19 +34,16 @@ Env contract:
 The BOOLEAN toggles behind the .mcpb checkboxes (see parse_toggle). Each
 accepts the literal "true"/"false" Claude Desktop writes, treats empty and
 absent as off, and refuses to start on anything else:
-- KS4W_ALL_TOOLS: "true" loads every pack at startup.
-- KS4W_PACK_<NAME>: one per pack (KS4W_PACK_REFERENCES,
-  KS4W_PACK_MEDIA_FORMS, ...), each loading that pack at startup, so an
-  installer can offer a checkbox per pack instead of asking a human to
-  type a comma-separated list.
+- KS4W_ALL_TOOLS: "true" loads every pack at startup, "false" or empty
+  keeps the lite default. KS4W_MODE wins when it is set to a non-empty
+  value, so a power user's pack list is never overridden by a checkbox.
 - KS4W_LOCK_TOOLS: "true" fixes the surface at startup (enable_tools and
   disable_tools refuse), "false" or empty leaves it adjustable.
   KS4W_PACK_POLICY wins when it is set to a non-empty value.
 
-Startup surface precedence, highest first: KS4W_MODE (a non-empty pin
-ignores every checkbox), then KS4W_ALL_TOOLS, then the per-pack toggles
-composed in menu order, then lite. startup_note() names which one decided
-it and apply_startup_mode() writes that line to stderr.
+There is deliberately no per-pack startup toggle: see toggle_env_names.
+startup_note() names which setting decided the surface and
+apply_startup_mode() writes that line to stderr.
 
 No persistence, by design: every session starts at KS4W_MODE.
 
@@ -209,12 +206,6 @@ ENV_PACK_POLICY = "KS4W_PACK_POLICY"
 ENV_ALL_TOOLS = "KS4W_ALL_TOOLS"
 ENV_LOCK_TOOLS = "KS4W_LOCK_TOOLS"
 
-#: One boolean env per pack, so the installer can offer a checkbox per pack
-#: instead of asking a non-coder to type a comma-separated list. The pack
-#: name uppercases and its dashes become underscores:
-#: media-forms -> KS4W_PACK_MEDIA_FORMS.
-PACK_ENV_PREFIX = "KS4W_PACK_"
-
 _TRUE = ("1", "true", "on", "yes")
 _FALSE = ("0", "false", "off", "no")
 
@@ -260,19 +251,16 @@ def _explicit(name: str) -> str:
     return os.environ.get(name, "").strip()
 
 
-def pack_env(pack: str) -> str:
-    """The boolean env behind one pack's checkbox."""
-    return PACK_ENV_PREFIX + pack.upper().replace("-", "_")
-
-
-def pack_env_names() -> dict[str, str]:
-    """pack -> its boolean env, in menu order."""
-    return {pack: pack_env(pack) for pack in PACK_SUMMARIES}
-
-
 def toggle_env_names() -> list[str]:
-    """Every boolean launch env this server reads."""
-    return [ENV_ALL_TOOLS, ENV_LOCK_TOOLS, *pack_env_names().values()]
+    """Every boolean launch env this server reads.
+
+    There is deliberately NO per-pack toggle (author ruling, 2026-09-05).
+    Claude Desktop's own per-tool permissions already own the consent
+    layer, and enable_tools already lets the agent load a pack mid-session
+    on demand, so a startup checkbox per pack would duplicate both. The
+    two toggles here are the ones neither of those can express: how big the
+    surface starts, and whether it may change at all."""
+    return [ENV_ALL_TOOLS, ENV_LOCK_TOOLS]
 
 
 def validate_toggles() -> None:
@@ -282,11 +270,6 @@ def validate_toggles() -> None:
     whichever variable it lands in."""
     for name in toggle_env_names():
         toggle(name)
-
-
-def selected_packs() -> list[str]:
-    """The packs whose own checkbox is ticked, in menu order."""
-    return [pack for pack, env in pack_env_names().items() if toggle(env)]
 
 
 def resolve_lock() -> bool:
@@ -408,24 +391,14 @@ def disable(packs: list[str]) -> dict:
 def resolve_startup_mode() -> str:
     """The startup surface in force, before any pack is flipped.
 
-    Precedence, highest first:
-
-    1. KS4W_MODE, set to something non-empty. The power-user pin wins
-       outright and every checkbox is ignored, because a host that spells
-       out a pack list has said exactly what it wants.
-    2. KS4W_ALL_TOOLS=true, the master checkbox: every pack, regardless of
-       the per-pack checkboxes. "All" means all, so an individually
-       unticked pack still loads rather than quietly contradicting the
-       master switch.
-    3. The per-pack checkboxes, composed into a pack list in menu order.
-    4. lite, the default, when nothing is set."""
+    Precedence, highest first: KS4W_MODE set to something non-empty (the
+    power-user pin wins outright and the checkbox is ignored, because a
+    host that spells out a pack list has said exactly what it wants), then
+    KS4W_ALL_TOOLS=true, then the lite default."""
     explicit = _explicit(ENV_MODE)
     if explicit:
         return explicit.lower()
-    if toggle(ENV_ALL_TOOLS):
-        return "full"
-    chosen = selected_packs()
-    return ",".join(chosen) if chosen else "lite"
+    return "full" if toggle(ENV_ALL_TOOLS) else "lite"
 
 
 def startup_note() -> str:
@@ -435,28 +408,15 @@ def startup_note() -> str:
     overriding checkboxes a human ticked in an installer."""
     explicit = _explicit(ENV_MODE)
     if explicit:
-        ticked = [
-            name for name in [ENV_ALL_TOOLS, *pack_env_names().values()]
-            if toggle(name)
-        ]
         note = f"startup surface from {ENV_MODE}={explicit!r}"
-        if ticked:
+        if toggle(ENV_ALL_TOOLS):
             return (
-                f"{note}; the settings checkboxes are IGNORED while it is "
-                f"set ({', '.join(ticked)})"
+                f"{note}; the 'Load every tool at startup' setting "
+                f"({ENV_ALL_TOOLS}) is IGNORED while it is set"
             )
         return note
     if toggle(ENV_ALL_TOOLS):
-        return (
-            f"startup surface: every pack, from {ENV_ALL_TOOLS}=true "
-            f"(the per-pack checkboxes do not narrow it)"
-        )
-    chosen = selected_packs()
-    if chosen:
-        return (
-            "startup surface: lite core plus "
-            + ", ".join(f"{p} ({pack_env(p)})" for p in chosen)
-        )
+        return f"startup surface: every pack, from {ENV_ALL_TOOLS}=true"
     return "startup surface: lite core only (no startup toggle set)"
 
 

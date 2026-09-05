@@ -4,7 +4,7 @@
   "display_name": "KitchenSink4Word",
   "version": "2.0.1",
   "description": "Everything plus the kitchen sink for Microsoft Word. 219 document operations across 108 tools, plus live in-Word editing.",
-  "long_description": "A Model Context Protocol server for Microsoft Word documents. 219 distinct operations across 108 tools, covering document creation, text and formatting, tables, styles, images, charts, document assembly, headers and footers, footnotes, comments, tracked changes, mail merge, batch operations, redaction, accessibility audit and repair, compliance audits, path sandboxing, and document diagnostics. Tools load in tiers: a 28 tool lite surface opens the session at about 7,700 tokens, and packs are enabled on demand. Live mode edits documents open in Word in place, with each tool call landing as a single undo step; live mode requires Windows with Microsoft Word installed. The file-based majority of the toolset works on any .docx file without Word running. Launching this bundle requires uv (the uvx command) on your machine; the server itself is fetched from PyPI on first launch.",
+  "long_description": "A Model Context Protocol server for Microsoft Word documents. 219 distinct operations across 108 tools, covering document creation, text and formatting, tables, styles, images, charts, document assembly, headers and footers, footnotes, comments, tracked changes, mail merge, batch operations, redaction, accessibility audit and repair, compliance audits, path sandboxing, and document diagnostics. Tools load in tiers: a 28 tool lite surface opens the session at about 7,700 tokens, and packs are enabled on demand. Live mode edits documents open in Word in place, with each tool call landing as a single undo step; live mode requires Windows with Microsoft Word installed. The file-based majority of the toolset works on any .docx file without Word running. Launching this bundle requires uv (the uvx command) on your machine; the server itself is fetched from PyPI on first launch. Tip: in Claude Desktop's Tool permissions, set the Read-only tools group to Always Allow: those tools cannot change anything, and it stops most permission prompts.",
   "author": {
     "name": "nometalalchemist"
   },
@@ -34,14 +34,7 @@
       ],
       "env": {
         "KS4W_ALL_TOOLS": "${user_config.all_tools}",
-        "KS4W_LOCK_TOOLS": "${user_config.lock_tools}",
-        "KS4W_PACK_REFERENCES": "${user_config.pack_references}",
-        "KS4W_PACK_REVIEW": "${user_config.pack_review}",
-        "KS4W_PACK_ACADEMIC": "${user_config.pack_academic}",
-        "KS4W_PACK_ASSEMBLY": "${user_config.pack_assembly}",
-        "KS4W_PACK_MEDIA_FORMS": "${user_config.pack_media_forms}",
-        "KS4W_PACK_COM_LIVE": "${user_config.pack_com_live}",
-        "KS4W_PACK_PROTECTION_IO": "${user_config.pack_protection_io}"
+        "KS4W_LOCK_TOOLS": "${user_config.lock_tools}"
       }
     }
   },
@@ -49,56 +42,7 @@
     "all_tools": {
       "type": "boolean",
       "title": "Load every tool at startup",
-      "description": "On: all 108 tools are loaded when a chat starts, which uses about 26,700 tokens of the conversation before you type anything, and the individual boxes below are ignored. Off (recommended): the chat starts with the 28 everyday tools, plus any group ticked below, and Claude switches the rest on by itself when a task needs them.",
-      "default": false,
-      "required": false
-    },
-    "pack_references": {
-      "type": "boolean",
-      "title": "Citations and bibliography",
-      "description": "Insert and manage citations, build and restyle a bibliography, pull references from Zotero, and check that every citation has a matching entry.",
-      "default": false,
-      "required": false
-    },
-    "pack_review": {
-      "type": "boolean",
-      "title": "Track changes and comments",
-      "description": "Read tracked changes and accept or reject them, add and reply to comments, resolve threads, compare two drafts, and strip reviewer names.",
-      "default": false,
-      "required": false
-    },
-    "pack_academic": {
-      "type": "boolean",
-      "title": "Long-document structure",
-      "description": "Footnotes and endnotes, tables of contents, an index, figure and table captions, cross-references, bookmarks, headers and footers, section setup, styles, word counts, and accessibility checks.",
-      "default": false,
-      "required": false
-    },
-    "pack_assembly": {
-      "type": "boolean",
-      "title": "Working across several documents",
-      "description": "Insert one document into another, split a document apart, move sections between files, copy tables across files, work from templates, and run a mail merge.",
-      "default": false,
-      "required": false
-    },
-    "pack_media_forms": {
-      "type": "boolean",
-      "title": "Pictures, charts, and table layout",
-      "description": "Insert pictures, charts, equations, text boxes, and links; merge and split table cells, add and remove rows and columns, and sort a table; build fillable form fields.",
-      "default": false,
-      "required": false
-    },
-    "pack_com_live": {
-      "type": "boolean",
-      "title": "Editing in the open Word window",
-      "description": "Edit a document while it is open in Word, and use Word itself to save as PDF, open a PDF, compare or combine drafts, and run the spelling and readability checks. Needs Windows with Word installed.",
-      "default": false,
-      "required": false
-    },
-    "pack_protection_io": {
-      "type": "boolean",
-      "title": "Protection and redaction",
-      "description": "Restrict editing, add a watermark, black out text and verify it is really gone, and move table data in and out as CSV or JSON.",
+      "description": "On: all 108 tools are loaded when a chat starts, which uses about 26,700 tokens of the conversation before you type anything. Off (recommended): the chat starts with the 28 everyday tools and Claude switches the rest on by itself when a task needs them.",
       "default": false,
       "required": false
     },
