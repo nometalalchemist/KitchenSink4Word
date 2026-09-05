@@ -488,7 +488,7 @@ def create_document(file_path: str, title: str | None = None) -> dict:
     property. Refuses to overwrite an existing file (use copy_document with
     overwrite=True for that). Parent directories are created automatically.
     Populate the document afterward with insert_paragraphs, create_table,
-    define_style, and other tools.
+    define_style (academic pack), and other tools.
     Template-driven builds live in the assembly pack.
     """
     from pathlib import Path
@@ -765,8 +765,8 @@ def diagnose_document(file_path: str) -> dict:
     that render broken or lose content in Word. The deep companion to
     validate(checks=['core']). No live mode BY DESIGN: this reads the saved
     package's XML, stale while Word holds unsaved changes. Close the
-    document first, or use com_validate_opens_clean / live
-    get_document_info.
+    document first, or use com_validate_opens_clean (com-live pack) /
+    live get_document_info.
     The full validate check battery lives in the academic pack.
     """
     from .core.errors import DocumentLocked
@@ -806,9 +806,10 @@ def get_text(
     contains filters. include_textboxes=True appends text-box content as
     labeled extras, body indices untouched; textbox=true (or {"index": n})
     returns ONLY text-box content, with the box_index set_textbox_text
-    takes; file-mode only. Open documents are read live, same shape.
-    Equations are read via list_elements type='equations'. Read-only.
-    For orientation, use get_document_view.
+    (media-forms pack) takes; file-mode only. Open documents read live,
+    same shape.
+    Equations read via list_elements type='equations'. Read-only.
+    Orientation: get_document_view.
     """
     from .com import live_ops as _lo
 
@@ -1108,13 +1109,13 @@ _ELEMENT_TYPES: dict[str, dict] = {
 
 @_tool("lite")
 def list_elements(file_path: str, type: str, filter: dict | None = None) -> dict:
-    """Enumerate any collection in the document with one call. type: tables |
+    """Enumerate any collection in one call. type: tables |
     images | charts | equations | bookmarks | sources | sections |
     section_blocks | footnotes | endnotes | fields | reference_fields |
     form_fields | content_controls | template_placeholders | index_entries |
     lists | toc. Returns {type, count, items}; the ids or indices
     returned are the handles the matching set_/delete_/manage_ tools
-    accept (list then act). Highlights per type: tables reports
+    take (list then act). Highlights per type: tables reports
     dimensions and the table_index other table tools take; images reports
     display size and the media target; charts reports series; equations
     reads math content; bookmarks excludes internal TOC bookmarks; fields
@@ -1122,14 +1123,15 @@ def list_elements(file_path: str, type: str, filter: dict | None = None) -> dict
     reference_fields inventories Zotero, EndNote, and Mendeley fields and
     flags broken pairs; form_fields and content_controls cover legacy fields
     and SDTs; template_placeholders lists {{name}} and MERGEFIELD keys for
-    fill_template and mail_merge; lists groups list paragraphs by numbering
-    instance; toc returns TOC-family fields with cached entries (refresh via
-    com_refresh_fields, then re-read). filter={"range": {start, end},
+    fill_template and mail_merge (assembly pack); lists groups list
+    paragraphs by numbering instance; toc returns TOC-family fields with
+    cached entries (refresh via com_refresh_fields, com-live pack, then
+    re-read). filter={"range": {start, end},
     "name": "substring"} applies where meaningful; inapplicable filters
     refuse loudly. Read-only, file mode; close documents open in Word
     first.
-    Tools acting on these elements live in packs; enable_tools lists
-    them. To locate a string, use find_text.
+    Tools for these elements live in packs; enable_tools lists
+    them. To locate a string, find_text.
     """
     spec = _ELEMENT_TYPES.get(type)
     if spec is None:
@@ -1930,7 +1932,7 @@ def apply_edits(
     live: str = "auto",
 ) -> dict:
     """Apply a batch of anchor-addressed edits in one call: one lock,
-    backup, and validated save for the whole batch. Anchors come from
+    backup, and validated save for the batch. Anchors come from
     get_document_view. Ops (each edit has "op"): replace {anchor, find,
     text, occurrence?} (omitted = every match); set_text {anchor, text}
     (whole paragraph); insert {location, markdown} (headings, plain
@@ -1948,9 +1950,10 @@ def apply_edits(
     validated save. A document open in Word is edited live as ONE undo
     step: serialized, validated before any write, rolled back on
     mid-batch failure. Markdown lists/tables are file-mode only there;
-    stale targets refuse: com_save_document first, re-view, resend.
-    Use this when a change needs two or more edits; for one edit use
-    the matching standalone tool.
+    stale targets refuse: com_save_document (com-live pack) first,
+    re-view, resend.
+    Use this when a change needs two or more edits; for one, use
+    the standalone tool.
     """
     if atomic is not True:
         raise WordMcpError(
@@ -3661,8 +3664,8 @@ def insert_break(
     """Insert a break after the located paragraph. type: page starts a new
     page; section_next / section_continuous / section_even / section_odd
     start a new SECTION (own headers, margins, numbering; see
-    set_section_properties). location picks the paragraph (omit for
-    document end). Auto-backup: prev/anchor slots in .ks4w-backups
+    set_section_properties, academic pack). location picks the paragraph
+    (omit for document end). Auto-backup: prev/anchor slots in .ks4w-backups
     (backup=False skips rotation only); atomic validated save. Refuses
     documents open in Word.
     """
@@ -4268,8 +4271,9 @@ def delete_element(
     content; locked controls refused). Deleting an image or chart also
     removes its media, chart, and embedded-workbook parts once nothing else
     references them. Objects with lifecycle tools stay there: notes in
-    manage_note, comments in manage_comment, sources in manage_source,
-    tables in delete_table, paragraphs in delete_paragraphs. Auto-backup:
+    manage_note (academic pack), comments in manage_comment (review
+    pack), sources in manage_source (references pack), tables in
+    delete_table, paragraphs in delete_paragraphs. Auto-backup:
     prev/anchor slots in .ks4w-backups (backup=False skips rotation only);
     atomic validated save. Refuses documents open in Word.
     """
