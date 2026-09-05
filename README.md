@@ -241,6 +241,23 @@ Almost no MCP server tells you what it costs to load. Here is the bill, from
 - Paragraph deletion refuses ranges that would cut a field (TOC, PAGEREF) in
   half or silently swallow a section break.
 
+### Update check (opt-out)
+
+| Variable | Effect |
+|---|---|
+| `KS4W_NO_UPDATE_CHECK` | `1` or `true` turns the update check off completely: no network call, no cache file |
+
+The server checks PyPI, the package index it was installed from, at most once
+every 14 days to see whether a newer version exists; the check sends nothing
+but a standard HTTP request for that package's public JSON, and setting
+`KS4W_NO_UPDATE_CHECK=1` turns it off entirely.
+
+It runs on a background thread at startup, so it never delays a call, and it
+fails silently: a timeout or an offline machine leaves no error anywhere. When
+a newer release exists, `get_workflows` adds one line saying so. That is the
+only place it ever appears, and the server never downloads or installs
+anything on its own.
+
 ### Sandboxing (opt-in)
 
 Off by default: with nothing configured, the server behaves exactly as it

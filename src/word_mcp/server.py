@@ -51,6 +51,7 @@ from .core.errors import (
     UnsupportedStructure,
     WordMcpError,
 )
+from .core import update_check as _upd
 from .core.locate import is_range_spec, resolve_location, resolve_range
 from .core.package import DocxPackage, qn
 from .ops import (
@@ -1472,7 +1473,13 @@ def get_workflows(task: str | None = None) -> dict:
     call with task='<name>' for that task's step-by-step sequence and notes.
     Pure guidance: reads nothing, changes nothing.
     """
-    return _wf.get_workflows(task)
+    out = _wf.get_workflows(task)
+    # The server's one and only update surface: a cached line, added when a
+    # newer stable release exists. Reads no network and never raises.
+    notice = _upd.update_notice()
+    if notice and isinstance(out, dict):
+        out = {**out, "update": notice}
+    return out
 
 
 # ============================================ 2.4 text and paragraph writing
@@ -5036,6 +5043,12 @@ def main() -> None:
     disabled = _startup_disabled_names()
     if disabled:
         mcp.add_transform(_Visibility(False, names=disabled))
+    # Fire and forget: a daemon thread asks PyPI whether a newer release
+    # exists (at most every 14 days, off entirely under
+    # KS4W_NO_UPDATE_CHECK). Nothing waits on it, nothing it does can
+    # delay or break serving, and the answer only ever appears as one line
+    # in get_workflows.
+    _upd.start_background_check()
     mcp.run()
 
 

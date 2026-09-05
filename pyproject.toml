@@ -21,6 +21,7 @@ dependencies = [
     "python-docx",
     "lxml",
     "regex",
+    "packaging",  # version comparison for the startup update check
     "pywin32; sys_platform == 'win32'",
 ]
 
