@@ -55,6 +55,42 @@ window, or Settings → Extensions → Advanced settings → Install Extension.
 Desktop writes the manifest's `mcp_config` into its config; the first launch
 resolves the package from PyPI (needs network + uv on the machine).
 
+## Settings checkboxes (`user_config`)
+
+The manifest exposes nine boolean checkboxes in the server's Claude Desktop
+settings, each mapped to an environment variable through `mcp_config.env`:
+
+| Checkbox | Env | Default | On means |
+|---|---|---|---|
+| Load every tool at startup | `KS4W_ALL_TOOLS` | off | every pack is enabled at startup (same as `KS4W_MODE=full`) |
+| Citations and bibliography | `KS4W_PACK_REFERENCES` | off | the `references` pack loads at startup |
+| Track changes and comments | `KS4W_PACK_REVIEW` | off | the `review` pack loads at startup |
+| Long-document structure | `KS4W_PACK_ACADEMIC` | off | the `academic` pack loads at startup |
+| Working across several documents | `KS4W_PACK_ASSEMBLY` | off | the `assembly` pack loads at startup |
+| Pictures, charts, and table layout | `KS4W_PACK_MEDIA_FORMS` | off | the `media-forms` pack loads at startup |
+| Editing in the open Word window | `KS4W_PACK_COM_LIVE` | off | the `com-live` pack loads at startup |
+| Protection and redaction | `KS4W_PACK_PROTECTION_IO` | off | the `protection-io` pack loads at startup |
+| Lock the tool set at startup | `KS4W_LOCK_TOOLS` | off | `enable_tools`/`disable_tools` refuse (same as `KS4W_PACK_POLICY=locked`) |
+
+Desktop writes the LITERAL strings `"true"` and `"false"`, and
+`packs.parse_toggle` honors both with the polarity the checkbox shows. An
+empty value fails closed to off; an unrecognized value refuses to start and
+names the accepted values, and every toggle is parsed at startup even when
+precedence ends up ignoring it.
+
+Startup precedence, highest first: `KS4W_MODE` set to something non-empty
+(the checkboxes are ignored outright), then `KS4W_ALL_TOOLS` (all means all,
+so a pack ticked off still loads), then the per-pack boxes composed into a
+pack list, then lite. `KS4W_PACK_POLICY` likewise beats `KS4W_LOCK_TOOLS`.
+The server writes one line to stderr at startup naming what decided the
+surface, which is how an operator sees that a `KS4W_MODE` pin overrode the
+boxes a human ticked.
+
+**Adding a pack means adding a checkbox.** The env list is derived from
+`PACK_SUMMARIES`, and `tests/unit/test_launch_toggles.py` asserts that
+`mcp_config.env` and `user_config` match the code exactly, so a new pack
+fails the suite until its checkbox and copy land here.
+
 ## Publish to Smithery (Local / MCPB Bundle listing)
 
 Authentication is yours, not an agent's: log in yourself with the Smithery

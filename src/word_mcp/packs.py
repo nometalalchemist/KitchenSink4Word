@@ -31,6 +31,23 @@ Env contract:
   enable_tools, which is deliberately a plain tool call) or "locked"
   (enable_tools/disable_tools refuse; the surface is fixed at startup).
 
+The BOOLEAN toggles behind the .mcpb checkboxes (see parse_toggle). Each
+accepts the literal "true"/"false" Claude Desktop writes, treats empty and
+absent as off, and refuses to start on anything else:
+- KS4W_ALL_TOOLS: "true" loads every pack at startup.
+- KS4W_PACK_<NAME>: one per pack (KS4W_PACK_REFERENCES,
+  KS4W_PACK_MEDIA_FORMS, ...), each loading that pack at startup, so an
+  installer can offer a checkbox per pack instead of asking a human to
+  type a comma-separated list.
+- KS4W_LOCK_TOOLS: "true" fixes the surface at startup (enable_tools and
+  disable_tools refuse), "false" or empty leaves it adjustable.
+  KS4W_PACK_POLICY wins when it is set to a non-empty value.
+
+Startup surface precedence, highest first: KS4W_MODE (a non-empty pin
+ignores every checkbox), then KS4W_ALL_TOOLS, then the per-pack toggles
+composed in menu order, then lite. startup_note() names which one decided
+it and apply_startup_mode() writes that line to stderr.
+
 No persistence, by design: every session starts at KS4W_MODE.
 
 server.py populates the registry via register(); this module never imports
@@ -47,6 +64,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from typing import Callable
 
 from .core.errors import WordMcpError
@@ -178,8 +196,112 @@ def surface_report() -> dict:
     }
 
 
+#: The startup surface env for power users: "lite", "full", or a pack list.
+ENV_MODE = "KS4W_MODE"
+
+#: The surface-lock env for power users: "auto" (default) or "locked".
+ENV_PACK_POLICY = "KS4W_PACK_POLICY"
+
+#: The positively-named boolean toggles behind the .mcpb user_config
+#: checkboxes. Claude Desktop writes the LITERAL strings "true" and "false"
+#: for a user_config boolean, so both are honored with the meaning the
+#: checkbox shows the human: ticked means the thing the name says.
+ENV_ALL_TOOLS = "KS4W_ALL_TOOLS"
+ENV_LOCK_TOOLS = "KS4W_LOCK_TOOLS"
+
+#: One boolean env per pack, so the installer can offer a checkbox per pack
+#: instead of asking a non-coder to type a comma-separated list. The pack
+#: name uppercases and its dashes become underscores:
+#: media-forms -> KS4W_PACK_MEDIA_FORMS.
+PACK_ENV_PREFIX = "KS4W_PACK_"
+
+_TRUE = ("1", "true", "on", "yes")
+_FALSE = ("0", "false", "off", "no")
+
+
+def parse_toggle(name: str, value: str | bool | None) -> bool:
+    """Resolve one boolean launch toggle, POSITIVE polarity: the value reads
+    the way the Desktop checkbox does, so "true" means the thing the env name
+    says.
+
+    An EMPTY value FAILS CLOSED to False, never to the enabling side: an
+    empty env is what an unconfigured host writes, and an empty string that
+    silently turned a setting ON would be a fail-open defect. Unrecognized
+    values are an ERROR, never a shrug, because guessing at a typo would
+    silently change the tool surface the operator asked for."""
+    if value is None or value is False:
+        return False
+    if value is True:
+        return True
+    text = str(value).strip().lower()
+    if not text:
+        return False  # empty NEVER enables
+    if text in _TRUE:
+        return True
+    if text in _FALSE:
+        return False
+    raise WordMcpError(
+        f"unknown {name} value {value!r}: use 'true' or 'false' "
+        f"(also accepted: {', '.join(_TRUE)} / {', '.join(_FALSE)}). "
+        f"Refusing to start rather than guessing, because guessing here "
+        f"would silently change which tools this server offers."
+    )
+
+
+def toggle(name: str) -> bool:
+    """Read one boolean toggle from the environment. Absent or empty is
+    False; garbage raises."""
+    return parse_toggle(name, os.environ.get(name))
+
+
+def _explicit(name: str) -> str:
+    """The power-user env's value when it is set to something non-empty.
+    An unset or blank value is not a choice and defers to the toggle."""
+    return os.environ.get(name, "").strip()
+
+
+def pack_env(pack: str) -> str:
+    """The boolean env behind one pack's checkbox."""
+    return PACK_ENV_PREFIX + pack.upper().replace("-", "_")
+
+
+def pack_env_names() -> dict[str, str]:
+    """pack -> its boolean env, in menu order."""
+    return {pack: pack_env(pack) for pack in PACK_SUMMARIES}
+
+
+def toggle_env_names() -> list[str]:
+    """Every boolean launch env this server reads."""
+    return [ENV_ALL_TOOLS, ENV_LOCK_TOOLS, *pack_env_names().values()]
+
+
+def validate_toggles() -> None:
+    """Parse every boolean env at startup so a typo refuses LOUDLY, even in
+    a toggle the precedence rules end up ignoring. Ignored means ignored for
+    the DECISION, not unchecked: a misspelled value is an operator mistake
+    whichever variable it lands in."""
+    for name in toggle_env_names():
+        toggle(name)
+
+
+def selected_packs() -> list[str]:
+    """The packs whose own checkbox is ticked, in menu order."""
+    return [pack for pack, env in pack_env_names().items() if toggle(env)]
+
+
+def resolve_lock() -> bool:
+    """Is the tool surface fixed at startup?
+
+    Precedence: an explicit KS4W_PACK_POLICY beats KS4W_LOCK_TOOLS beats
+    the unlocked default."""
+    explicit = _explicit(ENV_PACK_POLICY)
+    if explicit:
+        return explicit.lower() == "locked"
+    return toggle(ENV_LOCK_TOOLS)
+
+
 def _policy_locked() -> bool:
-    return os.environ.get("KS4W_PACK_POLICY", "auto").strip().lower() == "locked"
+    return resolve_lock()
 
 
 def _validate(packs: list[str]) -> list[str]:
@@ -215,9 +337,10 @@ def enable(packs: list[str]) -> dict:
     and the resulting total surface."""
     if _policy_locked():
         err = WordMcpError(
-            "KS4W_PACK_POLICY=locked: the tool surface is fixed at startup "
-            "by the host. Ask the operator to change KS4W_MODE or unlock "
-            "the policy."
+            "the tool surface is fixed at startup by the host "
+            "(KS4W_PACK_POLICY=locked, or the 'Lock the tool set at "
+            "startup' setting). Only a human can change it: untick that "
+            "setting, or restart the server with a different KS4W_MODE."
         )
         err.code = "CONFLICT"
         raise err
@@ -282,12 +405,74 @@ def disable(packs: list[str]) -> dict:
     }
 
 
+def resolve_startup_mode() -> str:
+    """The startup surface in force, before any pack is flipped.
+
+    Precedence, highest first:
+
+    1. KS4W_MODE, set to something non-empty. The power-user pin wins
+       outright and every checkbox is ignored, because a host that spells
+       out a pack list has said exactly what it wants.
+    2. KS4W_ALL_TOOLS=true, the master checkbox: every pack, regardless of
+       the per-pack checkboxes. "All" means all, so an individually
+       unticked pack still loads rather than quietly contradicting the
+       master switch.
+    3. The per-pack checkboxes, composed into a pack list in menu order.
+    4. lite, the default, when nothing is set."""
+    explicit = _explicit(ENV_MODE)
+    if explicit:
+        return explicit.lower()
+    if toggle(ENV_ALL_TOOLS):
+        return "full"
+    chosen = selected_packs()
+    return ",".join(chosen) if chosen else "lite"
+
+
+def startup_note() -> str:
+    """One line naming what decided the startup surface, written to stderr
+    at startup. A surprising tool list should name its own cause, and the
+    case that most needs saying out loud is a KS4W_MODE pin silently
+    overriding checkboxes a human ticked in an installer."""
+    explicit = _explicit(ENV_MODE)
+    if explicit:
+        ticked = [
+            name for name in [ENV_ALL_TOOLS, *pack_env_names().values()]
+            if toggle(name)
+        ]
+        note = f"startup surface from {ENV_MODE}={explicit!r}"
+        if ticked:
+            return (
+                f"{note}; the settings checkboxes are IGNORED while it is "
+                f"set ({', '.join(ticked)})"
+            )
+        return note
+    if toggle(ENV_ALL_TOOLS):
+        return (
+            f"startup surface: every pack, from {ENV_ALL_TOOLS}=true "
+            f"(the per-pack checkboxes do not narrow it)"
+        )
+    chosen = selected_packs()
+    if chosen:
+        return (
+            "startup surface: lite core plus "
+            + ", ".join(f"{p} ({pack_env(p)})" for p in chosen)
+        )
+    return "startup surface: lite core only (no startup toggle set)"
+
+
 def apply_startup_mode() -> str:
-    """Apply KS4W_MODE at server start (before the event loop; no client is
-    connected yet, so the visibility hook runs without a session and the
-    server-side wiring must use global transforms, not session state).
-    Returns the mode applied, for logging."""
-    mode = os.environ.get("KS4W_MODE", "lite").strip().lower()
+    """Apply the resolved startup surface at server start (before the event
+    loop; no client is connected yet, so the visibility hook runs without a
+    session and the server-side wiring must use global transforms, not
+    session state). Returns the mode applied, for logging.
+
+    Every boolean toggle is parsed here so a typo in any of them refuses
+    LOUDLY before the server serves a single request, and the resolution is
+    announced on stderr (stdout carries the protocol and stays clean)."""
+    validate_toggles()
+    resolve_lock()
+    mode = resolve_startup_mode()
+    sys.stderr.write(f"[kitchensink4word] {startup_note()}\n")
     if not mode or mode == "lite":
         return "lite"
     # "lite" and "full"/"everything" are mode tokens, tolerated inside

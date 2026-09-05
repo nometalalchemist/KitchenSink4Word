@@ -1010,7 +1010,10 @@ mid-session; calling a disabled tool returns a signpost naming its pack
 and the exact enabling call, so discovery is self-serve. Startup surface
 is configurable with `KS4W_MODE` (`lite`, `full`, or a comma-separated
 pack list), and `KS4W_PACK_POLICY=locked` pins the surface for hosts
-that manage it themselves. Nothing persists across sessions by design.
+that manage it themselves. The `.mcpb` bundle exposes the same two
+choices as checkboxes writing `KS4W_ALL_TOOLS` and `KS4W_LOCK_TOOLS`;
+the two power-user variables above beat them when set. Nothing persists
+across sessions by design.
 
 ## 10. Known one-way doors
 

@@ -26,6 +26,8 @@ class DummyTool:
 def _clean_registry(monkeypatch):
     monkeypatch.delenv("KS4W_MODE", raising=False)
     monkeypatch.delenv("KS4W_PACK_POLICY", raising=False)
+    monkeypatch.delenv("KS4W_ALL_TOOLS", raising=False)
+    monkeypatch.delenv("KS4W_LOCK_TOOLS", raising=False)
     saved_reg = {p: dict(t) for p, t in packs._REGISTRY.items()}
     saved_en = dict(packs._ENABLED)
     yield

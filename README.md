@@ -80,6 +80,17 @@ Lite-tool refusals name the pack and the exact `enable_tools` call to run, and
 built in. To skip tiering entirely, start the server with `KS4W_MODE=full` and
 every tool is present from the first call.
 
+Installed from the `.mcpb` bundle, the same choices are checkboxes in the
+server's Claude Desktop settings: "Load every tool at startup", one box per
+pack, and "Lock the tool set at startup" (which fixes the surface so
+`enable_tools` refuses). They write `KS4W_ALL_TOOLS`, `KS4W_PACK_<NAME>`
+(`KS4W_PACK_REFERENCES`, `KS4W_PACK_MEDIA_FORMS`, and so on), and
+`KS4W_LOCK_TOOLS`. Every one of them takes `true` or `false`, treats empty as
+off, and refuses to start on anything else rather than guessing. Precedence
+runs `KS4W_MODE` (a non-empty pin ignores the checkboxes) over
+`KS4W_ALL_TOOLS` over the per-pack boxes over lite, and the server writes one
+line to stderr at startup naming which of them decided the surface.
+
 One client-side caveat: some MCP clients drop a tool's schema when a pack is
 disabled and do not pick it back up on re-enable, even though the server sends
 `tools/list_changed` both ways (observed in Claude Code, 2026-09). If a

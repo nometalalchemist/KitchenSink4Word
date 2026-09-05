@@ -31,7 +31,83 @@
       "command": "uvx",
       "args": [
         "kitchensink4word==2.0.1"
-      ]
+      ],
+      "env": {
+        "KS4W_ALL_TOOLS": "${user_config.all_tools}",
+        "KS4W_LOCK_TOOLS": "${user_config.lock_tools}",
+        "KS4W_PACK_REFERENCES": "${user_config.pack_references}",
+        "KS4W_PACK_REVIEW": "${user_config.pack_review}",
+        "KS4W_PACK_ACADEMIC": "${user_config.pack_academic}",
+        "KS4W_PACK_ASSEMBLY": "${user_config.pack_assembly}",
+        "KS4W_PACK_MEDIA_FORMS": "${user_config.pack_media_forms}",
+        "KS4W_PACK_COM_LIVE": "${user_config.pack_com_live}",
+        "KS4W_PACK_PROTECTION_IO": "${user_config.pack_protection_io}"
+      }
+    }
+  },
+  "user_config": {
+    "all_tools": {
+      "type": "boolean",
+      "title": "Load every tool at startup",
+      "description": "On: all 108 tools are loaded when a chat starts, which uses about 26,700 tokens of the conversation before you type anything, and the individual boxes below are ignored. Off (recommended): the chat starts with the 28 everyday tools, plus any group ticked below, and Claude switches the rest on by itself when a task needs them.",
+      "default": false,
+      "required": false
+    },
+    "pack_references": {
+      "type": "boolean",
+      "title": "Citations and bibliography",
+      "description": "Insert and manage citations, build and restyle a bibliography, pull references from Zotero, and check that every citation has a matching entry.",
+      "default": false,
+      "required": false
+    },
+    "pack_review": {
+      "type": "boolean",
+      "title": "Track changes and comments",
+      "description": "Read tracked changes and accept or reject them, add and reply to comments, resolve threads, compare two drafts, and strip reviewer names.",
+      "default": false,
+      "required": false
+    },
+    "pack_academic": {
+      "type": "boolean",
+      "title": "Long-document structure",
+      "description": "Footnotes and endnotes, tables of contents, an index, figure and table captions, cross-references, bookmarks, headers and footers, section setup, styles, word counts, and accessibility checks.",
+      "default": false,
+      "required": false
+    },
+    "pack_assembly": {
+      "type": "boolean",
+      "title": "Working across several documents",
+      "description": "Insert one document into another, split a document apart, move sections between files, copy tables across files, work from templates, and run a mail merge.",
+      "default": false,
+      "required": false
+    },
+    "pack_media_forms": {
+      "type": "boolean",
+      "title": "Pictures, charts, and table layout",
+      "description": "Insert pictures, charts, equations, text boxes, and links; merge and split table cells, add and remove rows and columns, and sort a table; build fillable form fields.",
+      "default": false,
+      "required": false
+    },
+    "pack_com_live": {
+      "type": "boolean",
+      "title": "Editing in the open Word window",
+      "description": "Edit a document while it is open in Word, and use Word itself to save as PDF, open a PDF, compare or combine drafts, and run the spelling and readability checks. Needs Windows with Word installed.",
+      "default": false,
+      "required": false
+    },
+    "pack_protection_io": {
+      "type": "boolean",
+      "title": "Protection and redaction",
+      "description": "Restrict editing, add a watermark, black out text and verify it is really gone, and move table data in and out as CSV or JSON.",
+      "default": false,
+      "required": false
+    },
+    "lock_tools": {
+      "type": "boolean",
+      "title": "Lock the tool set at startup",
+      "description": "On: whatever tools are loaded when the chat opens are the only tools it can use, and Claude cannot add more. Off (recommended): Claude can switch extra tools on mid-chat when a task calls for them, such as tracked changes or citations.",
+      "default": false,
+      "required": false
     }
   },
   "compatibility": {
