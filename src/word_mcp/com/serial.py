@@ -18,10 +18,15 @@ Coverage contract: every COM entry point acquires the lock —
 The lock is an RLock: nested acquisitions on one thread are legal (a
 bridge helper called under an already-held lock must not deadlock).
 
-Scope honesty: the lock serializes THIS server process. Two separate
-word-mcp processes automating the same Word are not serialized (each MCP
-client normally spawns its own server, but the report's failure mode —
-several agents of ONE session sharing one server — is fully covered).
+Scope honesty: this lock serializes THIS server process only. That was
+the whole scope until the 2026-09-05 concurrency matrix measured what it
+left open — two server processes against one Word instance overlapped in
+49 of 50 operation pairs, double-applied a find-then-assign replace, and
+leaked DisplayAlerts to wdAlertsNone. Cross-PROCESS serialization is a
+separate, file-based lock in com/xproc.py, which every live session now
+holds on top of this one. Keep the two distinct: this one is cheap,
+in-memory, and covers threads; that one is a lockfile and covers the
+machine.
 
 Individual operations are fast; serialization latency is negligible
 (report finding). Status reporting (lock_snapshot) lets com_word_status

@@ -65,6 +65,7 @@ CODE_MAP: tuple[tuple[type[BaseException], str], ...] = (
     (_err.ProtectedViewRefused, "PROTECTED_VIEW"),
     (_err.WordNotRunning, "APP_NOT_RUNNING"),
     (_err.DocumentNotOpenInWord, "APP_NOT_RUNNING"),
+    (_err.LiveLockTimeout, "APP_BUSY"),
     (_err.WordBusy, "APP_BUSY"),
     (_err.WordBlocked, "APP_BLOCKED"),
     (_err.WordDisconnected, "CONFLICT"),

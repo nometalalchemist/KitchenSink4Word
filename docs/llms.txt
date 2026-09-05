@@ -15,10 +15,10 @@ below is a behavior you can rely on without testing it first.
 
 ## 1. Token economics
 
-- Session start loads 28 tools, about 7,600 tokens. Nothing else is on the wire until you ask for it.
+- Session start loads 28 tools, about 7,700 tokens. Nothing else is on the wire until you ask for it.
 - `enable_tools(["<pack>"])` adds a pack mid-session. `disable_tools([...])` removes one. Both take effect on the next `tools/list`, announced by `tools/list_changed`.
 - Pack costs, from `scripts/measure_surface.py`: references 8 tools / 2.4k, review 9 / 1.8k, academic 23 / 5.7k, assembly 7 / 1.7k, media-forms 16 / 4.1k, com-live 13 / 2.2k, protection-io 6 / 1.2k.
-- Everything enabled: 110 tools (108 document tools plus the two pack toggles), about 26,600 tokens.
+- Everything enabled: 110 tools (108 document tools plus the two pack toggles), about 26,700 tokens.
 - Set `KS4W_MODE=full` at server start to skip tiering and load every pack at startup.
 - A lite tool asked for out-of-scope work returns the pack name and the exact `enable_tools` call to run. You never have to guess which pack holds a capability.
 - `get_workflows` recipes name the packs each recipe needs before its first step.
@@ -34,7 +34,7 @@ below is a behavior you can rely on without testing it first.
 - Closed error vocabulary: every refusal is `{ok: false, error: {code, message, hint}}`. `code` is one of 13 values: `AMBIGUOUS_LOCATION`, `NOT_FOUND`, `STALE_ANCHOR`, `RANGE_OUT_OF_BOUNDS`, `DOCUMENT_LOCKED`, `APP_NOT_RUNNING`, `APP_BUSY`, `APP_BLOCKED`, `PROTECTED_VIEW`, `VALIDATION_FAILED`, `UNSUPPORTED_CONTENT`, `CONFLICT`, `BAD_PARAMS`. Branch on `code`, never on message text.
 - Refusals ride the wire with `isError=true`. A refusal never arrives as a success.
 - `hint` carries the next call to make, not a restatement of the failure.
-- COM access is serialized: concurrent tool calls against one Word instance are queued, so two agents working at once cannot interleave writes into the same document.
+- COM access is serialized: concurrent tool calls against one Word instance are queued, so two agents working at once cannot interleave writes into the same document. Serialization spans separate server processes, not only threads in one, so two agents on two clients queue the same way.
 - Pending Word dialogs are detected at the OS window level, not inferred from a timeout. `com_word_status` reports the dialog a human has to dismiss.
 - File-mode tools refuse a document that is open in Word and name the `live_*` or `com_*` route that handles the open case.
 - Live edits land as one Ctrl+Z step per tool call and leave the user's cursor and selection where they were.

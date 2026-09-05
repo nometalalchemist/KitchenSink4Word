@@ -74,3 +74,8 @@ class WordBlocked(WordMcpError):
 
 class WordDisconnected(WordMcpError):
     """Word or the document closed mid-call; the edit may be partially applied."""
+
+
+class LiveLockTimeout(WordMcpError):
+    """Another server process held the cross-process live-session lock past
+    the wait window; the live call was refused and nothing was changed."""
