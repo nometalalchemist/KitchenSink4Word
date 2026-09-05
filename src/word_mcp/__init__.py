@@ -5,4 +5,4 @@
 #: place only. The update check reports this number, not installed metadata
 #: (an editable install's metadata goes stale the moment a version is
 #: bumped, and a wrong "you are running X" line is worse than none).
-__version__ = "2.0.1"
+__version__ = "2.0.2"
