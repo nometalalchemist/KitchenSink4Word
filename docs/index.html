@@ -235,6 +235,9 @@ footer a{color:var(--copper)}
 .btn:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ink)}
 .btn.primary{background:var(--copper);border-color:var(--copper);color:var(--paper);
   box-shadow:3px 3px 0 var(--ink)}
+.demo-invite{display:inline-block;margin-top:22px;font-size:12px;letter-spacing:.06em;
+  color:var(--copper);text-decoration:none;border-bottom:1.5px dashed var(--copper);padding-bottom:2px}
+.demo-invite:hover{color:var(--ink);border-bottom-style:solid}
 </style>
 </head>
 <body>
@@ -269,16 +272,17 @@ footer a{color:var(--copper)}
     <a class="btn primary" href="#install" data-i18n="btn.install">Install the Sink</a>
     <a class="btn" href="https://github.com/nometalalchemist/KitchenSink4Word" data-i18n="btn.source">Read the Source</a>
   </div>
+  <div class="rev d5"><a class="demo-invite" href="#guarantee" data-i18n="hero.invite">↓ or start with what it protects you from: the morning Word offers to repair your manuscript</a></div>
 </header>
 
 <section id="for">
   <div class="wrap">
     <div class="sec-head"><span class="no" data-i18n="no0">DEPT. 00</span><h2 data-i18n="h2.for">What this is actually for</h2></div>
-    <p class="for-lead" data-i18n="for.lead">This is the last Word MCP server you will need to install. Nothing else in the category comes close on capability: 219 operations reach every part of a Word document that serious work touches, and the survey further down this page is mostly empty columns. Completeness is only half of it. Your documents stay open in Word while the agent edits them, so each change appears in the window in front of you rather than arriving as a file you have to reload, and every change is preceded by an automatic backup and committed through an atomic validated save. Nothing you have written gets lost here.</p>
+    <p class="for-lead" data-i18n="for.lead">This is the last Word MCP server you will need to install. Nothing else in the category comes close on capability: 219 operations reach every part of a Word document that serious work touches, and the survey further down this page is mostly empty columns. Completeness is only half of it. Your documents stay open in Word while the agent edits them, so each change appears in the window in front of you rather than arriving as a file you have to reload, and there is a backup before every change, made without you asking. Nothing you have written gets lost here.</p>
     <div class="for-grid">
-      <div class="forcard"><h3 data-i18n="for1.t">For the academic</h3><p data-i18n="for1.p">A committee returns the manuscript covered in tracked revisions, and the citation apparatus has to survive the rewrite. Citations, footnotes, cross-references, APA parity checks, and the table of contents are first-class here, so an agent can take on the revision pass without breaking any of it.</p></div>
-      <div class="forcard"><h3 data-i18n="for2.t">For legal, compliance &amp; HR</h3><p data-i18n="for2.p">Contracts, policies, and case files live in Word, and every edit needs an author attached. Edits here can be written as tracked changes, document compare runs Word-native, and redaction actually removes the text, then verifies that it is gone.</p></div>
-      <div class="forcard"><h3 data-i18n="for3.t">For the Word power user</h3><p data-i18n="for3.p">For anyone whose documents are too important to gamble with. Every save is atomic and validated, an automatic backup precedes each change, and live editing keeps the document open in Word, one Ctrl+Z step per call, with the cursor untouched.</p></div>
+      <div class="forcard"><h3 data-i18n="for1.t">For the academic</h3><p data-i18n="for1.p">A committee returns the manuscript covered in tracked revisions, and the citation apparatus has to survive the rewrite. The scholarly furniture that other tools trample, from footnotes to the reference list, is first-class here, so an agent can take on the revision pass without breaking any of it.</p></div>
+      <div class="forcard"><h3 data-i18n="for2.t">For legal, compliance &amp; HR</h3><p data-i18n="for2.p">Contracts, policies, and case files live in Word, and every edit needs an author attached. Edits here can be written as tracked changes, comparing two versions works the way Word itself does it, and redaction actually removes the text, then verifies that it is gone.</p></div>
+      <div class="forcard"><h3 data-i18n="for3.t">For the Word power user</h3><p data-i18n="for3.p">For anyone whose documents are too important to gamble with. Watch the edit land in your own open Word window, take it back with a single Ctrl+Z if you don't like it, and know there was a backup before anything was touched. You keep the cursor; the agent does the typing.</p></div>
     </div>
   </div>
 </section>
@@ -294,10 +298,10 @@ footer a{color:var(--copper)}
     <div class="newin">
       <p class="sub" data-i18n="new.sub">The whole list, no release notes required.</p>
       <ul>
-        <li data-i18n="new1"><b>More reach, fewer tools.</b> 219 operations now, up from 200 in v1.6, and that v1.6 surface of 189 tools became 108 under one verb grammar, so your agent picks the right tool the first time.</li>
-        <li data-i18n="new2"><b>Starts small, grows on demand.</b> A session opens on a 28-tool core costing about 7,700 tokens and switches on capability packs only when a task actually calls for them.</li>
-        <li data-i18n="new3"><b>Live editing you can leave running.</b> Several agents can now work an open document without colliding, and a Word dialog waiting on a human is caught at the operating-system level instead of quietly freezing the session.</li>
-        <li data-i18n="new4"><b>Read once, edit in bulk.</b> The anchored document view hands back addresses that survive your edits, and the batch editor applies dozens of changes against them in a single all-or-nothing pass.</li>
+        <li data-i18n="new1"><b>Fewer tools, and your agent stops guessing.</b> v1.6 had 189 tools with a lot of overlapping names, and agents burned time and tokens picking between them. Version 2 rebuilds everything as 108 tools under one consistent grammar that covers more ground than before, not less. The agent picks right the first time and spends your session on the document instead.</li>
+        <li data-i18n="new2"><b>Starts light, stays light.</b> A fresh session loads a small core instead of the whole toolbox, and reaches for the specialty shelves only when your task actually needs them. Your assistant keeps more of its attention on your document, and none of the old capabilities went anywhere.</li>
+        <li data-i18n="new3"><b>Live editing you can leave running.</b> Several agents can now work an open document without colliding, and a Word dialog waiting on a human gets noticed and reported, instead of leaving your agent hanging.</li>
+        <li data-i18n="new4"><b>Fifty edits, one pass, nothing drifts.</b> Ask for a view of the document and every paragraph comes back with a stable address, so the agent can point at the exact spot it means even after the text shifts. Then the batch editor lands dozens of changes in one pass that either all succeed or leave the file untouched. No more edit number thirty-seven landing on the wrong paragraph.</li>
         <li data-i18n="new5"><b>Comment back and forth with your AI.</b> Leave a comment in Word the way you would for a colleague, and the agent reads it, does the work as tracked changes, and replies in the thread. (Preview.)</li>
       </ul>
     </div>
@@ -318,6 +322,7 @@ footer a{color:var(--copper)}
 <section id="inventory">
   <div class="wrap">
     <div class="sec-head"><span class="no" data-i18n="no2">DEPT. 02</span><h2 data-i18n="h2.inv">The inventory</h2></div>
+    <p class="for-lead" data-i18n="inv.lead">The stock is arranged in capability packs, the way a good hardware store is arranged in aisles. Browse the shelves below; your agent only carries an aisle when the job calls for it.</p>
     <div class="depts">
       <div class="dept"><h3><span data-i18n="dept1.t">Tables</span> <span class="num">№ 001–024</span></h3><p data-i18n="dept1.p">Merge-aware column insert/delete, one-call bulk cell edits, merge/unmerge, gridBefore rows, nested tables, sort, split, named styles, header repeat.</p><p class="ex" data-i18n="dept1.e">e.g. add a column to a table full of merged cells · rewrite twenty cells in one call · sort a table by any column</p><span class="count" data-i18n="dept1.c">media-forms · lite</span></div>
       <div class="dept"><h3><span data-i18n="dept2.t">References</span> <span class="num">№ 025–041</span></h3><p data-i18n="dept2.p">Native citations &amp; bibliography (12 styles, verified Word rendering), footnotes &amp; endnotes with conversion, index generation, TOC &amp; caption lists, cross-references.</p><p class="ex" data-i18n="dept2.e">e.g. insert a citation and build the bibliography · convert every footnote to an endnote · refresh the table of contents</p><span class="count" data-i18n="dept2.c">references · academic</span></div>
@@ -337,6 +342,7 @@ footer a{color:var(--copper)}
 <section id="compare">
   <div class="wrap">
     <div class="sec-head"><span class="no" data-i18n="no3">DEPT. 03</span><h2 data-i18n="h2.cmp">Against the field</h2></div>
+    <p class="for-lead" data-i18n="cmp.lead">Tool counts flatter everybody. What matters is what happens when you actually ask:</p>
     <div class="tablewrap">
       <table>
         <tr><th data-i18n="mx.cap">Capability</th><th class="us">🚰 KitchenSink4Word</th><th>word-mcp-live</th><th data-i18n="mx.h3">GongRzhe (archived)</th><th>docx-mcp (SecurityRonin)</th><th data-i18n="mx.h5">Official add-ins*</th></tr>
@@ -365,13 +371,14 @@ footer a{color:var(--copper)}
 <section id="efficiency">
   <div class="wrap">
     <div class="sec-head"><span class="no" data-i18n="no4">DEPT. 04</span><h2 data-i18n="h2.eff">Context efficiency</h2></div>
-    <p class="for-lead" data-i18n="eff.lead">Every MCP server occupies part of an agent's context window before any work starts, and almost none of them tell you how much. Here is our bill, measured: a fresh session starts on the lite core, 28 tools for about 7,700 tokens, and turns on capability packs only when a task needs them. Load every pack and the full surface measures about 26,700 tokens, down from about 34,400 in v1.6, roughly 23 percent less for the whole sink and about 78 percent less at lite start. Clients that defer tool schemas, as Claude Code does, pay close to zero until a tool is actually called.</p>
+    <p class="for-lead" data-i18n="eff.lead">Every MCP server takes a bite out of your assistant's memory before any work starts, and a big bite has a cost you can feel: an assistant that forgets what you told it ten minutes ago. Almost nobody tells you the size of the bite. Here is ours, measured: small to start, growing only when a task needs a specialty pack, and the exact numbers are on the tiles below.</p>
     <div class="specs-strip" style="margin-top:26px">
       <div class="spec"><span class="n">~7.7k</span><span class="l" data-i18n="eff.s1">Lite start · 28 tools</span></div>
       <div class="spec"><span class="n">~26.7k</span><span class="l" data-i18n="eff.s2">Full surface · all packs</span></div>
       <div class="spec"><span class="n">~0</span><span class="l" data-i18n="eff.s3">Practical cost when schemas are deferred (Claude Code)</span></div>
     </div>
-    <p class="foot-note" style="margin-top:18px" data-i18n="eff.growth"><b>MORE REACH, FEWER TOOLS</b> · v1.6 measured 200 operations across 189 tools; v2.0 delivers 219 across 108. Measured with one yardstick on both trees, so the comparison holds.</p>
+    <p class="foot-note" style="margin-top:18px" data-i18n="eff.fig">The measured bill: about 7,700 tokens to start, about 26,700 with every pack on, down from about 34,400 in v1.6.</p>
+    <p class="foot-note" style="margin-top:10px" data-i18n="eff.growth"><b>MORE REACH, FEWER TOOLS</b> · v1.6 measured 200 operations across 189 tools; v2.0 delivers 219 across 108. Measured with one yardstick on both trees, so the comparison holds.</p>
     <p class="foot-note" style="margin-top:10px" data-i18n="eff.road"><b>TIERED LOADING</b> · Shipped. A session starts on the 28-tool lite core and turns on packs with one enable_tools call. Starts lite, the whole sink one call away.</p>
   </div>
 </section>
@@ -439,7 +446,7 @@ footer a{color:var(--copper)}
     <div class="guarantee">
       <span class="seal">🛡️</span>
       <h3 data-i18n="g.t">Engineered Not to Corrupt</h3>
-      <p data-i18n="g.p1">Atomic validated saves. Automatic backups before every change. Byte-identical passthrough of anything not being edited: equations, textboxes, and content controls pass through untouched. Battle-tested on long, heavily formatted real-world documents: one carrying 171 footnotes, one carrying 126 tracked revisions and reviewer comments, plus two insane-mode stress campaigns without a single Word repair prompt.</p>
+      <p data-i18n="g.p1">You know the morning: the manuscript is due, Word opens, and there is a dialog offering to "repair" your file. That morning is what this whole server is built to prevent. Before any change, a backup is made automatically. Every save is checked before it replaces your file, so a bad write cannot take the original with it. And everything the edit doesn't touch, from equations to textboxes, passes through exactly as it was, byte for byte. Two full stress campaigns and a shelf of long, heavily formatted real manuscripts, and Word has never once offered to repair anything this server saved.</p>
       <p style="margin-top:14px;font-size:11px;opacity:.75" data-i18n="g.p2">Provided as-is, without warranty of any kind, per the license; the engineering above is simply how seriously your documents are taken. Keep backups. (It makes them for you.)</p>
     </div>
   </div>
@@ -447,19 +454,19 @@ footer a{color:var(--copper)}
 
 <section id="family">
   <div class="wrap">
-    <div class="sec-head"><span class="no">DEPT. 07</span><h2>The family</h2></div>
+    <div class="sec-head"><span class="no" data-i18n="no7">DEPT. 07</span><h2 data-i18n="h2.fam">The family</h2></div>
     <div class="service-grid">
       <a class="counter" href="https://nometalalchemist.github.io/KitchenSink4PPT/">
         <span class="icon">💡</span>
-        <h3>KitchenSink4PPT</h3>
-        <p>Everything plus the kitchen sink for Microsoft PowerPoint. Diagrams as grouped native shapes with glued connectors: move the node, the arrows follow. File-based structural table surgery, slide management done right, tiered loading from day one.</p>
-        <span class="go">Visit the lighting aisle →</span>
+        <h3 data-i18n="fam1.t">KitchenSink4PPT</h3>
+        <p data-i18n="fam1.p">Everything plus the kitchen sink for Microsoft PowerPoint. Move the node, the arrows follow: diagrams your hands can still move. Tables that behave, and the same never-corrupts promise, now for slides.</p>
+        <span class="go" data-i18n="fam1.g">Visit the lighting aisle →</span>
       </a>
       <a class="counter" href="https://nometalalchemist.github.io/">
         <span class="icon">🏪</span>
-        <h3>The storefront</h3>
-        <p>The whole hardware store on one page: every KitchenSink server, its fixture, and its counter, plus a shelf or two that are not empty by accident.</p>
-        <span class="go">Browse the store →</span>
+        <h3 data-i18n="fam2.t">The storefront</h3>
+        <p data-i18n="fam2.p">The whole hardware store on one page: every KitchenSink server, its fixture, and its counter, plus a shelf or two that are not empty by accident.</p>
+        <span class="go" data-i18n="fam2.g">Browse the store →</span>
       </a>
     </div>
   </div>
@@ -489,10 +496,10 @@ en: {
 "new.label": "JUST IN",
 "new.t": "Five things this release changed",
 "new.sub": "The whole list, no release notes required.",
-"new1": "<b>More reach, fewer tools.</b> 219 operations now, up from 200 in v1.6, and that v1.6 surface of 189 tools became 108 under one verb grammar, so your agent picks the right tool the first time.",
-"new2": "<b>Starts small, grows on demand.</b> A session opens on a 28-tool core costing about 7,700 tokens and switches on capability packs only when a task actually calls for them.",
-"new3": "<b>Live editing you can leave running.</b> Several agents can now work an open document without colliding, and a Word dialog waiting on a human is caught at the operating-system level instead of quietly freezing the session.",
-"new4": "<b>Read once, edit in bulk.</b> The anchored document view hands back addresses that survive your edits, and the batch editor applies dozens of changes against them in a single all-or-nothing pass.",
+"new1": "<b>Fewer tools, and your agent stops guessing.</b> v1.6 had 189 tools with a lot of overlapping names, and agents burned time and tokens picking between them. Version 2 rebuilds everything as 108 tools under one consistent grammar that covers more ground than before, not less. The agent picks right the first time and spends your session on the document instead.",
+"new2": "<b>Starts light, stays light.</b> A fresh session loads a small core instead of the whole toolbox, and reaches for the specialty shelves only when your task actually needs them. Your assistant keeps more of its attention on your document, and none of the old capabilities went anywhere.",
+"new3": "<b>Live editing you can leave running.</b> Several agents can now work an open document without colliding, and a Word dialog waiting on a human gets noticed and reported, instead of leaving your agent hanging.",
+"new4": "<b>Fifty edits, one pass, nothing drifts.</b> Ask for a view of the document and every paragraph comes back with a stable address, so the agent can point at the exact spot it means even after the text shifts. Then the batch editor lands dozens of changes in one pass that either all succeed or leave the file untouched. No more edit number thirty-seven landing on the wrong paragraph.",
 "new5": "<b>Comment back and forth with your AI.</b> Leave a comment in Word the way you would for a colleague, and the agent reads it, does the work as tracked changes, and replies in the thread. (Preview.)",
 "mxr0": "GitHub stars&dagger;",
 "eff.growth": "<b>MORE REACH, FEWER TOOLS</b> &middot; v1.6 measured 200 operations across 189 tools; v2.0 delivers 219 across 108. Measured with one yardstick on both trees, so the comparison holds.",
@@ -522,16 +529,27 @@ en: {
 "btn.source": "Read the Source",
 "no0": "DEPT. 00", "no1": "DEPT. 01", "no2": "DEPT. 02", "no3": "DEPT. 03", "no4": "DEPT. 04", "no5": "DEPT. 05",
 "h2.for": "What this is actually for",
-"for.lead": "This is the last Word MCP server you will need to install. Nothing else in the category comes close on capability: 219 operations reach every part of a Word document that serious work touches, and the survey further down this page is mostly empty columns. Completeness is only half of it. Your documents stay open in Word while the agent edits them, so each change appears in the window in front of you rather than arriving as a file you have to reload, and every change is preceded by an automatic backup and committed through an atomic validated save. Nothing you have written gets lost here.",
+"for.lead": "This is the last Word MCP server you will need to install. Nothing else in the category comes close on capability: 219 operations reach every part of a Word document that serious work touches, and the survey further down this page is mostly empty columns. Completeness is only half of it. Your documents stay open in Word while the agent edits them, so each change appears in the window in front of you rather than arriving as a file you have to reload, and there is a backup before every change, made without you asking. Nothing you have written gets lost here.",
 "for1.t": "For the academic",
-"for1.p": "A committee returns the manuscript covered in tracked revisions, and the citation apparatus has to survive the rewrite. Citations, footnotes, cross-references, APA parity checks, and the table of contents are first-class here, so an agent can take on the revision pass without breaking any of it.",
+"for1.p": "A committee returns the manuscript covered in tracked revisions, and the citation apparatus has to survive the rewrite. The scholarly furniture that other tools trample, from footnotes to the reference list, is first-class here, so an agent can take on the revision pass without breaking any of it.",
 "for2.t": "For legal, compliance &amp; HR",
-"for2.p": "Contracts, policies, and case files live in Word, and every edit needs an author attached. Edits here can be written as tracked changes, document compare runs Word-native, and redaction actually removes the text, then verifies that it is gone.",
+"for2.p": "Contracts, policies, and case files live in Word, and every edit needs an author attached. Edits here can be written as tracked changes, comparing two versions works the way Word itself does it, and redaction actually removes the text, then verifies that it is gone.",
 "for3.t": "For the Word power user",
-"for3.p": "For anyone whose documents are too important to gamble with. Every save is atomic and validated, an automatic backup precedes each change, and live editing keeps the document open in Word, one Ctrl+Z step per call, with the cursor untouched.",
+"for3.p": "For anyone whose documents are too important to gamble with. Watch the edit land in your own open Word window, take it back with a single Ctrl+Z if you don't like it, and know there was a backup before anything was touched. You keep the cursor; the agent does the typing.",
 "h2.tale": "Why this exists",
 "h2.inv": "The inventory",
 "h2.cmp": "Against the field",
+"no7": "DEPT. 07",
+"h2.fam": "The family",
+"fam1.t": "KitchenSink4PPT",
+"fam1.p": "Everything plus the kitchen sink for Microsoft PowerPoint. Move the node, the arrows follow: diagrams your hands can still move. Tables that behave, and the same never-corrupts promise, now for slides.",
+"fam1.g": "Visit the lighting aisle →",
+"fam2.t": "The storefront",
+"fam2.p": "The whole hardware store on one page: every KitchenSink server, its fixture, and its counter, plus a shelf or two that are not empty by accident.",
+"fam2.g": "Browse the store →",
+"inv.lead": "The stock is arranged in capability packs, the way a good hardware store is arranged in aisles. Browse the shelves below; your agent only carries an aisle when the job calls for it.",
+"cmp.lead": "Tool counts flatter everybody. What matters is what happens when you actually ask:",
+"hero.invite": "↓ or start with what it protects you from: the morning Word offers to repair your manuscript",
 "h2.install": "Installation",
 "h2.svc": "Service department",
 "tale.label": "A CAUTIONARY TALE",
@@ -570,10 +588,11 @@ en: {
 "mv.s12": "✔ 12 styles", "mv.s8": "✔ 8 styles", "mv.both": "✔ both directions", "mv.sha": "✔ Word-compatible SHA-512", "mv.file": "✔ file tools; COM optional", "mv.undo": "✔ one Ctrl+Z per call", "mv.evid": "✔ 1,324 / 0", "mv.inapp": "✔ in-app",
 "mx.note": "Capability survey as of 2026-08-28, compiled from public repositories, documentation, and issue trackers. n/d: not documented in the sources surveyed (not a claimed absence). * Official add-ins covers Microsoft's Word AI offerings and the Claude for Word add-in: cloud-based or Team/Enterprise scoped, not local MCP servers. Corrections welcome: open an issue. &dagger; Star counts read from the GitHub API on 2026-09-04, shown for context: stars say how long a project has been in view, not what it can do.",
 "h2.eff": "Context efficiency",
-"eff.lead": "Every MCP server occupies part of an agent's context window before any work starts, and almost none of them tell you how much. Here is our bill, measured: a fresh session starts on the lite core, 28 tools for about 7,700 tokens, and turns on capability packs only when a task needs them. Load every pack and the full surface measures about 26,700 tokens, down from about 34,400 in v1.6, roughly 23 percent less for the whole sink and about 78 percent less at lite start. Clients that defer tool schemas, as Claude Code does, pay close to zero until a tool is actually called.",
+"eff.lead": "Every MCP server takes a bite out of your assistant's memory before any work starts, and a big bite has a cost you can feel: an assistant that forgets what you told it ten minutes ago. Almost nobody tells you the size of the bite. Here is ours, measured: small to start, growing only when a task needs a specialty pack, and the exact numbers are on the tiles below.",
 "eff.s1": "Lite start · 28 tools",
 "eff.s2": "Full surface · all packs",
 "eff.s3": "Practical cost when schemas are deferred (Claude Code)",
+"eff.fig": "The measured bill: about 7,700 tokens to start, about 26,700 with every pack on, down from about 34,400 in v1.6.",
 "eff.road": "<b>TIERED LOADING</b> · Shipped. A session starts on the 28-tool lite core and turns on packs with one enable_tools call. Starts lite, the whole sink one call away.",
 "dept1.e": "e.g. add a column to a table full of merged cells · rewrite twenty cells in one call · sort a table by any column",
 "dept2.e": "e.g. insert a citation and build the bibliography · convert every footnote to an endnote · refresh the table of contents",
@@ -594,7 +613,7 @@ en: {
 "svc3.t": "Commercial fitting?", "svc3.p": "Free for individuals and personal use, and it stays that way. If your company wants to build it into a product of its own, that needs a commercial license, with terms worked out case by case. This counter is where you start that conversation.", "svc3.g": "Arrange a license →",
 "svc.note": "Reports are public GitHub issues (a free GitHub account is needed to file one). Every report lands in the maintainer's inbox.",
 "g.t": "Engineered Not to Corrupt",
-"g.p1": "Atomic validated saves. Automatic backups before every change. Byte-identical passthrough of anything not being edited: equations, textboxes, and content controls pass through untouched. Battle-tested on long, heavily formatted real-world documents: one carrying 171 footnotes, one carrying 126 tracked revisions and reviewer comments, plus two insane-mode stress campaigns without a single Word repair prompt.",
+"g.p1": "You know the morning: the manuscript is due, Word opens, and there is a dialog offering to \"repair\" your file. That morning is what this whole server is built to prevent. Before any change, a backup is made automatically. Every save is checked before it replaces your file, so a bad write cannot take the original with it. And everything the edit doesn't touch, from equations to textboxes, passes through exactly as it was, byte for byte. Two full stress campaigns and a shelf of long, heavily formatted real manuscripts, and Word has never once offered to repair anything this server saved.",
 "g.p2": "Provided as-is, without warranty of any kind, per the license; the engineering above is simply how seriously your documents are taken. Keep backups. (It makes them for you.)",
 "f.left": "&copy; 2026 &middot; <b>AGPL-3.0</b>: free for individuals and personal use.<br>Companies building it into their own products need a commercial license; <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>open an issue</a> and we will talk it through.",
 "f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>report a glitch</a><br>Prototyped with Claude Code in a day, hardened through thousands of adversarial test calls, and flow-tested on real manuscripts exceeding 65,000 words and 250 pages. That's a lotta pipe! 🚰"
@@ -607,10 +626,10 @@ ko: {
 "new.label": "신규 입고",
 "new.t": "이번 릴리스가 바꾼 다섯 가지",
 "new.sub": "릴리스 노트를 읽을 필요 없이, 이게 전부입니다.",
-"new1": "<b>더 넓어지고, 도구는 줄었습니다.</b> 작업 수는 v1.6의 200개에서 219개로 늘었고, 189개였던 v1.6 도구 표면은 하나의 동사 문법 아래 108개로 정리되었습니다. 덕분에 에이전트가 처음부터 맞는 도구를 고릅니다.",
-"new2": "<b>가볍게 시작해 필요할 때 커집니다.</b> 세션은 약 7,700 토큰짜리 28개 도구 코어로 열리고, 작업에 실제로 필요할 때만 기능 팩을 켭니다.",
-"new3": "<b>켜 둔 채 맡길 수 있는 라이브 편집.</b> 이제 여러 에이전트가 열려 있는 문서를 함께 다뤄도 충돌하지 않고, 사람의 응답을 기다리는 Word 대화 상자는 운영체제 수준에서 감지되므로 세션이 조용히 멈추는 일이 없습니다.",
-"new4": "<b>한 번 읽고, 한꺼번에 고칩니다.</b> 앵커가 붙은 문서 뷰가 편집 뒤에도 유효한 주소를 돌려주고, 일괄 편집기가 그 주소들에 수십 건의 변경을 전부 아니면 전무로 한 번에 적용합니다.",
+"new1": "<b>도구가 줄어드니 에이전트가 더 이상 헤매지 않습니다.</b> v1.6에는 이름이 겹치는 도구가 189종 있었고, 에이전트는 그중에서 고르느라 시간과 토큰을 태웠습니다. 버전 2는 전부를 108종의 도구로 다시 지었습니다. 하나의 일관된 문법을 따르면서도 다루는 범위는 예전보다 줄지 않고 오히려 넓어졌습니다. 에이전트는 첫 번에 제대로 고르고, 남은 세션은 문서에 씁니다.",
+"new2": "<b>가볍게 시작해서 계속 가볍습니다.</b> 새 세션은 공구함 전체가 아니라 작은 코어만 불러오고, 전문 선반은 작업에 정말 필요할 때만 꺼냅니다. 어시스턴트는 문서에 더 많은 주의를 남겨 두게 되고, 기존 기능은 어디로도 사라지지 않았습니다.",
+"new3": "<b>켜 둔 채 맡길 수 있는 라이브 편집.</b> 이제 여러 에이전트가 열려 있는 문서를 함께 다뤄도 충돌하지 않고, 사람의 응답을 기다리는 Word 대화 상자는 감지되어 보고되므로 에이전트가 마냥 기다리는 일이 없습니다.",
+"new4": "<b>쉰 군데를 한 번에 고쳐도 어긋나지 않습니다.</b> 문서 보기를 요청하면 모든 문단이 고정된 주소를 달고 돌아오므로, 텍스트가 밀린 뒤에도 에이전트는 자기가 말한 바로 그 자리를 가리킬 수 있습니다. 그다음 일괄 편집기가 수십 건의 변경을 한 번에 적용하는데, 전부 성공하거나 파일을 그대로 두거나 둘 중 하나입니다. 서른일곱 번째 편집이 엉뚱한 문단에 떨어지는 일은 이제 없습니다.",
 "new5": "<b>AI와 메모를 주고받으세요.</b> 동료에게 하듯 Word에 메모를 남기면, 에이전트가 그것을 읽고 추적 변경으로 작업한 뒤 같은 스레드에 답글을 답니다. (프리뷰)",
 "mxr0": "GitHub 스타&dagger;",
 "eff.growth": "<b>더 넓어지고, 도구는 줄었습니다</b> &middot; v1.6은 도구 189개로 작업 200개를 수행했고, v2.0은 108개로 219개를 수행합니다. 같은 잣대로 두 트리를 함께 측정했으므로 비교가 성립합니다.",
@@ -640,16 +659,27 @@ ko: {
 "btn.source": "소스 읽어보기",
 "no0": "부문 00", "no1": "부문 01", "no2": "부문 02", "no3": "부문 03", "no4": "부문 04", "no5": "부문 05",
 "h2.for": "무엇을 위한 도구인가",
-"for.lead": "설치할 Word MCP 서버는 이것이 마지막입니다. 기능 면에서 근접한 경쟁자는 없습니다. 219개의 작업이 진지한 작업에서 손대는 Word 문서의 모든 부분에 닿고, 이 페이지 아래의 비교표는 대부분 빈칸입니다. 완전함은 그중 절반일 뿐입니다. 에이전트가 편집하는 동안에도 문서는 Word에 열린 채로 있어서, 변경은 다시 열어 봐야 하는 파일이 아니라 눈앞의 창에 바로 나타납니다. 그리고 모든 변경 앞에는 자동 백업이 있고, 저장은 원자적으로 검증된 뒤에야 확정됩니다. 여기서 쓴 것은 사라지지 않습니다.",
+"for.lead": "설치할 Word MCP 서버는 이것이 마지막입니다. 기능 면에서 근접한 경쟁자는 없습니다. 219개의 작업이 진지한 작업에서 손대는 Word 문서의 모든 부분에 닿고, 이 페이지 아래의 비교표는 대부분 빈칸입니다. 완전함은 그중 절반일 뿐입니다. 에이전트가 편집하는 동안에도 문서는 Word에 열린 채로 있어서, 변경은 다시 열어 봐야 하는 파일이 아니라 눈앞의 창에 바로 나타납니다. 그리고 모든 변경 앞에는 백업이 있고, 그 백업은 따로 부탁하지 않아도 만들어집니다. 여기서 쓴 것은 사라지지 않습니다.",
 "for1.t": "연구자에게",
-"for1.p": "심사위원회가 추적 변경으로 가득한 원고를 돌려보내도, 인용 장치는 수정 과정에서 살아남아야 합니다. 여기서는 인용, 각주, 상호 참조, APA 일치 검사, 목차가 모두 일급으로 다뤄지므로, 에이전트가 그 어느 것도 깨뜨리지 않고 수정 작업을 맡을 수 있습니다.",
+"for1.p": "심사위원회가 추적 변경으로 가득한 원고를 돌려보내도, 인용 장치는 수정 과정에서 살아남아야 합니다. 다른 도구들이 짓밟고 지나가는 학술 장치, 각주부터 참고문헌 목록까지가 여기서는 일급으로 다뤄지므로, 에이전트가 그 어느 것도 깨뜨리지 않고 수정 작업을 맡을 수 있습니다.",
 "for2.t": "법무·컴플라이언스·인사 담당자에게",
-"for2.p": "계약서, 정책 문서, 인사 기록은 Word 안에서 살아가고, 모든 편집에는 작성자가 붙어야 합니다. 여기서는 편집을 추적 변경으로 기록할 수 있고, 문서 비교는 Word 네이티브로 돌아가며, 검열 삭제는 텍스트를 실제로 제거한 뒤 정말 사라졌는지까지 확인합니다.",
+"for2.p": "계약서, 정책 문서, 인사 기록은 Word 안에서 살아가고, 모든 편집에는 작성자가 붙어야 합니다. 여기서는 편집을 추적 변경으로 기록할 수 있고, 두 버전을 비교하는 일은 Word가 직접 하는 방식 그대로 돌아가며, 검열 삭제는 텍스트를 실제로 제거한 뒤 정말 사라졌는지까지 확인합니다.",
 "for3.t": "Word 파워 유저에게",
-"for3.p": "문서를 잃는 일을 상상할 수 없는 모든 사람을 위한 것입니다. 저장은 원자적으로 검증되고, 모든 변경 전에 자동 백업이 만들어지며, 라이브 편집은 문서를 Word에 열어 둔 채 호출 하나당 Ctrl+Z 한 단계로, 커서는 건드리지 않고 진행됩니다.",
+"for3.p": "문서를 걸고 도박할 수 없는 모든 사람을 위한 것입니다. 편집이 열려 있는 내 Word 창에 떨어지는 것을 직접 보고, 마음에 들지 않으면 Ctrl+Z 한 번으로 되돌리고, 무엇이든 손대기 전에 백업이 있었다는 것을 압니다. 커서는 당신이 쥐고, 타이핑은 에이전트가 합니다.",
 "h2.tale": "왜 만들었나",
 "h2.inv": "재고 목록",
 "h2.cmp": "타사 비교",
+"no7": "부문 07",
+"h2.fam": "제품군",
+"fam1.t": "KitchenSink4PPT",
+"fam1.p": "Microsoft PowerPoint 도구라면 없는 게 없습니다. 노드를 옮기면 화살표가 따라옵니다: 손으로 계속 움직일 수 있는 다이어그램. 말을 잘 듣는 표, 그리고 손상시키지 않겠다는 똑같은 약속을, 이제 슬라이드에서.",
+"fam1.g": "조명 코너 방문하기 →",
+"fam2.t": "본점",
+"fam2.p": "철물점 전체를 한 페이지에: 모든 KitchenSink 서버와 그 설비, 그 창구, 그리고 우연히 비어 있는 게 아닌 선반 한두 개까지.",
+"fam2.g": "매장 둘러보기 →",
+"inv.lead": "재고는 기능 팩으로 정리되어 있습니다. 좋은 철물점이 통로별로 정리되어 있는 것과 같습니다. 아래 선반을 둘러보세요. 에이전트는 일이 부를 때만 그 통로를 챙겨 갑니다.",
+"cmp.lead": "도구 개수는 누구에게나 후한 숫자입니다. 중요한 것은 실제로 시켰을 때 무슨 일이 벌어지는가입니다.",
+"hero.invite": "↓ 아니면 이것이 무엇을 막아 주는지부터: Word가 원고를 복구하겠다고 나서는 그 아침",
 "h2.install": "설치",
 "h2.svc": "서비스 창구",
 "tale.label": "교훈이 있는 이야기",
@@ -688,10 +718,11 @@ ko: {
 "mv.s12": "✔ 12개 스타일", "mv.s8": "✔ 8개 스타일", "mv.both": "✔ 양방향", "mv.sha": "✔ Word 호환 SHA-512", "mv.file": "✔ 파일 도구; COM은 선택", "mv.undo": "✔ 호출당 Ctrl+Z 한 단계", "mv.evid": "✔ 1,324 / 0", "mv.inapp": "✔ 앱 내",
 "mx.note": "2026-08-28 기준 기능 조사. 공개 저장소, 문서, 이슈 트래커에서 취합했습니다. n/d: 조사한 자료에서 확인되지 않음(없다는 주장이 아닙니다). * 공식 추가 기능 열은 Microsoft의 Word AI 제품군과 Claude for Word 추가 기능을 묶은 것으로, 클라우드 기반이거나 Team/Enterprise 요금제 전용이며 로컬 MCP 서버가 아닙니다. 정정은 환영합니다. 이슈를 열어 주세요. &dagger; 스타 수는 2026-09-04에 GitHub API로 읽은 값이며 참고용입니다. 스타는 프로젝트가 얼마나 오래 알려져 왔는지를 보여줄 뿐, 무엇을 할 수 있는지를 보여주지는 않습니다.",
 "h2.eff": "컨텍스트 효율",
-"eff.lead": "모든 MCP 서버는 작업을 시작하기도 전에 에이전트의 컨텍스트 창 일부를 차지하지만, 그 비용을 알려주는 서버는 거의 없습니다. 여기 측정한 우리 청구서가 있습니다: 새 세션은 라이트 코어(도구 28종, 약 7,700 토큰)로 시작하고, 기능 팩은 작업에 필요할 때만 켭니다. 모든 팩을 불러온 전체 표면은 약 26,700 토큰으로, v1.6의 약 34,400 토큰에서 줄어든 값입니다. 전체 기준 약 23퍼센트, 라이트 시작 기준 약 78퍼센트 적습니다. Claude Code처럼 도구 스키마를 지연 로드하는 클라이언트라면 도구가 실제로 호출되기 전까지 비용이 거의 0에 가깝습니다.",
+"eff.lead": "모든 MCP 서버는 작업이 시작되기도 전에 어시스턴트의 기억을 한 입 베어 뭅니다. 그 한 입이 크면 대가가 체감됩니다. 10분 전에 한 말을 잊어버리는 어시스턴트가 되는 것입니다. 그런데 그 한 입이 얼마나 큰지 알려주는 곳은 거의 없습니다. 여기 측정한 우리 것이 있습니다. 시작은 작고, 작업이 전문 팩을 필요로 할 때만 커지며, 정확한 수치는 아래 타일에 있습니다.",
 "eff.s1": "라이트 시작 · 도구 28종",
 "eff.s2": "전체 표면 · 모든 팩",
 "eff.s3": "스키마 지연 로드 시 실질 비용 (Claude Code)",
+"eff.fig": "측정한 청구서: 시작은 약 7,700 토큰, 모든 팩을 켜면 약 26,700 토큰, v1.6의 약 34,400 토큰에서 줄어든 값입니다.",
 "eff.road": "<b>계층형 로딩</b> · 적용 완료. 세션은 도구 28종의 라이트 코어로 시작하고, enable_tools 호출 한 번으로 팩을 켭니다. 가볍게 시작하고, 싱크대 전체는 호출 한 번 거리에 있습니다.",
 "dept1.e": "예: 병합 셀이 가득한 표에 열 추가 · 셀 스무 개를 호출 한 번에 수정 · 아무 열로나 표 정렬",
 "dept2.e": "예: 인용 삽입과 참고문헌 생성 · 모든 각주를 미주로 변환 · 목차 새로 고침",
@@ -712,7 +743,7 @@ ko: {
 "svc3.t": "영업용 설비가 필요합니까?", "svc3.p": "개인과 개인적 용도에는 무료이며, 앞으로도 그렇습니다. 회사가 이 서버를 자사 제품에 넣어 만들려면 상업용 라이선스가 필요하고, 조건은 사안마다 협의해서 정합니다. 그 이야기는 이 창구에서 시작하시면 됩니다.", "svc3.g": "라이선스 문의하기 →",
 "svc.note": "신고는 공개 GitHub 이슈로 접수됩니다(제출에는 무료 GitHub 계정이 필요합니다). 모든 신고는 관리자의 수신함에 바로 도착합니다.",
 "g.t": "손상시키지 않도록 설계",
-"g.p1": "원자적 검증 저장. 모든 변경 전 자동 백업. 편집하지 않는 부분은 바이트 단위 그대로 통과합니다. 수식, 텍스트 상자, 콘텐츠 컨트롤은 손대지 않고 지나갑니다. 길고 서식이 복잡한 실제 문서로 단련했습니다: 각주 171개짜리 하나, 추적 변경 126건과 검토자 메모를 실은 하나, 여기에 두 차례의 극한 모드 스트레스 캠페인까지 Word 복구 알림 한 번 없이 통과했습니다.",
+"g.p1": "그 아침을 아실 겁니다. 원고 마감일인데 Word를 열자 파일을 “복구”하겠다는 대화 상자가 떠 있습니다. 이 서버 전체가 막으려고 만들어진 것이 바로 그 아침입니다. 어떤 변경이든 그 앞에 백업이 자동으로 만들어집니다. 모든 저장은 파일을 대체하기 전에 검사를 거치므로, 잘못된 쓰기가 원본까지 데려가지 못합니다. 그리고 편집이 건드리지 않은 것은 수식이든 텍스트 상자든 있던 그대로, 바이트 단위로 통과합니다. 두 차례의 전면 스트레스 캠페인과 길고 서식이 복잡한 실제 원고 한 무더기를 거치는 동안, Word가 이 서버가 저장한 파일을 복구하겠다고 나선 적은 단 한 번도 없습니다.",
 "g.p2": "라이선스에 따라 어떤 종류의 보증도 없이 있는 그대로 제공됩니다. 위의 공학적 장치들은 여러분의 문서를 얼마나 진지하게 다루는지를 보여줄 뿐입니다. 백업을 유지하세요. (백업은 이 서버가 대신 만들어 줍니다.)",
 "f.left": "&copy; 2026 &middot; <b>AGPL-3.0</b>: 개인과 개인적 용도에는 무료.<br>자사 제품에 넣어 만드는 회사에는 상업용 라이선스가 필요합니다. <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>이슈를 열어</a> 주시면 함께 이야기하겠습니다.",
 "f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>오작동 신고</a><br>Claude Code로 하루 만에 프로토타입을 만들고, 수천 건의 적대적 테스트로 다듬은 뒤, 65,000단어 250페이지 이상의 실제 원고에서 실전 테스트를 완료했습니다. 없는 게 없습니다! 🚰"
@@ -725,10 +756,10 @@ ja: {
 "new.label": "新入荷",
 "new.t": "このリリースで変わった5つのこと",
 "new.sub": "リリースノートを読まなくても、これで全部です。",
-"new1": "<b>守備範囲は広く、ツールは少なく。</b> 操作は v1.6 の200から219に増え、189本あった v1.6 のツール表面はひとつの動詞文法のもとで108本に整理されました。エージェントは最初から正しいツールを選べます。",
-"new2": "<b>小さく始まり、必要に応じて広がる。</b> セッションは約7,700トークン、28ツールのコアで開き、タスクが実際に必要とするときだけ機能パックを有効にします。",
-"new3": "<b>動かしっぱなしにできるライブ編集。</b> 複数のエージェントが開いた文書を同時に扱っても衝突せず、人の操作を待つ Word のダイアログは OS レベルで検出されるため、セッションが黙って止まることはありません。",
-"new4": "<b>一度読んで、まとめて直す。</b> アンカー付きの文書ビューが編集後も有効な位置情報を返し、バッチ編集がその位置に数十件の変更を、全部か無かの一括処理で適用します。",
+"new1": "<b>ツールが減れば、エージェントは迷わなくなります。</b> v1.6 には名前の重なるツールが189種あり、エージェントはその中から選ぶだけで時間とトークンを使っていました。バージョン2はすべてを108種のツールとして作り直しました。ひとつの一貫した文法にまとめながら、扱える範囲は以前より狭まるどころか広がっています。エージェントは一度目で正しく選び、残りのセッションを文書そのものに使います。",
+"new2": "<b>軽く始まり、軽いままです。</b> 新しいセッションは道具箱ごとではなく小さなコアだけを読み込み、専門の棚に手を伸ばすのは作業が本当に必要としたときだけです。アシスタントは文書のほうに多くの注意を残せますし、これまでの機能はどこにも消えていません。",
+"new3": "<b>動かしっぱなしにできるライブ編集。</b> 複数のエージェントが開いた文書を同時に扱っても衝突せず、人の操作を待つ Word のダイアログは検出して知らせるので、エージェントが待たされたままになることはありません。",
+"new4": "<b>50か所を一度に直しても、ずれません。</b> 文書のビューを求めれば、どの段落も動かない住所を付けて返ってきます。だから本文がずれたあとでも、エージェントは自分が指したその場所を正確に指せます。続けて一括編集ツールが数十件の変更を一度に適用します。すべて成功するか、ファイルに何も起きないかのどちらかです。37番目の編集が別の段落に落ちることは、もうありません。",
 "new5": "<b>AI とコメントでやり取りする。</b> 同僚に書くように Word にコメントを残せば、エージェントがそれを読み、変更履歴として作業し、同じスレッドに返信します。(プレビュー)",
 "mxr0": "GitHub スター&dagger;",
 "eff.growth": "<b>守備範囲は広く、ツールは少なく</b> &middot; v1.6 はツール189本で200操作、v2.0 は108本で219操作。同じ物差しで両方のツリーを測っているので、この比較は成立します。",
@@ -758,16 +789,27 @@ ja: {
 "btn.source": "ソースを読む",
 "no0": "第00部", "no1": "第01部", "no2": "第02部", "no3": "第03部", "no4": "第04部", "no5": "第05部",
 "h2.for": "何のための道具か",
-"for.lead": "インストールする Word MCP サーバーは、これが最後になります。能力の面で肩を並べるものはありません。219の操作が、本気の作業で触れる Word 文書のあらゆる部分に届き、このページの下にある比較表はほとんど空欄です。完全さは半分にすぎません。エージェントが編集している間も文書は Word で開いたままなので、変更は開き直すファイルとしてではなく、目の前のウィンドウにそのまま現れます。そしてすべての変更の前には自動バックアップがあり、保存はアトミックに検証されてから確定します。ここで書いたものが失われることはありません。",
+"for.lead": "インストールする Word MCP サーバーは、これが最後になります。能力の面で肩を並べるものはありません。219の操作が、本気の作業で触れる Word 文書のあらゆる部分に届き、このページの下にある比較表はほとんど空欄です。完全さは半分にすぎません。エージェントが編集している間も文書は Word で開いたままなので、変更は開き直すファイルとしてではなく、目の前のウィンドウにそのまま現れます。そしてすべての変更の前にはバックアップがあり、それは頼まなくても作られます。ここで書いたものが失われることはありません。",
 "for1.t": "研究者のために",
-"for1.p": "審査委員会から変更履歴だらけの原稿が戻ってきても、引用の装置は書き直しを生き延びなければなりません。ここでは引用、脚注、相互参照、APA 整合チェック、目次がすべて一級品として扱われるので、エージェントはどれも壊さずに修正作業を引き受けられます。",
+"for1.p": "審査委員会から変更履歴だらけの原稿が戻ってきても、引用の装置は書き直しを生き延びなければなりません。ほかの道具が踏み荒らしていく学術の調度、脚注から参考文献一覧までが、ここでは一級品として扱われるので、エージェントはどれも壊さずに修正作業を引き受けられます。",
 "for2.t": "法務・コンプライアンス・人事のために",
-"for2.p": "契約書も社内規程も人事記録も Word の中で生きていて、どの編集にも作成者が付いていなければなりません。ここでは編集を変更履歴として書き込め、文書比較は Word ネイティブで動き、墨消しはテキストを実際に取り除いたうえで、本当に消えたことまで確認します。",
+"for2.p": "契約書も社内規程も人事記録も Word の中で生きていて、どの編集にも作成者が付いていなければなりません。ここでは編集を変更履歴として書き込め、二つの版の比較は Word 自身のやり方どおりに動き、墨消しはテキストを実際に取り除いたうえで、本当に消えたことまで確認します。",
 "for3.t": "Word のパワーユーザーのために",
-"for3.p": "文書を失うことなど考えられない、すべての人のための道具です。保存はアトミックに検証され、どの変更の前にも自動バックアップが作られ、ライブ編集は文書を Word で開いたまま、呼び出し1回につき Ctrl+Z 1段階、カーソルには触れずに進みます。",
+"for3.p": "文書を賭けごとにできない、すべての人のためのものです。編集が自分の開いた Word のウィンドウに落ちるのを見て、気に入らなければ Ctrl+Z 一回で戻し、何かに触れる前にバックアップがあったと分かっている。カーソルはあなたが握り、入力はエージェントがします。",
 "h2.tale": "なぜ作ったか",
 "h2.inv": "在庫一覧",
 "h2.cmp": "他社比較",
+"no7": "第07部",
+"h2.fam": "ファミリー",
+"fam1.t": "KitchenSink4PPT",
+"fam1.p": "Microsoft PowerPoint のためなら何でも揃う。ノードを動かせば矢印がついてくる：手でそのまま動かせる図。行儀のいい表、そして壊さないという同じ約束を、こんどはスライドに。",
+"fam1.g": "照明コーナーへ →",
+"fam2.t": "本店",
+"fam2.p": "金物屋まるごと1ページに:すべての KitchenSink サーバーとその器具、その窓口、そして偶然ではなく空けてある棚が一つ二つ。",
+"fam2.g": "店内を見る →",
+"inv.lead": "在庫は機能パックごとに並べてあります。いい金物屋が売り場の通路ごとに整えてあるのと同じです。下の棚をご覧ください。エージェントがその通路を担いでいくのは、仕事が呼んだときだけです。",
+"cmp.lead": "ツールの数は、どこの数字も良く見えます。大事なのは、実際に頼んだときに何が起きるかです。",
+"hero.invite": "↓ あるいは、何から守るのかから:Word が原稿の修復を申し出てくるあの朝",
 "h2.install": "設置方法",
 "h2.svc": "サービス窓口",
 "tale.label": "教訓ばなし",
@@ -806,10 +848,11 @@ ja: {
 "mv.s12": "✔ 12 スタイル", "mv.s8": "✔ 8 スタイル", "mv.both": "✔ 双方向", "mv.sha": "✔ Word 互換 SHA-512", "mv.file": "✔ ファイルツール、COM は任意", "mv.undo": "✔ 呼び出し1回 = Ctrl+Z 1段階", "mv.evid": "✔ 1,324 / 0", "mv.inapp": "✔ アプリ内",
 "mx.note": "2026-08-28 時点の機能調査。公開リポジトリ、ドキュメント、Issue トラッカーから集約しました。n/d：調査した資料では確認できず(欠如の断定ではありません)。* 公式アドインは Microsoft の Word AI 製品群と Claude for Word アドインをまとめた列で、クラウドまたは Team/Enterprise 限定のもの。ローカル MCP サーバーではありません。訂正歓迎、Issue をどうぞ。 &dagger; スター数は 2026-09-04 に GitHub API から取得した参考値です。スターはプロジェクトがどれだけ長く知られてきたかを示すもので、何ができるかを示すものではありません。",
 "h2.eff": "コンテキスト効率",
-"eff.lead": "どの MCP サーバーも、仕事を始める前からエージェントのコンテキストウィンドウの一部を占めます。それなのに、その量を教えてくれるサーバーはほとんどありません。これが計測した当方の請求書です：新しいセッションはライトコア(ツール28種、約 7,700 トークン)で始まり、機能パックは作業に必要になったときだけ有効化します。すべてのパックを読み込んだ全表面は約 26,700 トークンで、v1.6 の約 34,400 トークンから減りました。全体でおよそ 23 パーセント、ライト起動時ではおよそ 78 パーセント少なくなります。Claude Code のようにツールスキーマを遅延読み込みするクライアントなら、ツールが実際に呼ばれるまでコストはほぼゼロです。",
+"eff.lead": "どの MCP サーバーも、仕事が始まる前からアシスタントの記憶をひと口かじります。そのひと口が大きければ、代償は体感できるかたちで現れます。10分前に伝えたことを忘れるアシスタントです。しかも、そのひと口の大きさを教えてくれるところはほとんどありません。こちらが計測した当方の値です。始まりは小さく、作業が専門パックを必要としたときにだけ大きくなります。正確な数字は下のタイルにあります。",
 "eff.s1": "ライト起動 · ツール28種",
 "eff.s2": "全表面 · 全パック",
 "eff.s3": "スキーマ遅延読み込み時の実質コスト (Claude Code)",
+"eff.fig": "計測した請求書：開始時およそ 7,700 トークン、全パックを入れておよそ 26,700 トークン、v1.6 のおよそ 34,400 トークンから減っています。",
 "eff.road": "<b>段階式読み込み</b> · 提供済み。セッションはツール28種のライトコアで始まり、enable_tools の呼び出し1回でパックを有効化します。軽く始めて、流し一式は呼び出し1回の距離に。",
 "dept1.e": "例：結合セルだらけの表に列を追加 · セル 20 個を呼び出し1回で書き換え · 任意の列で表を並べ替え",
 "dept2.e": "例：引用を挿入して文献目録を生成 · 全脚注を文末脚注へ変換 · 目次を更新",
@@ -830,7 +873,7 @@ ja: {
 "svc3.t": "業務用の取り付けですか？", "svc3.p": "個人利用と私的な用途は無料で、これからも無料のままです。会社としてこれを自社製品に組み込みたい場合は商用ライセンスが必要で、条件は案件ごとに相談して決めます。その話はこの窓口から始めてください。", "svc3.g": "ライセンスの相談 →",
 "svc.note": "報告は公開の GitHub Issue になります(提出には無料の GitHub アカウントが必要です)。すべての報告はメンテナーの受信箱に届きます。",
 "g.t": "壊さないための設計",
-"g.p1": "アトミックな検証付き保存。すべての変更前に自動バックアップ。編集しない部分はバイト単位でそのまま通過します。数式、テキストボックス、コンテンツコントロールには手を触れません。長く書式の重い実際の文書で鍛えました：脚注171個の文書、変更履歴126件と校閲コメントを抱えた文書、さらに2回の極限モードの負荷キャンペーンを、Word の修復ダイアログを一度も出さずに。",
+"g.p1": "あの朝をご存じでしょう。原稿の締切日に Word を開くと、ファイルを「修復」しますかというダイアログが出ている。このサーバー全体は、その朝を起こさないために作られています。どんな変更の前にも、バックアップが自動で作られます。保存はすべて、ファイルを置き換える前に検査されるので、まずい書き込みが元のファイルを道連れにすることはありません。そして編集が触れないものは、数式であれテキストボックスであれ、あったままの姿でバイト単位に通り抜けます。2回にわたる本格的な負荷キャンペーンと、長く書式の重い実際の原稿を棚一杯ぶん通してなお、このサーバーが保存したファイルについて Word が修復を申し出たことは一度もありません。",
 "g.p2": "ライセンスのとおり、現状有姿・無保証で提供されます。上記の工学は、あなたの文書をどれだけ真剣に扱っているかを示すものにすぎません。バックアップは取っておいてください。(バックアップはこのサーバーが作ってくれます。)",
 "f.left": "&copy; 2026 &middot; <b>AGPL-3.0</b>:個人利用と私的な用途は無料。<br>自社製品に組み込む企業には商用ライセンスが必要です。<a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>Issue を開いて</a>いただければ、そこから話を進めます。",
 "f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>不具合を報告</a><br>Claude Code で一日でプロトタイプを作り、数千件の敵対的テストで鍛え上げ、65,000語・250ページ超の実際の原稿で実地テスト済み。何でも揃います！🚰"
@@ -843,10 +886,10 @@ zh: {
 "new.label": "新到货",
 "new.t": "这一版改变的五件事",
 "new.sub": "不用翻发布说明,就这些。",
-"new1": "<b>覆盖更广,工具更少。</b> 操作从 v1.6 的 200 个增加到 219 个,而 v1.6 那 189 件工具在统一的动词语法下收拢为 108 件,你的智能体第一次就能挑对工具。",
-"new2": "<b>起步小,按需长大。</b> 会话以 28 件工具、约 7,700 tokens 的内核开启,只有任务真正需要时才打开能力包。",
-"new3": "<b>可以一直开着的实时编辑。</b> 现在多个智能体可以同时处理一份打开的文档而不相撞,等待人操作的 Word 对话框在操作系统层面被检测到,不会让会话悄悄卡死。",
-"new4": "<b>读一次,批量改。</b> 带锚点的文档视图返回的地址在你编辑之后依然有效,批量编辑器把几十处改动按全成或全不成的方式一次性应用上去。",
+"new1": "<b>工具少了,智能体就不再瞎猜。</b> v1.6 有 189 件工具,名字大量重叠,智能体光是在里面挑就烧掉了时间和 token。版本 2 把一切重建为 108 件工具,统一在一套语法之下,覆盖的范围比从前更大,而不是更小。智能体第一次就选对,把这一场会话花在文档上。",
+"new2": "<b>轻装启动,一路都轻。</b> 新会话只载入一个小内核,而不是整箱工具,只有任务真正需要时才去够专门的货架。你的助手能把更多注意力留给文档,而原有的能力一样都没少。",
+"new3": "<b>可以一直开着的实时编辑。</b> 现在多个智能体可以同时处理一份打开的文档而不相撞,等待人操作的 Word 对话框会被发现并报告,不会让你的智能体一直干等。",
+"new4": "<b>五十处改动,一趟完成,不会跑偏。</b> 请求查看文档时,每个段落都会带着一个稳定的地址回来,所以正文挪动之后,智能体依然能指到它说的那一处。接着批量编辑器一趟落下几十项改动:要么全部成功,要么文件原封不动。第三十七项改动落到错误段落的事,不会再有了。",
 "new5": "<b>用批注和你的 AI 一来一往。</b> 像给同事留言那样在 Word 里写下批注,智能体会读它、以修订方式完成工作,并在同一条线程里回复。(预览)",
 "mxr0": "GitHub 星标&dagger;",
 "eff.growth": "<b>覆盖更广,工具更少</b> &middot; v1.6 用 189 件工具完成 200 个操作,v2.0 用 108 件完成 219 个。两棵树用同一把尺子测量,所以这个对比站得住脚。",
@@ -876,16 +919,27 @@ zh: {
 "btn.source": "阅读源码",
 "no0": "第00部", "no1": "第01部", "no2": "第02部", "no3": "第03部", "no4": "第04部", "no5": "第05部",
 "h2.for": "它究竟是干什么用的",
-"for.lead": "这是你需要安装的最后一个 Word MCP 服务器。论能力,没有对手接近:219 个操作覆盖了正经工作会碰到的 Word 文档的每一个部分,而本页下方那张对比表大半是空格。完整只是其中一半。智能体编辑时文档一直开在 Word 里,改动直接出现在你眼前的窗口中,而不是变成一个需要重新打开的文件;每一次改动之前都有自动备份,保存也要经过原子校验才落定。在这里,你写下的东西不会丢。",
+"for.lead": "这是你需要安装的最后一个 Word MCP 服务器。论能力,没有对手接近:219 个操作覆盖了正经工作会碰到的 Word 文档的每一个部分,而本页下方那张对比表大半是空格。完整只是其中一半。智能体编辑时文档一直开在 Word 里,改动直接出现在你眼前的窗口中,而不是变成一个需要重新打开的文件;每一次改动之前都有备份,不用你开口就已经做好。在这里,你写下的东西不会丢。",
 "for1.t": "给学者",
-"for1.p": "评审委员会把满是修订的稿子退回来，引文体系还得在改稿中活下来。在这里，引文、脚注、交叉引用、APA 一致性检查和目录都是头等公民，智能体可以接手整轮修改而不碰坏其中任何一样。",
+"for1.p": "评审委员会把满是修订的稿子退回来，引文体系还得在改稿中活下来。别的工具一脚踩过去的那套学术家什，从脚注到参考文献列表，在这里都是头等公民，智能体可以接手整轮修改而不碰坏其中任何一样。",
 "for2.t": "给法务、合规与人事",
-"for2.p": "合同、制度与案卷都活在 Word 里，每处改动都得有作者署名。在这里，编辑可以写成修订，文档比较用 Word 原生引擎，涂黑会真正删掉文字，再核实它确实不见了。",
+"for2.p": "合同、制度与案卷都活在 Word 里，每处改动都得有作者署名。在这里，编辑可以写成修订，比较两个版本就按 Word 自己的做法来，涂黑会真正删掉文字，再核实它确实不见了。",
 "for3.t": "给 Word 重度用户",
-"for3.p": "献给所有文档重要到不容有失的人。保存是原子化并经校验的，每次改动之前都会自动生成备份，实时编辑让文档在 Word 里保持打开，每次调用一步 Ctrl+Z，光标丝毫不动。",
+"for3.p": "献给所有文档重要到不容拿去赌的人。你能看着改动落进自己打开的 Word 窗口,不喜欢就一次 Ctrl+Z 收回,并且知道在动手之前已经有了备份。光标归你,打字归智能体。",
 "h2.tale": "为什么会有它",
 "h2.inv": "库存清单",
 "h2.cmp": "同行对比",
+"no7": "第07部",
+"h2.fam": "同门产品",
+"fam1.t": "KitchenSink4PPT",
+"fam1.p": "为 Microsoft PowerPoint 而备,应有尽有。挪动节点，箭头跟着走：你的手依然挪得动的图表。规规矩矩的表格，以及同样“绝不损坏”的承诺，如今用在幻灯片上。",
+"fam1.g": "去灯具货架逛逛 →",
+"fam2.t": "总店门面",
+"fam2.p": "整间五金店放在一页里:每台 KitchenSink 服务器、它的设备、它的柜台,外加一两个绝非碰巧空着的货架。",
+"fam2.g": "逛逛店里 →",
+"inv.lead": "货品按能力包摆放,就像像样的五金店按通道分区。下面的货架请随意翻看;只有活儿开口要,你的智能体才会把某条通道带上。",
+"cmp.lead": "工具数量对谁都好看。真正要紧的是你真开口时会发生什么:",
+"hero.invite": "↓ 或者先看它替你挡下什么:Word 提出要修复你稿子的那个早晨",
 "h2.install": "安装",
 "h2.svc": "服务柜台",
 "tale.label": "一则前车之鉴",
@@ -924,10 +978,11 @@ zh: {
 "mv.s12": "✔ 12 种样式", "mv.s8": "✔ 8 种样式", "mv.both": "✔ 双向", "mv.sha": "✔ Word 兼容 SHA-512", "mv.file": "✔ 文件工具；COM 可选", "mv.undo": "✔ 每次调用一步 Ctrl+Z", "mv.evid": "✔ 1,324 / 0", "mv.inapp": "✔ 应用内",
 "mx.note": "能力调查，截至 2026-08-28，汇总自公开仓库、文档与 issue 跟踪器。n/d：在所查资料中未见记载(并非断言其没有)。* 官方加载项一栏合并了 Microsoft 的 Word AI 产品与 Claude for Word 加载项：皆为云端或 Team/Enterprise 专属，不是本地 MCP 服务器。欢迎指正，请开 issue。 &dagger; 星标数于 2026-09-04 通过 GitHub API 读取,仅供参考:星标反映一个项目被看见了多久,而不是它能做什么。",
 "h2.eff": "上下文效率",
-"eff.lead": "每个 MCP 服务器在干活之前就要占用智能体的一部分上下文窗口，却几乎没有服务器告诉你占多少。这是我们量出来的账单：新会话从精简内核(28 件工具，约 7,700 token)启动，能力包只在任务需要时才打开。载入全部能力包后，完整表面约为 26,700 token，低于 v1.6 的约 34,400 token，整体少约 23%，精简启动时少约 78%。像 Claude Code 这样延迟加载工具 schema 的客户端，在工具真正被调用之前成本几乎为零。",
+"eff.lead": "每个 MCP 服务器都会在开工之前先从你助手的记忆里咬走一口,咬得大了,代价是你能感觉到的:一个十分钟前你说过的话就忘了的助手。可几乎没人告诉你这一口有多大。这是我们量出来的:起步很小,只有任务需要专门能力包时才变大,确切数字就在下面的方块里。",
 "eff.s1": "精简启动 · 28 件工具",
 "eff.s2": "完整表面 · 全部能力包",
 "eff.s3": "schema 延迟加载时的实际成本 (Claude Code)",
+"eff.fig": "量出来的账单:起步约 7,700 token,全部能力包打开约 26,700 token,低于 v1.6 的约 34,400 token。",
 "eff.road": "<b>分层加载</b> · 已上线。会话从 28 件工具的精简内核启动，用一次 enable_tools 调用即可打开能力包。轻装上阵，整台水槽只隔一次调用。",
 "dept1.e": "例：给满是合并单元格的表格加一列 · 一次调用改写二十个单元格 · 按任意列给表格排序",
 "dept2.e": "例：插入引文并生成参考文献 · 把全部脚注转为尾注 · 刷新目录",
@@ -948,7 +1003,7 @@ zh: {
 "svc3.t": "商用装配？", "svc3.p": "个人和个人用途一直免费,以后也是。如果贵公司想把它做进自家产品里,那就需要商业许可,条款按具体情况一事一议。这个柜台就是开始谈的地方。", "svc3.g": "洽谈许可 →",
 "svc.note": "报告以公开 GitHub issue 的形式提交(需要一个免费的 GitHub 账号)。每份报告都会直达维护者的收件箱。",
 "g.t": "为“不损坏”而设计",
-"g.p1": "原子化的校验保存。每次改动前自动生成备份。未被编辑的内容逐字节原样通过：公式、文本框、内容控件一概不动。在篇幅长、格式重的真实文档上久经考验：一份带 171 个脚注，一份载有 126 条修订与审阅批注，外加两轮疯狂模式压力测试，全程未触发一次 Word 修复提示。",
+"g.p1": "那个早晨你一定见过:稿子今天要交,打开 Word,却弹出一个要“修复”你文件的对话框。整台服务器要防的,就是那个早晨。任何改动之前,备份都会自动生成。每一次保存都会在替换你的文件之前先做检查,坏的写入带不走原件。而编辑没有碰到的东西,从公式到文本框,都会原样逐字节通过。两轮完整的压力测试,加上一整架又长又重格式的真实稿件,Word 从未有一次提出要修复这台服务器保存过的东西。",
 "g.p2": "依许可证按现状提供，不附带任何形式的担保。上述工程设计，只是说明你的文档被多么认真地对待。请保留备份。(它会替你做备份。)",
 "f.left": "&copy; 2026 &middot; <b>AGPL-3.0</b>:个人和个人用途免费。<br>把它做进自家产品的公司需要商业许可,<a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>开一个 issue</a>,我们细谈。",
 "f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>报告故障</a><br>与 Claude Code 一天完成原型，经数千次对抗性测试反复锤炼，并在超过65,000字、250页的真实稿件上实测通过。应有尽有！🚰"
@@ -961,10 +1016,10 @@ de: {
 "new.label": "NEU EINGETROFFEN",
 "new.t": "Fünf Dinge, die dieses Release geändert hat",
 "new.sub": "Die ganze Liste, ganz ohne Release Notes.",
-"new1": "<b>Mehr Reichweite, weniger Werkzeuge.</b> 219 Operationen statt 200 in v1.6, und die 189 Werkzeuge der v1.6-Oberfläche wurden zu 108 unter einer einzigen Verbgrammatik zusammengeführt, sodass Ihr Agent gleich beim ersten Versuch das richtige Werkzeug greift.",
-"new2": "<b>Fängt klein an, wächst auf Zuruf.</b> Eine Sitzung startet mit einem Kern aus 28 Werkzeugen für rund 7.700 Tokens und schaltet Fähigkeitspakete erst dann zu, wenn eine Aufgabe sie wirklich braucht.",
-"new3": "<b>Live-Bearbeitung, die laufen bleiben darf.</b> Mehrere Agenten können jetzt an einem offenen Dokument arbeiten, ohne sich in die Quere zu kommen, und ein Word-Dialog, der auf einen Menschen wartet, wird auf Betriebssystemebene erkannt, statt die Sitzung stillschweigend einzufrieren.",
-"new4": "<b>Einmal lesen, gesammelt bearbeiten.</b> Die verankerte Dokumentansicht liefert Adressen zurück, die Ihre Bearbeitungen überleben, und der Stapeleditor wendet Dutzende Änderungen in einem einzigen Alles-oder-nichts-Durchgang darauf an.",
+"new1": "<b>Weniger Werkzeuge, und Ihr Agent hört auf zu raten.</b> v1.6 hatte 189 Werkzeuge mit vielen überlappenden Namen, und Agenten verbrannten Zeit und Token damit, zwischen ihnen zu wählen. Version 2 baut alles als 108 Werkzeuge unter einer einheitlichen Grammatik neu auf, die mehr abdeckt als zuvor, nicht weniger. Der Agent greift beim ersten Mal richtig zu und verbringt Ihre Sitzung stattdessen mit dem Dokument.",
+"new2": "<b>Startet leicht, bleibt leicht.</b> Eine frische Sitzung lädt einen kleinen Kern statt des ganzen Werkzeugkastens und greift erst dann zu den Spezialregalen, wenn Ihre Aufgabe sie wirklich braucht. Ihr Assistent behält mehr Aufmerksamkeit für Ihr Dokument, und keine der alten Fähigkeiten ist verschwunden.",
+"new3": "<b>Live-Bearbeitung, die laufen bleiben darf.</b> Mehrere Agenten können jetzt an einem offenen Dokument arbeiten, ohne sich in die Quere zu kommen, und ein Word-Dialog, der auf einen Menschen wartet, wird bemerkt und gemeldet, statt Ihren Agenten hängen zu lassen.",
+"new4": "<b>Fünfzig Änderungen, ein Durchgang, nichts verrutscht.</b> Fordern Sie eine Ansicht des Dokuments an, und jeder Absatz kommt mit einer stabilen Adresse zurück, sodass der Agent genau auf die Stelle zeigen kann, die er meint, auch nachdem sich der Text verschoben hat. Dann setzt der Stapeleditor Dutzende Änderungen in einem Durchgang, die entweder alle gelingen oder die Datei unangetastet lassen. Nie wieder landet Änderung Nummer siebenunddreißig im falschen Absatz.",
 "new5": "<b>Mit Ihrer KI über Kommentare hin und her.</b> Hinterlassen Sie in Word einen Kommentar wie für eine Kollegin, und der Agent liest ihn, erledigt die Arbeit als nachverfolgte Änderung und antwortet im selben Thread. (Vorschau.)",
 "mxr0": "GitHub-Sterne&dagger;",
 "eff.growth": "<b>MEHR REICHWEITE, WENIGER WERKZEUGE</b> &middot; v1.6 kam auf 200 Operationen über 189 Werkzeuge; v2.0 liefert 219 über 108. Beide Bäume wurden mit demselben Maßstab gemessen, der Vergleich trägt also.",
@@ -994,16 +1049,27 @@ de: {
 "btn.source": "Quelltext lesen",
 "no0": "ABT. 00", "no1": "ABT. 01", "no2": "ABT. 02", "no3": "ABT. 03", "no4": "ABT. 04", "no5": "ABT. 05",
 "h2.for": "Wofür das Ganze da ist",
-"for.lead": "Dies ist der letzte Word-MCP-Server, den Sie installieren werden. In der Kategorie kommt niemand an die Fähigkeiten heran: 219 Operationen erreichen jeden Teil eines Word-Dokuments, den ernsthafte Arbeit berührt, und die Übersicht weiter unten auf dieser Seite besteht überwiegend aus leeren Spalten. Vollständigkeit ist nur die eine Hälfte. Ihre Dokumente bleiben in Word geöffnet, während der Agent sie bearbeitet, jede Änderung erscheint also im Fenster vor Ihnen statt als Datei, die Sie neu laden müssen, und vor jeder Änderung steht ein automatisches Backup, festgeschrieben durch ein atomares, validiertes Speichern. Was Sie geschrieben haben, geht hier nicht verloren.",
+"for.lead": "Dies ist der letzte Word-MCP-Server, den Sie installieren werden. In der Kategorie kommt niemand an die Fähigkeiten heran: 219 Operationen erreichen jeden Teil eines Word-Dokuments, den ernsthafte Arbeit berührt, und die Übersicht weiter unten auf dieser Seite besteht überwiegend aus leeren Spalten. Vollständigkeit ist nur die eine Hälfte. Ihre Dokumente bleiben in Word geöffnet, während der Agent sie bearbeitet, jede Änderung erscheint also im Fenster vor Ihnen statt als Datei, die Sie neu laden müssen, und vor jeder Änderung steht ein Backup, das entsteht, ohne dass Sie darum bitten müssen. Was Sie geschrieben haben, geht hier nicht verloren.",
 "for1.t": "Für die Wissenschaft",
-"for1.p": "Das Komitee schickt das Manuskript voller nachverfolgter Änderungen zurück, und der Zitierapparat muss die Überarbeitung überstehen. Zitate, Fußnoten, Querverweise, APA-Paritätsprüfung und Inhaltsverzeichnis sind hier erste Klasse, sodass ein Agent die Überarbeitungsrunde übernehmen kann, ohne irgendetwas davon zu zerbrechen.",
+"for1.p": "Das Komitee schickt das Manuskript voller nachverfolgter Änderungen zurück, und der Zitierapparat muss die Überarbeitung überstehen. Das wissenschaftliche Mobiliar, das andere Werkzeuge niedertrampeln, von den Fußnoten bis zum Literaturverzeichnis, ist hier erste Klasse, sodass ein Agent die Überarbeitungsrunde übernehmen kann, ohne irgendetwas davon zu zerbrechen.",
 "for2.t": "Für Recht, Compliance und Personal",
-"for2.p": "Verträge, Richtlinien und Akten leben in Word, und jede Änderung braucht einen Urheber. Hier lassen sich Änderungen als nachverfolgte Änderungen schreiben, der Dokumentvergleich läuft Word-nativ, und die Schwärzung entfernt den Text wirklich und prüft anschließend, dass er verschwunden ist.",
+"for2.p": "Verträge, Richtlinien und Akten leben in Word, und jede Änderung braucht einen Urheber. Hier lassen sich Änderungen als nachverfolgte Änderungen schreiben, der Vergleich zweier Fassungen funktioniert so, wie Word selbst es macht, und die Schwärzung entfernt den Text wirklich und prüft anschließend, dass er verschwunden ist.",
 "for3.t": "Für Word-Poweruser",
-"for3.p": "Für alle, deren Dokumente zu wichtig sind, um mit ihnen zu spielen. Jedes Speichern ist atomar und validiert, vor jeder Änderung entsteht automatisch ein Backup, und die Live-Bearbeitung lässt das Dokument in Word geöffnet, ein Strg+Z-Schritt pro Aufruf, der Cursor bleibt unberührt.",
+"for3.p": "Für alle, deren Dokumente zu wichtig sind, um sie aufs Spiel zu setzen. Sehen Sie zu, wie die Änderung in Ihrem eigenen offenen Word-Fenster landet, nehmen Sie sie mit einem einzigen Strg+Z zurück, wenn sie Ihnen nicht gefällt, und wissen Sie, dass es ein Backup gab, bevor irgendetwas angefasst wurde. Der Cursor bleibt bei Ihnen, das Tippen übernimmt der Agent.",
 "h2.tale": "Warum es das gibt",
 "h2.inv": "Das Inventar",
 "h2.cmp": "Gegen die Konkurrenz",
+"no7": "ABT. 07",
+"h2.fam": "Die Familie",
+"fam1.t": "KitchenSink4PPT",
+"fam1.p": "Für Microsoft PowerPoint mit allem Drum und Dran. Knoten verschieben, die Pfeile folgen: Diagramme, die Ihre Hände weiterhin bewegen können. Tabellen, die sich benehmen, und dasselbe Versprechen, nichts zu beschädigen, jetzt für Folien.",
+"fam1.g": "Zum Beleuchtungsgang →",
+"fam2.t": "Das Ladengeschäft",
+"fam2.p": "Der ganze Baumarkt auf einer Seite: jeder KitchenSink-Server, seine Armatur und sein Schalter, dazu ein, zwei Regale, die nicht aus Versehen leer sind.",
+"fam2.g": "Den Laden durchstöbern →",
+"inv.lead": "Die Ware ist in Fähigkeitspaketen sortiert, so wie ein guter Baumarkt in Gänge sortiert ist. Stöbern Sie in den Regalen unten; Ihr Agent trägt einen Gang nur dann mit, wenn der Auftrag danach verlangt.",
+"cmp.lead": "Werkzeugzahlen schmeicheln jedem. Worauf es ankommt, ist, was passiert, wenn Sie tatsächlich fragen:",
+"hero.invite": "↓ oder fangen Sie damit an, wovor es Sie schützt: dem Morgen, an dem Word anbietet, Ihr Manuskript zu reparieren",
 "h2.install": "Installation",
 "h2.svc": "Serviceabteilung",
 "tale.label": "EIN WARNENDES BEISPIEL",
@@ -1042,10 +1108,11 @@ de: {
 "mv.s12": "✔ 12 Stile", "mv.s8": "✔ 8 Stile", "mv.both": "✔ beide Richtungen", "mv.sha": "✔ Word-kompatibles SHA-512", "mv.file": "✔ Dateiwerkzeuge; COM optional", "mv.undo": "✔ ein Strg+Z pro Aufruf", "mv.evid": "✔ 1.324 / 0", "mv.inapp": "✔ in der App",
 "mx.note": "Fähigkeitserhebung, Stand 2026-08-28, zusammengetragen aus öffentlichen Repositories, Dokumentation und Issue-Trackern. n/d: in den gesichteten Quellen nicht dokumentiert (keine behauptete Abwesenheit). * Offizielle Add-ins bündelt Microsofts Word-KI-Angebote und das Claude-for-Word-Add-in: cloudbasiert oder auf Team/Enterprise beschränkt, keine lokalen MCP-Server. Korrekturen willkommen: einfach ein Issue öffnen. &dagger; Sternzahlen am 2026-09-04 über die GitHub-API gelesen, zur Einordnung: Sterne zeigen, wie lange ein Projekt schon sichtbar ist, nicht was es kann.",
 "h2.eff": "Kontext-Effizienz",
-"eff.lead": "Jeder MCP-Server belegt einen Teil des Kontextfensters eines Agenten, bevor die Arbeit überhaupt beginnt, und kaum einer sagt, wie viel. Hier ist unsere gemessene Rechnung: Eine frische Sitzung startet mit dem Lite-Kern, 28 Werkzeuge für rund 7.700 Token, und schaltet Fähigkeitspakete erst zu, wenn eine Aufgabe sie braucht. Mit allen Paketen misst die volle Oberfläche etwa 26.700 Token, gegenüber rund 34.400 in v1.6, also etwa 23 Prozent weniger für die ganze Spüle und rund 78 Prozent weniger beim Lite-Start. Clients, die Werkzeugschemata aufschieben, wie Claude Code, zahlen nahezu nichts, bis ein Werkzeug tatsächlich aufgerufen wird.",
+"eff.lead": "Jeder MCP-Server nimmt sich einen Bissen aus dem Gedächtnis Ihres Assistenten, bevor irgendeine Arbeit beginnt, und ein großer Bissen hat einen Preis, den Sie spüren: einen Assistenten, der vergisst, was Sie ihm vor zehn Minuten gesagt haben. Fast niemand nennt Ihnen die Größe des Bissens. Hier ist unsere, gemessen: klein zu Beginn, wächst nur, wenn eine Aufgabe ein Spezialpaket braucht, und die genauen Zahlen stehen auf den Kacheln darunter.",
 "eff.s1": "Lite-Start · 28 Werkzeuge",
 "eff.s2": "Volle Oberfläche · alle Pakete",
 "eff.s3": "Praktische Kosten bei aufgeschobenen Schemata (Claude Code)",
+"eff.fig": "Die gemessene Rechnung: rund 7.700 Token zu Beginn, rund 26.700 mit allen Paketen, gegenüber rund 34.400 in v1.6.",
 "eff.road": "<b>GESTUFTES LADEN</b> · Ausgeliefert. Eine Sitzung startet mit dem 28-Werkzeuge-Lite-Kern und schaltet Pakete mit einem enable_tools-Aufruf zu. Startet leicht, die ganze Spüle ist einen Aufruf entfernt.",
 "dept1.e": "z. B. einer Tabelle voller verbundener Zellen eine Spalte hinzufügen · zwanzig Zellen in einem Aufruf umschreiben · eine Tabelle nach beliebiger Spalte sortieren",
 "dept2.e": "z. B. ein Zitat einfügen und das Literaturverzeichnis aufbauen · alle Fußnoten in Endnoten umwandeln · das Inhaltsverzeichnis aktualisieren",
@@ -1066,7 +1133,7 @@ de: {
 "svc3.t": "Gewerbliche Montage?", "svc3.p": "Für Privatpersonen und private Nutzung kostenlos, und das bleibt so. Will ein Unternehmen das in ein eigenes Produkt einbauen, braucht es eine kommerzielle Lizenz, deren Konditionen im Einzelfall besprochen werden. An diesem Schalter fängt das Gespräch an.", "svc3.g": "Lizenz vereinbaren →",
 "svc.note": "Berichte sind öffentliche GitHub-Issues (zum Einreichen genügt ein kostenloses GitHub-Konto). Jeder Bericht landet im Posteingang des Maintainers.",
 "g.t": "Konstruiert mit dem Ziel, nichts zu beschädigen",
-"g.p1": "Atomares, validiertes Speichern. Automatische Backups vor jeder Änderung. Byte-identische Durchleitung von allem, was nicht bearbeitet wird: Formeln, Textfelder und Inhaltssteuerelemente passieren unangetastet. Erprobt an langen, stark formatierten realen Dokumenten: eines mit 171 Fußnoten, eines mit 126 nachverfolgten Änderungen und Prüferkommentaren, dazu zwei Stresskampagnen im Irrsinnsmodus ohne einen einzigen Word-Reparaturdialog.",
+"g.p1": "Sie kennen den Morgen: Das Manuskript ist fällig, Word öffnet sich, und da steht ein Dialog, der anbietet, Ihre Datei zu „reparieren“. Genau diesen Morgen soll dieser ganze Server verhindern. Vor jeder Änderung entsteht automatisch ein Backup. Jedes Speichern wird geprüft, bevor es Ihre Datei ersetzt, damit ein schlechter Schreibvorgang nicht das Original mitnimmt. Und alles, was die Bearbeitung nicht anfasst, von Formeln bis zu Textfeldern, geht genau so hindurch, wie es war, Byte für Byte. Zwei vollständige Stresskampagnen und ein Regal voll langer, stark formatierter echter Manuskripte, und Word hat kein einziges Mal angeboten, etwas zu reparieren, das dieser Server gespeichert hat.",
 "g.p2": "Bereitgestellt wie besehen, ohne Gewährleistung jeglicher Art, gemäß Lizenz; die obige Ingenieursarbeit zeigt lediglich, wie ernst Ihre Dokumente genommen werden. Behalten Sie Backups. (Es legt sie für Sie an.)",
 "f.left": "&copy; 2026 &middot; <b>AGPL-3.0</b>: kostenlos für Privatpersonen und private Nutzung.<br>Unternehmen, die es in eigene Produkte einbauen, brauchen eine kommerzielle Lizenz; <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>ein Issue öffnen</a>, dann klären wir das.",
 "f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>Störung melden</a><br>Mit Claude Code an einem Tag prototypisiert, gehärtet durch Tausende adversarialer Testaufrufe und an echten Manuskripten mit über 65.000 Wörtern und 250 Seiten getestet. So viel Rohrleitung! 🚰"
@@ -1079,10 +1146,10 @@ fr: {
 "new.label": "ARRIVAGE",
 "new.t": "Cinq choses que cette version change",
 "new.sub": "La liste complète, sans passer par les notes de version.",
-"new1": "<b>Plus de portée, moins d'outils.</b> 219 opérations désormais, contre 200 en v1.6, et les 189 outils de la surface v1.6 sont devenus 108 sous une seule grammaire de verbes, si bien que votre agent choisit le bon outil du premier coup.",
-"new2": "<b>Démarre léger, grandit à la demande.</b> Une session s'ouvre sur un noyau de 28 outils coûtant environ 7 700 tokens et n'active un lot de capacités que lorsqu'une tâche en a réellement besoin.",
-"new3": "<b>Une édition en direct qu'on peut laisser tourner.</b> Plusieurs agents peuvent maintenant travailler sur un document ouvert sans se gêner, et une boîte de dialogue Word qui attend un humain est détectée au niveau du système d'exploitation au lieu de geler la session en silence.",
-"new4": "<b>Lire une fois, corriger en masse.</b> La vue ancrée du document renvoie des adresses qui survivent à vos modifications, et l'éditeur par lots y applique des dizaines de changements en une seule passe, tout ou rien.",
+"new1": "<b>Moins d'outils, et votre agent cesse de deviner.</b> La v1.6 comptait 189 outils aux noms largement redondants, et les agents brûlaient du temps et des tokens à choisir entre eux. La version 2 reconstruit le tout en 108 outils sous une seule grammaire cohérente, qui couvre plus de terrain qu'avant, pas moins. L'agent choisit juste du premier coup et passe votre session sur le document.",
+"new2": "<b>Démarre léger, reste léger.</b> Une session neuve charge un petit noyau plutôt que toute la caisse à outils, et ne va chercher les étagères spécialisées que lorsque votre tâche en a réellement besoin. Votre assistant garde davantage d'attention pour votre document, et aucune des anciennes capacités n'a disparu.",
+"new3": "<b>Une édition en direct qu'on peut laisser tourner.</b> Plusieurs agents peuvent maintenant travailler sur un document ouvert sans se gêner, et une boîte de dialogue Word qui attend un humain est repérée et signalée, au lieu de laisser votre agent en plan.",
+"new4": "<b>Cinquante modifications, une seule passe, rien ne dérive.</b> Demandez une vue du document et chaque paragraphe revient avec une adresse stable, si bien que l'agent peut désigner exactement l'endroit qu'il vise, même après que le texte a bougé. Ensuite, l'éditeur par lots pose des dizaines de changements en une passe qui, ou bien réussissent tous, ou bien laissent le fichier intact. Fini, la trente-septième modification qui atterrit sur le mauvais paragraphe.",
 "new5": "<b>Échangez avec votre IA par commentaires.</b> Laissez un commentaire dans Word comme vous le feriez pour un collègue : l'agent le lit, fait le travail en suivi des modifications et répond dans le fil. (Aperçu.)",
 "mxr0": "Étoiles GitHub&dagger;",
 "eff.growth": "<b>PLUS DE PORTÉE, MOINS D'OUTILS</b> &middot; v1.6 comptait 200 opérations réparties sur 189 outils ; v2.0 en livre 219 sur 108. Les deux arbres ont été mesurés avec la même règle, la comparaison tient donc.",
@@ -1112,16 +1179,27 @@ fr: {
 "btn.source": "Lire la source",
 "no0": "RAYON 00", "no1": "RAYON 01", "no2": "RAYON 02", "no3": "RAYON 03", "no4": "RAYON 04", "no5": "RAYON 05",
 "h2.for": "À quoi ça sert, au juste",
-"for.lead": "C'est le dernier serveur MCP Word que vous aurez à installer. Sur la capacité, personne n'approche : 219 opérations atteignent chaque partie d'un document Word que le travail sérieux touche, et le tableau comparatif plus bas sur cette page est fait surtout de colonnes vides. La complétude n'est que la moitié de l'affaire. Vos documents restent ouverts dans Word pendant que l'agent les modifie, si bien que chaque changement apparaît dans la fenêtre devant vous au lieu d'arriver sous forme de fichier à recharger, et chaque changement est précédé d'une sauvegarde automatique et validé par un enregistrement atomique. Ici, ce que vous avez écrit ne se perd pas.",
+"for.lead": "C'est le dernier serveur MCP Word que vous aurez à installer. Sur la capacité, personne n'approche : 219 opérations atteignent chaque partie d'un document Word que le travail sérieux touche, et le tableau comparatif plus bas sur cette page est fait surtout de colonnes vides. La complétude n'est que la moitié de l'affaire. Vos documents restent ouverts dans Word pendant que l'agent les modifie, si bien que chaque changement apparaît dans la fenêtre devant vous au lieu d'arriver sous forme de fichier à recharger, et chaque changement est précédé d'une sauvegarde, créée sans que vous ayez à la demander. Ici, ce que vous avez écrit ne se perd pas.",
 "for1.t": "Pour l'universitaire",
-"for1.p": "Le comité renvoie le manuscrit couvert de révisions suivies, et l'appareil critique doit survivre à la réécriture. Ici, citations, notes de bas de page, renvois, contrôle de parité APA et table des matières sont de première classe : un agent peut prendre en charge la passe de révision sans rien casser.",
+"for1.p": "Le comité renvoie le manuscrit couvert de révisions suivies, et l'appareil critique doit survivre à la réécriture. Ici, le mobilier savant que les autres outils piétinent, des notes de bas de page à la bibliographie, est de première classe : un agent peut prendre en charge la passe de révision sans rien casser.",
 "for2.t": "Pour le juridique, la conformité et les RH",
-"for2.p": "Contrats, politiques et dossiers vivent dans Word, et chaque modification doit porter un auteur. Ici, les modifications peuvent s'écrire en suivi des modifications, la comparaison de documents tourne en natif Word, et le caviardage supprime réellement le texte, puis vérifie qu'il a bien disparu.",
+"for2.p": "Contrats, politiques et dossiers vivent dans Word, et chaque modification doit porter un auteur. Ici, les modifications peuvent s'écrire en suivi des modifications, comparer deux versions fonctionne comme Word le fait lui-même, et le caviardage supprime réellement le texte, puis vérifie qu'il a bien disparu.",
 "for3.t": "Pour l'utilisateur exigeant de Word",
-"for3.p": "Pour tous ceux dont les documents sont trop précieux pour courir le moindre risque. Chaque enregistrement est atomique et validé, une sauvegarde automatique précède chaque modification, et l'édition en direct laisse le document ouvert dans Word, un cran de Ctrl+Z par appel, sans jamais toucher au curseur.",
+"for3.p": "Pour tous ceux dont les documents sont trop précieux pour être joués aux dés. Regardez la modification se poser dans votre propre fenêtre Word ouverte, reprenez-la d'un seul Ctrl+Z si elle ne vous plaît pas, et sachez qu'une sauvegarde existait avant que quoi que ce soit ne soit touché. Le curseur reste à vous, la frappe est pour l'agent.",
 "h2.tale": "Pourquoi ça existe",
 "h2.inv": "L'inventaire",
 "h2.cmp": "Face à la concurrence",
+"no7": "RAYON 07",
+"h2.fam": "La famille",
+"fam1.t": "KitchenSink4PPT",
+"fam1.p": "Absolument tout pour Microsoft PowerPoint, jusqu'au moindre détail. Déplacez le nœud, les flèches suivent : des diagrammes que vos mains peuvent encore bouger. Des tableaux qui se tiennent bien, et la même promesse de ne rien corrompre, désormais pour les diapositives.",
+"fam1.g": "Visiter le rayon éclairage →",
+"fam2.t": "La devanture",
+"fam2.p": "Toute la quincaillerie sur une page : chaque serveur KitchenSink, son installation et son comptoir, plus une étagère ou deux qui ne sont pas vides par hasard.",
+"fam2.g": "Parcourir la boutique →",
+"inv.lead": "Le stock est rangé en packs de capacités, comme une bonne quincaillerie est rangée en rayons. Parcourez les étagères ci-dessous ; votre agent n'emporte un rayon que lorsque le travail le réclame.",
+"cmp.lead": "Le nombre d'outils flatte tout le monde. Ce qui compte, c'est ce qui se passe quand vous demandez vraiment :",
+"hero.invite": "↓ ou commencez par ce dont il vous protège : le matin où Word propose de réparer votre manuscrit",
 "h2.install": "Installation",
 "h2.svc": "Service après-vente",
 "tale.label": "UN CONTE ÉDIFIANT",
@@ -1160,10 +1238,11 @@ fr: {
 "mv.s12": "✔ 12 styles", "mv.s8": "✔ 8 styles", "mv.both": "✔ dans les deux sens", "mv.sha": "✔ SHA-512 compatible Word", "mv.file": "✔ outils fichier ; COM en option", "mv.undo": "✔ un Ctrl+Z par appel", "mv.evid": "✔ 1 324 / 0", "mv.inapp": "✔ dans l'application",
 "mx.note": "Recensement des capacités au 2026-08-28, compilé à partir des dépôts publics, de la documentation et des traqueurs de tickets. n/d : non documenté dans les sources consultées (ce n'est pas une absence affirmée). * Compléments officiels regroupe les offres IA de Microsoft pour Word et le complément Claude for Word : en nuage ou réservés aux offres Team/Enterprise, pas des serveurs MCP locaux. Corrections bienvenues : ouvrez un ticket. &dagger; Nombres d'étoiles relevés via l'API GitHub le 2026-09-04, à titre de contexte : les étoiles disent depuis combien de temps un projet est visible, pas ce qu'il sait faire.",
 "h2.eff": "Efficacité de contexte",
-"eff.lead": "Chaque serveur MCP occupe une partie de la fenêtre de contexte d'un agent avant même que le travail commence, et presque aucun ne dit combien. Voici notre facture, mesurée : une session neuve démarre sur le noyau allégé, 28 outils pour environ 7 700 tokens, et n'active des packs de capacités que lorsqu'une tâche les demande. Tous les packs chargés, la surface complète mesure environ 26 700 tokens, contre près de 34 400 en v1.6, soit à peu près 23 pour cent de moins pour l'évier entier et environ 78 pour cent de moins au démarrage allégé. Les clients qui diffèrent les schémas d'outils, comme Claude Code, ne paient presque rien tant qu'un outil n'est pas réellement appelé.",
+"eff.lead": "Chaque serveur MCP prend une bouchée dans la mémoire de votre assistant avant même que le travail commence, et une grosse bouchée a un coût que vous sentez passer : un assistant qui oublie ce que vous lui avez dit il y a dix minutes. Presque personne ne vous dit la taille de la bouchée. Voici la nôtre, mesurée : petite au départ, elle ne grossit que lorsqu'une tâche réclame un pack spécialisé, et les chiffres exacts sont sur les tuiles ci-dessous.",
 "eff.s1": "Démarrage allégé · 28 outils",
 "eff.s2": "Surface complète · tous les packs",
 "eff.s3": "Coût pratique avec schémas différés (Claude Code)",
+"eff.fig": "La facture mesurée : environ 7 700 tokens au départ, environ 26 700 avec tous les packs, contre près de 34 400 en v1.6.",
 "eff.road": "<b>CHARGEMENT PAR PALIERS</b> · Livré. Une session démarre sur le noyau allégé de 28 outils et active des packs avec un seul appel enable_tools. On part léger, l'évier complet est à un appel de distance.",
 "dept1.e": "p. ex. ajouter une colonne à un tableau plein de cellules fusionnées · réécrire vingt cellules en un appel · trier un tableau par n'importe quelle colonne",
 "dept2.e": "p. ex. insérer une citation et bâtir la bibliographie · convertir toutes les notes de bas de page en notes de fin · actualiser la table des matières",
@@ -1184,7 +1263,7 @@ fr: {
 "svc3.t": "Installation commerciale ?", "svc3.p": "Gratuit pour les particuliers et l'usage personnel, et cela ne changera pas. Si votre entreprise veut l'intégrer dans un produit à elle, il lui faut une licence commerciale, dont les conditions se discutent au cas par cas. C'est à ce comptoir que la conversation commence.", "svc3.g": "Convenir d'une licence →",
 "svc.note": "Les signalements sont des tickets GitHub publics (un compte GitHub gratuit suffit pour en déposer un). Chaque signalement atterrit dans la boîte du mainteneur.",
 "g.t": "Conçu pour ne pas corrompre",
-"g.p1": "Enregistrements atomiques validés. Sauvegardes automatiques avant chaque modification. Passage à l'identique, octet pour octet, de tout ce qui n'est pas modifié : équations, zones de texte et contrôles de contenu traversent intacts. Éprouvé sur de vrais documents longs et lourdement mis en forme : l'un portant 171 notes de bas de page, l'autre 126 révisions suivies et commentaires de relecteurs, plus deux campagnes d'endurance en mode démentiel sans une seule invite de réparation de Word.",
+"g.p1": "Vous connaissez ce matin-là : le manuscrit est à rendre, Word s'ouvre, et une boîte de dialogue propose de « réparer » votre fichier. C'est ce matin-là que tout ce serveur est fait pour empêcher. Avant la moindre modification, une sauvegarde est créée automatiquement. Chaque enregistrement est vérifié avant de remplacer votre fichier, si bien qu'une mauvaise écriture ne peut pas emporter l'original avec elle. Et tout ce que la modification ne touche pas, des équations aux zones de texte, passe exactement tel quel, octet pour octet. Deux campagnes d'endurance complètes et toute une étagère de vrais manuscrits longs et lourdement mis en forme, et Word n'a pas une seule fois proposé de réparer quoi que ce soit enregistré par ce serveur.",
 "g.p2": "Fourni tel quel, sans garantie d'aucune sorte, conformément à la licence ; l'ingénierie ci-dessus dit simplement avec quel sérieux vos documents sont traités. Gardez des sauvegardes. (Il les fait pour vous.)",
 "f.left": "&copy; 2026 &middot; <b>AGPL-3.0</b> : gratuit pour les particuliers et l'usage personnel.<br>Les entreprises qui l'intègrent dans leurs propres produits ont besoin d'une licence commerciale ; <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>ouvrez un ticket</a> et nous en parlerons.",
 "f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>signaler un pépin</a><br>Prototypé avec Claude Code en une journée, endurci par des milliers de tests adversariaux et testé sur de vrais manuscrits de plus de 65 000 mots et 250 pages. C'est de la belle tuyauterie&nbsp;! 🚰"
@@ -1197,10 +1276,10 @@ es: {
 "new.label": "RECIÉN LLEGADO",
 "new.t": "Cinco cosas que cambia esta versión",
 "new.sub": "La lista entera, sin tener que leer las notas de la versión.",
-"new1": "<b>Más alcance, menos herramientas.</b> Ahora 219 operaciones, frente a 200 en v1.6, y aquellas 189 herramientas de la superficie v1.6 pasaron a ser 108 bajo una sola gramática de verbos, así que su agente acierta con la herramienta a la primera.",
-"new2": "<b>Empieza pequeño y crece cuando hace falta.</b> Una sesión abre con un núcleo de 28 herramientas que cuesta unos 7.700 tokens y solo enciende paquetes de capacidades cuando una tarea los necesita de verdad.",
-"new3": "<b>Edición en vivo que puede dejar funcionando.</b> Ahora varios agentes pueden trabajar sobre un documento abierto sin chocar, y un cuadro de diálogo de Word que espera a una persona se detecta en el nivel del sistema operativo en lugar de congelar la sesión en silencio.",
-"new4": "<b>Lea una vez, edite en bloque.</b> La vista anclada del documento devuelve direcciones que sobreviven a sus ediciones, y el editor por lotes les aplica decenas de cambios en una sola pasada de todo o nada.",
+"new1": "<b>Menos herramientas, y su agente deja de adivinar.</b> La v1.6 tenía 189 herramientas con muchos nombres solapados, y los agentes quemaban tiempo y tokens eligiendo entre ellas. La versión 2 lo reconstruye todo como 108 herramientas bajo una sola gramática coherente, que abarca más terreno que antes, no menos. El agente acierta a la primera y dedica su sesión al documento.",
+"new2": "<b>Arranca ligero y sigue ligero.</b> Una sesión nueva carga un núcleo pequeño en vez de toda la caja de herramientas, y solo echa mano de los estantes especializados cuando su tarea de verdad los necesita. Su asistente reserva más atención para el documento, y ninguna de las capacidades de antes se ha ido a ninguna parte.",
+"new3": "<b>Edición en vivo que puede dejar funcionando.</b> Ahora varios agentes pueden trabajar sobre un documento abierto sin chocar, y un cuadro de diálogo de Word que espera a una persona se detecta y se informa, en lugar de dejar a su agente colgado.",
+"new4": "<b>Cincuenta ediciones, una pasada, nada se descoloca.</b> Pida una vista del documento y cada párrafo vuelve con una dirección estable, así que el agente puede señalar el punto exacto al que se refiere incluso después de que el texto se haya movido. Luego el editor por lotes deja decenas de cambios en una sola pasada que, o bien salen todos, o bien dejan el archivo intacto. Se acabó que la edición número treinta y siete caiga en el párrafo equivocado.",
 "new5": "<b>Converse con su IA a base de comentarios.</b> Deje un comentario en Word como se lo dejaría a un colega: el agente lo lee, hace el trabajo como cambios rastreados y responde en el mismo hilo. (Vista previa.)",
 "mxr0": "Estrellas de GitHub&dagger;",
 "eff.growth": "<b>MÁS ALCANCE, MENOS HERRAMIENTAS</b> &middot; v1.6 medía 200 operaciones repartidas en 189 herramientas; v2.0 entrega 219 en 108. Los dos árboles se midieron con el mismo rasero, así que la comparación se sostiene.",
@@ -1230,16 +1309,27 @@ es: {
 "btn.source": "Leer el código",
 "no0": "DEPTO. 00", "no1": "DEPTO. 01", "no2": "DEPTO. 02", "no3": "DEPTO. 03", "no4": "DEPTO. 04", "no5": "DEPTO. 05",
 "h2.for": "Para qué sirve realmente",
-"for.lead": "Este es el último servidor MCP de Word que va a necesitar instalar. En capacidad no hay nadie cerca: 219 operaciones llegan a cada parte de un documento de Word que toca el trabajo serio, y la tabla comparativa más abajo en esta página está hecha sobre todo de columnas vacías. La completitud es solo la mitad del asunto. Sus documentos siguen abiertos en Word mientras el agente los edita, así que cada cambio aparece en la ventana que tiene delante en vez de llegar como un archivo que hay que recargar, y cada cambio va precedido de una copia de seguridad automática y se confirma con un guardado atómico validado. Aquí no se pierde lo que ha escrito.",
+"for.lead": "Este es el último servidor MCP de Word que va a necesitar instalar. En capacidad no hay nadie cerca: 219 operaciones llegan a cada parte de un documento de Word que toca el trabajo serio, y la tabla comparativa más abajo en esta página está hecha sobre todo de columnas vacías. La completitud es solo la mitad del asunto. Sus documentos siguen abiertos en Word mientras el agente los edita, así que cada cambio aparece en la ventana que tiene delante en vez de llegar como un archivo que hay que recargar, y cada cambio va precedido de una copia de seguridad, hecha sin que usted la pida. Aquí no se pierde lo que ha escrito.",
 "for1.t": "Para el académico",
-"for1.p": "El comité devuelve el manuscrito lleno de revisiones rastreadas y el aparato de citas tiene que sobrevivir a la reescritura. Aquí las citas, las notas al pie, las referencias cruzadas, la comprobación de paridad APA y la tabla de contenido son de primera clase, así que un agente puede encargarse de la pasada de revisión sin romper nada de eso.",
+"for1.p": "El comité devuelve el manuscrito lleno de revisiones rastreadas y el aparato de citas tiene que sobrevivir a la reescritura. Aquí el mobiliario académico que otras herramientas pisotean, desde las notas al pie hasta la lista de referencias, es de primera clase, así que un agente puede encargarse de la pasada de revisión sin romper nada de eso.",
 "for2.t": "Para legal, cumplimiento y RR. HH.",
-"for2.p": "Los contratos, las políticas y los expedientes viven en Word, y cada edición necesita un autor. Aquí las ediciones pueden escribirse como cambios rastreados, la comparación de documentos corre en modo nativo de Word, y la censura elimina el texto de verdad y luego comprueba que ha desaparecido.",
+"for2.p": "Los contratos, las políticas y los expedientes viven en Word, y cada edición necesita un autor. Aquí las ediciones pueden escribirse como cambios rastreados, comparar dos versiones funciona como lo hace el propio Word, y la censura elimina el texto de verdad y luego comprueba que ha desaparecido.",
 "for3.t": "Para el usuario avanzado de Word",
-"for3.p": "Para cualquiera cuyos documentos sean demasiado importantes como para arriesgarlos. Cada guardado es atómico y validado, una copia de seguridad automática precede a cada cambio, y la edición en vivo deja el documento abierto en Word, con un paso de Ctrl+Z por llamada y el cursor intacto.",
+"for3.p": "Para cualquiera cuyos documentos sean demasiado importantes como para jugárselos. Vea cómo la edición aterriza en su propia ventana de Word abierta, deshágala con un solo Ctrl+Z si no le gusta y sepa que había una copia de seguridad antes de tocar nada. El cursor es suyo; teclear es cosa del agente.",
 "h2.tale": "Por qué existe",
 "h2.inv": "El inventario",
 "h2.cmp": "Frente a la competencia",
+"no7": "DEPTO. 07",
+"h2.fam": "La familia",
+"fam1.t": "KitchenSink4PPT",
+"fam1.p": "De todo para Microsoft PowerPoint, hasta lo que no imaginas. Mueva el nodo y las flechas lo siguen: diagramas que sus manos todavía pueden mover. Tablas que se portan bien y la misma promesa de no corromper nada, ahora para diapositivas.",
+"fam1.g": "Visite el pasillo de iluminación →",
+"fam2.t": "La tienda",
+"fam2.p": "Toda la ferretería en una página: cada servidor KitchenSink, su accesorio y su mostrador, más un estante o dos que no están vacíos por casualidad.",
+"fam2.g": "Recorrer la tienda →",
+"inv.lead": "La mercancía está ordenada en paquetes de capacidades, igual que una buena ferretería está ordenada en pasillos. Recorra los estantes de abajo; su agente solo se lleva un pasillo cuando el trabajo lo pide.",
+"cmp.lead": "El número de herramientas favorece a todos. Lo que importa es qué ocurre cuando de verdad lo pide:",
+"hero.invite": "↓ o empiece por aquello de lo que le protege: la mañana en que Word se ofrece a reparar su manuscrito",
 "h2.install": "Instalación",
 "h2.svc": "Departamento de servicio",
 "tale.label": "UN CUENTO CON MORALEJA",
@@ -1278,10 +1368,11 @@ es: {
 "mv.s12": "✔ 12 estilos", "mv.s8": "✔ 8 estilos", "mv.both": "✔ en ambos sentidos", "mv.sha": "✔ SHA-512 compatible con Word", "mv.file": "✔ herramientas de archivo; COM opcional", "mv.undo": "✔ un Ctrl+Z por llamada", "mv.evid": "✔ 1.324 / 0", "mv.inapp": "✔ dentro de la aplicación",
 "mx.note": "Estudio de capacidades a 2026-08-28, compilado de repositorios públicos, documentación y gestores de incidencias. n/d: no documentado en las fuentes consultadas (no es una ausencia afirmada). * Complementos oficiales agrupa las ofertas de IA de Microsoft para Word y el complemento Claude for Word: en la nube o limitados a planes Team/Enterprise, no servidores MCP locales. Correcciones bienvenidas: abra un issue. &dagger; Recuento de estrellas leído de la API de GitHub el 2026-09-04, a modo de contexto: las estrellas dicen cuánto tiempo lleva un proyecto a la vista, no lo que sabe hacer.",
 "h2.eff": "Eficiencia de contexto",
-"eff.lead": "Todo servidor MCP ocupa parte de la ventana de contexto de un agente antes de empezar a trabajar, y casi ninguno dice cuánto. Esta es nuestra factura, medida: una sesión nueva arranca con el núcleo ligero, 28 herramientas por unos 7.700 tokens, y activa paquetes de capacidades solo cuando una tarea los necesita. Con todos los paquetes cargados, la superficie completa mide unos 26.700 tokens, frente a unos 34.400 en la v1.6, aproximadamente un 23 por ciento menos para todo el fregadero y alrededor de un 78 por ciento menos al arrancar ligero. Los clientes que aplazan los esquemas, como Claude Code, no pagan casi nada hasta que una herramienta se invoca de verdad.",
+"eff.lead": "Todo servidor MCP le da un mordisco a la memoria de su asistente antes de que empiece cualquier trabajo, y un mordisco grande tiene un coste que se nota: un asistente que olvida lo que usted le dijo hace diez minutos. Casi nadie le dice el tamaño del mordisco. Aquí está el nuestro, medido: pequeño para empezar, crece solo cuando una tarea necesita un paquete especializado, y las cifras exactas están en los recuadros de abajo.",
 "eff.s1": "Arranque ligero · 28 herramientas",
 "eff.s2": "Superficie completa · todos los paquetes",
 "eff.s3": "Coste práctico con esquemas aplazados (Claude Code)",
+"eff.fig": "La factura medida: unos 7.700 tokens al arrancar, unos 26.700 con todos los paquetes, frente a unos 34.400 en la v1.6.",
 "eff.road": "<b>CARGA POR NIVELES</b> · Disponible. Una sesión arranca con el núcleo ligero de 28 herramientas y activa paquetes con una sola llamada a enable_tools. Arranca ligero, con el fregadero entero a una llamada de distancia.",
 "dept1.e": "p. ej. añadir una columna a una tabla llena de celdas combinadas · reescribir veinte celdas en una llamada · ordenar una tabla por cualquier columna",
 "dept2.e": "p. ej. insertar una cita y construir la bibliografía · convertir todas las notas al pie en notas al final · actualizar la tabla de contenido",
@@ -1302,7 +1393,7 @@ es: {
 "svc3.t": "¿Instalación comercial?", "svc3.p": "Gratis para particulares y uso personal, y seguirá siéndolo. Si su empresa quiere integrarlo en un producto propio, hace falta una licencia comercial, con las condiciones acordadas caso por caso. En este mostrador empieza esa conversación.", "svc3.g": "Gestionar una licencia →",
 "svc.note": "Los partes son issues públicos de GitHub (hace falta una cuenta gratuita de GitHub para presentarlos). Cada parte llega a la bandeja del mantenedor.",
 "g.t": "Diseñado para no corromper",
-"g.p1": "Guardados atómicos validados. Copias de seguridad automáticas antes de cada cambio. Paso idéntico byte a byte de todo lo que no se edita: ecuaciones, cuadros de texto y controles de contenido pasan intactos. Curtido en documentos reales largos y muy formateados: uno con 171 notas al pie, otro con 126 revisiones rastreadas y comentarios de revisores, más dos campañas de estrés en modo demencial sin un solo aviso de reparación de Word.",
+"g.p1": "Conoce esa mañana: el manuscrito hay que entregarlo, Word se abre y aparece un cuadro de diálogo que se ofrece a «reparar» su archivo. Esa mañana es justo lo que todo este servidor está hecho para evitar. Antes de cualquier cambio se crea una copia de seguridad automáticamente. Cada guardado se comprueba antes de sustituir su archivo, de modo que una escritura mala no puede llevarse el original por delante. Y todo lo que la edición no toca, de las ecuaciones a los cuadros de texto, pasa exactamente como estaba, byte a byte. Dos campañas de estrés completas y todo un estante de manuscritos reales largos y muy formateados, y Word no se ha ofrecido ni una sola vez a reparar nada que haya guardado este servidor.",
 "g.p2": "Se ofrece tal cual, sin garantía de ningún tipo, según la licencia: la ingeniería anterior solo muestra con cuánta seriedad se tratan sus documentos. Conserve copias de seguridad. (Él las hace por usted.)",
 "f.left": "&copy; 2026 &middot; <b>AGPL-3.0</b>: gratis para particulares y uso personal.<br>Las empresas que lo integren en productos propios necesitan una licencia comercial; <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new?template=commercial_license.yml'>abra un issue</a> y lo hablamos.",
 "f.right": "<a href='https://github.com/nometalalchemist/KitchenSink4Word'>github.com/nometalalchemist/KitchenSink4Word</a> · <a href='https://github.com/nometalalchemist/KitchenSink4Word/issues/new/choose'>informar de un fallo</a><br>Prototipado con Claude Code en un día, endurecido con miles de pruebas adversariales y probado en manuscritos reales de más de 65.000 palabras y 250 páginas. ¡Eso sí que es fontanería! 🚰"
