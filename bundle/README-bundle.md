@@ -55,6 +55,38 @@ window, or Settings → Extensions → Advanced settings → Install Extension.
 Desktop writes the manifest's `mcp_config` into its config; the first launch
 resolves the package from PyPI (needs network + uv on the machine).
 
+## Settings checkboxes (`user_config`)
+
+The manifest exposes two boolean checkboxes in the server's Claude Desktop
+settings, each mapped to an environment variable through `mcp_config.env`:
+
+| Checkbox | Env | Default | On means |
+|---|---|---|---|
+| Load every tool at startup | `KS4W_ALL_TOOLS` | off | every pack is enabled at startup (same as `KS4W_MODE=full`) |
+| Lock the tool set at startup | `KS4W_LOCK_TOOLS` | off | `enable_tools`/`disable_tools` refuse (same as `KS4W_PACK_POLICY=locked`) |
+
+Desktop writes the LITERAL strings `"true"` and `"false"`, and
+`packs.parse_toggle` honors both with the polarity the checkbox shows. An
+empty value fails closed to off; an unrecognized value refuses to start and
+names the accepted values, and both toggles are parsed at startup even when
+precedence ends up ignoring one.
+
+Precedence: `KS4W_MODE` set to something non-empty beats the first checkbox
+outright, and `KS4W_PACK_POLICY` beats the second the same way, so a pinned
+pack list survives an install. `apply_startup_mode` writes one line to
+stderr naming what decided the surface, which is how an operator sees that a
+`KS4W_MODE` pin overrode a box a human ticked.
+
+**No per-pack checkbox, deliberately** (author ruling, 2026-09-05). Claude
+Desktop's own per-tool permissions already own the consent layer, and
+`enable_tools` already loads a pack mid-session on demand, so a checkbox per
+pack would duplicate both. `tests/unit/test_launch_toggles.py` asserts the
+toggle list is exactly these two and that the manifest matches the code.
+
+Tip worth repeating in install docs: in Claude Desktop's Tool permissions,
+set the Read-only tools group to Always Allow. Those tools cannot change
+anything, and it stops most permission prompts.
+
 ## Publish to Smithery (Local / MCPB Bundle listing)
 
 Authentication is yours, not an agent's: log in yourself with the Smithery

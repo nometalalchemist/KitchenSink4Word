@@ -31,6 +31,20 @@ Env contract:
   enable_tools, which is deliberately a plain tool call) or "locked"
   (enable_tools/disable_tools refuse; the surface is fixed at startup).
 
+The BOOLEAN toggles behind the .mcpb checkboxes (see parse_toggle). Each
+accepts the literal "true"/"false" Claude Desktop writes, treats empty and
+absent as off, and refuses to start on anything else:
+- KS4W_ALL_TOOLS: "true" loads every pack at startup, "false" or empty
+  keeps the lite default. KS4W_MODE wins when it is set to a non-empty
+  value, so a power user's pack list is never overridden by a checkbox.
+- KS4W_LOCK_TOOLS: "true" fixes the surface at startup (enable_tools and
+  disable_tools refuse), "false" or empty leaves it adjustable.
+  KS4W_PACK_POLICY wins when it is set to a non-empty value.
+
+There is deliberately no per-pack startup toggle: see toggle_env_names.
+startup_note() names which setting decided the surface and
+apply_startup_mode() writes that line to stderr.
+
 No persistence, by design: every session starts at KS4W_MODE.
 
 server.py populates the registry via register(); this module never imports
@@ -47,6 +61,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from typing import Callable
 
 from .core.errors import WordMcpError
@@ -178,8 +193,98 @@ def surface_report() -> dict:
     }
 
 
+#: The startup surface env for power users: "lite", "full", or a pack list.
+ENV_MODE = "KS4W_MODE"
+
+#: The surface-lock env for power users: "auto" (default) or "locked".
+ENV_PACK_POLICY = "KS4W_PACK_POLICY"
+
+#: The positively-named boolean toggles behind the .mcpb user_config
+#: checkboxes. Claude Desktop writes the LITERAL strings "true" and "false"
+#: for a user_config boolean, so both are honored with the meaning the
+#: checkbox shows the human: ticked means the thing the name says.
+ENV_ALL_TOOLS = "KS4W_ALL_TOOLS"
+ENV_LOCK_TOOLS = "KS4W_LOCK_TOOLS"
+
+_TRUE = ("1", "true", "on", "yes")
+_FALSE = ("0", "false", "off", "no")
+
+
+def parse_toggle(name: str, value: str | bool | None) -> bool:
+    """Resolve one boolean launch toggle, POSITIVE polarity: the value reads
+    the way the Desktop checkbox does, so "true" means the thing the env name
+    says.
+
+    An EMPTY value FAILS CLOSED to False, never to the enabling side: an
+    empty env is what an unconfigured host writes, and an empty string that
+    silently turned a setting ON would be a fail-open defect. Unrecognized
+    values are an ERROR, never a shrug, because guessing at a typo would
+    silently change the tool surface the operator asked for."""
+    if value is None or value is False:
+        return False
+    if value is True:
+        return True
+    text = str(value).strip().lower()
+    if not text:
+        return False  # empty NEVER enables
+    if text in _TRUE:
+        return True
+    if text in _FALSE:
+        return False
+    raise WordMcpError(
+        f"unknown {name} value {value!r}: use 'true' or 'false' "
+        f"(also accepted: {', '.join(_TRUE)} / {', '.join(_FALSE)}). "
+        f"Refusing to start rather than guessing, because guessing here "
+        f"would silently change which tools this server offers."
+    )
+
+
+def toggle(name: str) -> bool:
+    """Read one boolean toggle from the environment. Absent or empty is
+    False; garbage raises."""
+    return parse_toggle(name, os.environ.get(name))
+
+
+def _explicit(name: str) -> str:
+    """The power-user env's value when it is set to something non-empty.
+    An unset or blank value is not a choice and defers to the toggle."""
+    return os.environ.get(name, "").strip()
+
+
+def toggle_env_names() -> list[str]:
+    """Every boolean launch env this server reads.
+
+    There is deliberately NO per-pack toggle (author ruling, 2026-09-05).
+    Claude Desktop's own per-tool permissions already own the consent
+    layer, and enable_tools already lets the agent load a pack mid-session
+    on demand, so a startup checkbox per pack would duplicate both. The
+    two toggles here are the ones neither of those can express: how big the
+    surface starts, and whether it may change at all."""
+    return [ENV_ALL_TOOLS, ENV_LOCK_TOOLS]
+
+
+def validate_toggles() -> None:
+    """Parse every boolean env at startup so a typo refuses LOUDLY, even in
+    a toggle the precedence rules end up ignoring. Ignored means ignored for
+    the DECISION, not unchecked: a misspelled value is an operator mistake
+    whichever variable it lands in."""
+    for name in toggle_env_names():
+        toggle(name)
+
+
+def resolve_lock() -> bool:
+    """Is the tool surface fixed at startup?
+
+    Precedence: an explicit KS4W_PACK_POLICY beats KS4W_LOCK_TOOLS beats
+    the unlocked default."""
+    explicit = _explicit(ENV_PACK_POLICY)
+    if explicit:
+        return explicit.lower() == "locked"
+    return toggle(ENV_LOCK_TOOLS)
+
+
 def _policy_locked() -> bool:
-    return os.environ.get("KS4W_PACK_POLICY", "auto").strip().lower() == "locked"
+    return resolve_lock()
 
 
 def _validate(packs: list[str]) -> list[str]:
@@ -215,9 +320,10 @@ def enable(packs: list[str]) -> dict:
     and the resulting total surface."""
     if _policy_locked():
         err = WordMcpError(
-            "KS4W_PACK_POLICY=locked: the tool surface is fixed at startup "
-            "by the host. Ask the operator to change KS4W_MODE or unlock "
-            "the policy."
+            "the tool surface is fixed at startup by the host "
+            "(KS4W_PACK_POLICY=locked, or the 'Lock the tool set at "
+            "startup' setting). Only a human can change it: untick that "
+            "setting, or restart the server with a different KS4W_MODE."
         )
         err.code = "CONFLICT"
         raise err
@@ -282,12 +388,51 @@ def disable(packs: list[str]) -> dict:
     }
 
 
+def resolve_startup_mode() -> str:
+    """The startup surface in force, before any pack is flipped.
+
+    Precedence, highest first: KS4W_MODE set to something non-empty (the
+    power-user pin wins outright and the checkbox is ignored, because a
+    host that spells out a pack list has said exactly what it wants), then
+    KS4W_ALL_TOOLS=true, then the lite default."""
+    explicit = _explicit(ENV_MODE)
+    if explicit:
+        return explicit.lower()
+    return "full" if toggle(ENV_ALL_TOOLS) else "lite"
+
+
+def startup_note() -> str:
+    """One line naming what decided the startup surface, written to stderr
+    at startup. A surprising tool list should name its own cause, and the
+    case that most needs saying out loud is a KS4W_MODE pin silently
+    overriding checkboxes a human ticked in an installer."""
+    explicit = _explicit(ENV_MODE)
+    if explicit:
+        note = f"startup surface from {ENV_MODE}={explicit!r}"
+        if toggle(ENV_ALL_TOOLS):
+            return (
+                f"{note}; the 'Load every tool at startup' setting "
+                f"({ENV_ALL_TOOLS}) is IGNORED while it is set"
+            )
+        return note
+    if toggle(ENV_ALL_TOOLS):
+        return f"startup surface: every pack, from {ENV_ALL_TOOLS}=true"
+    return "startup surface: lite core only (no startup toggle set)"
+
+
 def apply_startup_mode() -> str:
-    """Apply KS4W_MODE at server start (before the event loop; no client is
-    connected yet, so the visibility hook runs without a session and the
-    server-side wiring must use global transforms, not session state).
-    Returns the mode applied, for logging."""
-    mode = os.environ.get("KS4W_MODE", "lite").strip().lower()
+    """Apply the resolved startup surface at server start (before the event
+    loop; no client is connected yet, so the visibility hook runs without a
+    session and the server-side wiring must use global transforms, not
+    session state). Returns the mode applied, for logging.
+
+    Every boolean toggle is parsed here so a typo in any of them refuses
+    LOUDLY before the server serves a single request, and the resolution is
+    announced on stderr (stdout carries the protocol and stays clean)."""
+    validate_toggles()
+    resolve_lock()
+    mode = resolve_startup_mode()
+    sys.stderr.write(f"[kitchensink4word] {startup_note()}\n")
     if not mode or mode == "lite":
         return "lite"
     # "lite" and "full"/"everything" are mode tokens, tolerated inside
