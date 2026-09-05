@@ -84,6 +84,66 @@ def test_state_guard_reports_restore_failure():
     assert g.restore() == ["x"]
 
 
+# ------------------------------------------- read-only probe (f9 follow-up)
+
+
+class _Doc:
+    """Stand-in document; ReadOnly answers, refuses, or lies flat."""
+
+    def __init__(self, read_only=False, raises=None):
+        self._ro = read_only
+        self._raises = raises
+        self.Saved = True
+        self.AutoSaveOn = False
+
+    @property
+    def ReadOnly(self):
+        if self._raises is not None:
+            raise self._raises
+        return self._ro
+
+
+def _session(doc):
+    return live.LiveSession(object(), doc, live.StateGuard(), True)
+
+
+def test_read_only_probe_records_a_plain_answer():
+    s = _session(_Doc(read_only=False))
+    live.probe_read_only(s, s.doc)
+    assert s.opened_read_only is False
+    assert s.read_only_probe_failed is None
+    out = s.result({})
+    assert "opened_read_only" not in out
+    assert "read_only_probe_failed" not in out
+
+
+def test_read_only_probe_flags_a_read_only_document():
+    s = _session(_Doc(read_only=True))
+    live.probe_read_only(s, s.doc)
+    assert s.opened_read_only is True
+    assert s.result({})["opened_read_only"] is True
+
+
+def test_read_only_probe_records_the_failure_instead_of_lying():
+    """The f9 lesson: a COM fault on doc.ReadOnly used to disappear into a
+    bare suppress and be reported as 'not read-only'. It must now come back
+    as None plus the reason."""
+    s = _session(_Doc(raises=AttributeError("<unknown>.ReadOnly")))
+    live.probe_read_only(s, s.doc)
+    assert s.opened_read_only is None
+    assert "AttributeError" in s.read_only_probe_failed
+    out = s.result({})
+    assert out["opened_read_only"] is None
+    assert "<unknown>.ReadOnly" in out["read_only_probe_failed"]
+
+
+def test_read_only_probe_failure_survives_a_com_error_shape():
+    s = _session(_Doc(raises=_FakeComError(live.RPC_E_CALL_REJECTED)))
+    live.probe_read_only(s, s.doc)
+    assert s.opened_read_only is None
+    assert "_FakeComError" in s.read_only_probe_failed
+
+
 # --------------------------------------------------------------------- live
 
 

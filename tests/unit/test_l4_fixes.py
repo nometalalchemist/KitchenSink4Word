@@ -293,7 +293,13 @@ def test_f9_read_only_open_flagged(tmp_path):
     pythoncom.CoInitialize()
     app = win32com.client.DispatchEx("Word.Application")
     app.Visible = True
-    app.Documents.Open(str(path), ReadOnly=True)
+    # POSITIONAL, not ReadOnly=True (concurrency matrix L2). pywin32's
+    # late-bound dispatch cannot resolve named arguments without a type
+    # library, so it drops them silently: the document opened READ-WRITE,
+    # doc.ReadOnly answered False, the server correctly reported nothing,
+    # and the test failed asserting a flag the product had no reason to
+    # set. Signature: Open(FileName, ConfirmConversions, ReadOnly).
+    app.Documents.Open(str(path), False, True)
     app = None
     try:
         r = srv.search_and_replace(

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KitchenSink4Word: Everything plus the kitchen sink for Microsoft Word</title>
-<meta name="description" content="Everything plus the kitchen sink for Microsoft Word: the most complete Word (.docx) MCP server. 219 document operations across 108 tools, one grammar. Tiered context loading starts at about 7.6k tokens. Live editing, citations, tables, footnotes, tracked changes. Engineered not to corrupt.">
+<meta name="description" content="Everything plus the kitchen sink for Microsoft Word: the most complete Word (.docx) MCP server. 219 document operations across 108 tools, one grammar. Tiered context loading starts at about 7.7k tokens. Live editing, citations, tables, footnotes, tracked changes. Engineered not to corrupt.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚰</text></svg>">
 <link rel="llms" href="llms.txt" type="text/plain">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -262,7 +262,7 @@ footer a{color:var(--copper)}
   <div class="specs-strip rev d4">
     <div class="spec"><span class="n">219</span><span class="l" data-i18n="spec.ops">Operations</span></div>
     <div class="spec"><span class="n">108</span><span class="l" data-i18n="spec.tools">Tools</span></div>
-    <div class="spec"><span class="n">~7.6k</span><span class="l" data-i18n="spec.lite">Lite start</span></div>
+    <div class="spec"><span class="n">~7.7k</span><span class="l" data-i18n="spec.lite">Lite start</span></div>
     <div class="spec"><span class="n">0</span><span class="l" data-i18n="spec.corr">Corruptions</span></div>
   </div>
   <div class="rev d5" style="margin-top:36px">
@@ -295,7 +295,7 @@ footer a{color:var(--copper)}
       <p class="sub" data-i18n="new.sub">The whole list, no release notes required.</p>
       <ul>
         <li data-i18n="new1"><b>More reach, fewer tools.</b> 219 operations now, up from 200 in v1.6, and that v1.6 surface of 189 tools became 108 under one verb grammar, so your agent picks the right tool the first time.</li>
-        <li data-i18n="new2"><b>Starts small, grows on demand.</b> A session opens on a 28-tool core costing about 7,600 tokens and switches on capability packs only when a task actually calls for them.</li>
+        <li data-i18n="new2"><b>Starts small, grows on demand.</b> A session opens on a 28-tool core costing about 7,700 tokens and switches on capability packs only when a task actually calls for them.</li>
         <li data-i18n="new3"><b>Live editing you can leave running.</b> Several agents can now work an open document without colliding, and a Word dialog waiting on a human is caught at the operating-system level instead of quietly freezing the session.</li>
         <li data-i18n="new4"><b>Read once, edit in bulk.</b> The anchored document view hands back addresses that survive your edits, and the batch editor applies dozens of changes against them in a single all-or-nothing pass.</li>
         <li data-i18n="new5"><b>Comment back and forth with your AI.</b> Leave a comment in Word the way you would for a colleague, and the agent reads it, does the work as tracked changes, and replies in the thread. (Preview.)</li>
@@ -365,9 +365,9 @@ footer a{color:var(--copper)}
 <section id="efficiency">
   <div class="wrap">
     <div class="sec-head"><span class="no" data-i18n="no4">DEPT. 04</span><h2 data-i18n="h2.eff">Context efficiency</h2></div>
-    <p class="for-lead" data-i18n="eff.lead">Every MCP server occupies part of an agent's context window before any work starts, and almost none of them tell you how much. Here is our bill, measured: a fresh session starts on the lite core, 28 tools for about 7,600 tokens, and turns on capability packs only when a task needs them. Load every pack and the full surface measures about 26,700 tokens, down from about 34,400 in v1.6, roughly 23 percent less for the whole sink and about 78 percent less at lite start. Clients that defer tool schemas, as Claude Code does, pay close to zero until a tool is actually called.</p>
+    <p class="for-lead" data-i18n="eff.lead">Every MCP server occupies part of an agent's context window before any work starts, and almost none of them tell you how much. Here is our bill, measured: a fresh session starts on the lite core, 28 tools for about 7,700 tokens, and turns on capability packs only when a task needs them. Load every pack and the full surface measures about 26,700 tokens, down from about 34,400 in v1.6, roughly 23 percent less for the whole sink and about 78 percent less at lite start. Clients that defer tool schemas, as Claude Code does, pay close to zero until a tool is actually called.</p>
     <div class="specs-strip" style="margin-top:26px">
-      <div class="spec"><span class="n">~7.6k</span><span class="l" data-i18n="eff.s1">Lite start · 28 tools</span></div>
+      <div class="spec"><span class="n">~7.7k</span><span class="l" data-i18n="eff.s1">Lite start · 28 tools</span></div>
       <div class="spec"><span class="n">~26.7k</span><span class="l" data-i18n="eff.s2">Full surface · all packs</span></div>
       <div class="spec"><span class="n">~0</span><span class="l" data-i18n="eff.s3">Practical cost when schemas are deferred (Claude Code)</span></div>
     </div>
@@ -490,7 +490,7 @@ en: {
 "new.t": "Five things this release changed",
 "new.sub": "The whole list, no release notes required.",
 "new1": "<b>More reach, fewer tools.</b> 219 operations now, up from 200 in v1.6, and that v1.6 surface of 189 tools became 108 under one verb grammar, so your agent picks the right tool the first time.",
-"new2": "<b>Starts small, grows on demand.</b> A session opens on a 28-tool core costing about 7,600 tokens and switches on capability packs only when a task actually calls for them.",
+"new2": "<b>Starts small, grows on demand.</b> A session opens on a 28-tool core costing about 7,700 tokens and switches on capability packs only when a task actually calls for them.",
 "new3": "<b>Live editing you can leave running.</b> Several agents can now work an open document without colliding, and a Word dialog waiting on a human is caught at the operating-system level instead of quietly freezing the session.",
 "new4": "<b>Read once, edit in bulk.</b> The anchored document view hands back addresses that survive your edits, and the batch editor applies dozens of changes against them in a single all-or-nothing pass.",
 "new5": "<b>Comment back and forth with your AI.</b> Leave a comment in Word the way you would for a colleague, and the agent reads it, does the work as tracked changes, and replies in the thread. (Preview.)",
@@ -570,7 +570,7 @@ en: {
 "mv.s12": "✔ 12 styles", "mv.s8": "✔ 8 styles", "mv.both": "✔ both directions", "mv.sha": "✔ Word-compatible SHA-512", "mv.file": "✔ file tools; COM optional", "mv.undo": "✔ one Ctrl+Z per call", "mv.evid": "✔ 1,324 / 0", "mv.inapp": "✔ in-app",
 "mx.note": "Capability survey as of 2026-08-28, compiled from public repositories, documentation, and issue trackers. n/d: not documented in the sources surveyed (not a claimed absence). * Official add-ins covers Microsoft's Word AI offerings and the Claude for Word add-in: cloud-based or Team/Enterprise scoped, not local MCP servers. Corrections welcome: open an issue. &dagger; Star counts read from the GitHub API on 2026-09-04, shown for context: stars say how long a project has been in view, not what it can do.",
 "h2.eff": "Context efficiency",
-"eff.lead": "Every MCP server occupies part of an agent's context window before any work starts, and almost none of them tell you how much. Here is our bill, measured: a fresh session starts on the lite core, 28 tools for about 7,600 tokens, and turns on capability packs only when a task needs them. Load every pack and the full surface measures about 26,700 tokens, down from about 34,400 in v1.6, roughly 23 percent less for the whole sink and about 78 percent less at lite start. Clients that defer tool schemas, as Claude Code does, pay close to zero until a tool is actually called.",
+"eff.lead": "Every MCP server occupies part of an agent's context window before any work starts, and almost none of them tell you how much. Here is our bill, measured: a fresh session starts on the lite core, 28 tools for about 7,700 tokens, and turns on capability packs only when a task needs them. Load every pack and the full surface measures about 26,700 tokens, down from about 34,400 in v1.6, roughly 23 percent less for the whole sink and about 78 percent less at lite start. Clients that defer tool schemas, as Claude Code does, pay close to zero until a tool is actually called.",
 "eff.s1": "Lite start · 28 tools",
 "eff.s2": "Full surface · all packs",
 "eff.s3": "Practical cost when schemas are deferred (Claude Code)",
@@ -608,7 +608,7 @@ ko: {
 "new.t": "이번 릴리스가 바꾼 다섯 가지",
 "new.sub": "릴리스 노트를 읽을 필요 없이, 이게 전부입니다.",
 "new1": "<b>더 넓어지고, 도구는 줄었습니다.</b> 작업 수는 v1.6의 200개에서 219개로 늘었고, 189개였던 v1.6 도구 표면은 하나의 동사 문법 아래 108개로 정리되었습니다. 덕분에 에이전트가 처음부터 맞는 도구를 고릅니다.",
-"new2": "<b>가볍게 시작해 필요할 때 커집니다.</b> 세션은 약 7,600 토큰짜리 28개 도구 코어로 열리고, 작업에 실제로 필요할 때만 기능 팩을 켭니다.",
+"new2": "<b>가볍게 시작해 필요할 때 커집니다.</b> 세션은 약 7,700 토큰짜리 28개 도구 코어로 열리고, 작업에 실제로 필요할 때만 기능 팩을 켭니다.",
 "new3": "<b>켜 둔 채 맡길 수 있는 라이브 편집.</b> 이제 여러 에이전트가 열려 있는 문서를 함께 다뤄도 충돌하지 않고, 사람의 응답을 기다리는 Word 대화 상자는 운영체제 수준에서 감지되므로 세션이 조용히 멈추는 일이 없습니다.",
 "new4": "<b>한 번 읽고, 한꺼번에 고칩니다.</b> 앵커가 붙은 문서 뷰가 편집 뒤에도 유효한 주소를 돌려주고, 일괄 편집기가 그 주소들에 수십 건의 변경을 전부 아니면 전무로 한 번에 적용합니다.",
 "new5": "<b>AI와 메모를 주고받으세요.</b> 동료에게 하듯 Word에 메모를 남기면, 에이전트가 그것을 읽고 추적 변경으로 작업한 뒤 같은 스레드에 답글을 답니다. (프리뷰)",
@@ -688,7 +688,7 @@ ko: {
 "mv.s12": "✔ 12개 스타일", "mv.s8": "✔ 8개 스타일", "mv.both": "✔ 양방향", "mv.sha": "✔ Word 호환 SHA-512", "mv.file": "✔ 파일 도구; COM은 선택", "mv.undo": "✔ 호출당 Ctrl+Z 한 단계", "mv.evid": "✔ 1,324 / 0", "mv.inapp": "✔ 앱 내",
 "mx.note": "2026-08-28 기준 기능 조사. 공개 저장소, 문서, 이슈 트래커에서 취합했습니다. n/d: 조사한 자료에서 확인되지 않음(없다는 주장이 아닙니다). * 공식 추가 기능 열은 Microsoft의 Word AI 제품군과 Claude for Word 추가 기능을 묶은 것으로, 클라우드 기반이거나 Team/Enterprise 요금제 전용이며 로컬 MCP 서버가 아닙니다. 정정은 환영합니다. 이슈를 열어 주세요. &dagger; 스타 수는 2026-09-04에 GitHub API로 읽은 값이며 참고용입니다. 스타는 프로젝트가 얼마나 오래 알려져 왔는지를 보여줄 뿐, 무엇을 할 수 있는지를 보여주지는 않습니다.",
 "h2.eff": "컨텍스트 효율",
-"eff.lead": "모든 MCP 서버는 작업을 시작하기도 전에 에이전트의 컨텍스트 창 일부를 차지하지만, 그 비용을 알려주는 서버는 거의 없습니다. 여기 측정한 우리 청구서가 있습니다: 새 세션은 라이트 코어(도구 28종, 약 7,600 토큰)로 시작하고, 기능 팩은 작업에 필요할 때만 켭니다. 모든 팩을 불러온 전체 표면은 약 26,700 토큰으로, v1.6의 약 34,400 토큰에서 줄어든 값입니다. 전체 기준 약 23퍼센트, 라이트 시작 기준 약 78퍼센트 적습니다. Claude Code처럼 도구 스키마를 지연 로드하는 클라이언트라면 도구가 실제로 호출되기 전까지 비용이 거의 0에 가깝습니다.",
+"eff.lead": "모든 MCP 서버는 작업을 시작하기도 전에 에이전트의 컨텍스트 창 일부를 차지하지만, 그 비용을 알려주는 서버는 거의 없습니다. 여기 측정한 우리 청구서가 있습니다: 새 세션은 라이트 코어(도구 28종, 약 7,700 토큰)로 시작하고, 기능 팩은 작업에 필요할 때만 켭니다. 모든 팩을 불러온 전체 표면은 약 26,700 토큰으로, v1.6의 약 34,400 토큰에서 줄어든 값입니다. 전체 기준 약 23퍼센트, 라이트 시작 기준 약 78퍼센트 적습니다. Claude Code처럼 도구 스키마를 지연 로드하는 클라이언트라면 도구가 실제로 호출되기 전까지 비용이 거의 0에 가깝습니다.",
 "eff.s1": "라이트 시작 · 도구 28종",
 "eff.s2": "전체 표면 · 모든 팩",
 "eff.s3": "스키마 지연 로드 시 실질 비용 (Claude Code)",
@@ -726,7 +726,7 @@ ja: {
 "new.t": "このリリースで変わった5つのこと",
 "new.sub": "リリースノートを読まなくても、これで全部です。",
 "new1": "<b>守備範囲は広く、ツールは少なく。</b> 操作は v1.6 の200から219に増え、189本あった v1.6 のツール表面はひとつの動詞文法のもとで108本に整理されました。エージェントは最初から正しいツールを選べます。",
-"new2": "<b>小さく始まり、必要に応じて広がる。</b> セッションは約7,600トークン、28ツールのコアで開き、タスクが実際に必要とするときだけ機能パックを有効にします。",
+"new2": "<b>小さく始まり、必要に応じて広がる。</b> セッションは約7,700トークン、28ツールのコアで開き、タスクが実際に必要とするときだけ機能パックを有効にします。",
 "new3": "<b>動かしっぱなしにできるライブ編集。</b> 複数のエージェントが開いた文書を同時に扱っても衝突せず、人の操作を待つ Word のダイアログは OS レベルで検出されるため、セッションが黙って止まることはありません。",
 "new4": "<b>一度読んで、まとめて直す。</b> アンカー付きの文書ビューが編集後も有効な位置情報を返し、バッチ編集がその位置に数十件の変更を、全部か無かの一括処理で適用します。",
 "new5": "<b>AI とコメントでやり取りする。</b> 同僚に書くように Word にコメントを残せば、エージェントがそれを読み、変更履歴として作業し、同じスレッドに返信します。(プレビュー)",
@@ -806,7 +806,7 @@ ja: {
 "mv.s12": "✔ 12 スタイル", "mv.s8": "✔ 8 スタイル", "mv.both": "✔ 双方向", "mv.sha": "✔ Word 互換 SHA-512", "mv.file": "✔ ファイルツール、COM は任意", "mv.undo": "✔ 呼び出し1回 = Ctrl+Z 1段階", "mv.evid": "✔ 1,324 / 0", "mv.inapp": "✔ アプリ内",
 "mx.note": "2026-08-28 時点の機能調査。公開リポジトリ、ドキュメント、Issue トラッカーから集約しました。n/d：調査した資料では確認できず(欠如の断定ではありません)。* 公式アドインは Microsoft の Word AI 製品群と Claude for Word アドインをまとめた列で、クラウドまたは Team/Enterprise 限定のもの。ローカル MCP サーバーではありません。訂正歓迎、Issue をどうぞ。 &dagger; スター数は 2026-09-04 に GitHub API から取得した参考値です。スターはプロジェクトがどれだけ長く知られてきたかを示すもので、何ができるかを示すものではありません。",
 "h2.eff": "コンテキスト効率",
-"eff.lead": "どの MCP サーバーも、仕事を始める前からエージェントのコンテキストウィンドウの一部を占めます。それなのに、その量を教えてくれるサーバーはほとんどありません。これが計測した当方の請求書です：新しいセッションはライトコア(ツール28種、約 7,600 トークン)で始まり、機能パックは作業に必要になったときだけ有効化します。すべてのパックを読み込んだ全表面は約 26,700 トークンで、v1.6 の約 34,400 トークンから減りました。全体でおよそ 23 パーセント、ライト起動時ではおよそ 78 パーセント少なくなります。Claude Code のようにツールスキーマを遅延読み込みするクライアントなら、ツールが実際に呼ばれるまでコストはほぼゼロです。",
+"eff.lead": "どの MCP サーバーも、仕事を始める前からエージェントのコンテキストウィンドウの一部を占めます。それなのに、その量を教えてくれるサーバーはほとんどありません。これが計測した当方の請求書です：新しいセッションはライトコア(ツール28種、約 7,700 トークン)で始まり、機能パックは作業に必要になったときだけ有効化します。すべてのパックを読み込んだ全表面は約 26,700 トークンで、v1.6 の約 34,400 トークンから減りました。全体でおよそ 23 パーセント、ライト起動時ではおよそ 78 パーセント少なくなります。Claude Code のようにツールスキーマを遅延読み込みするクライアントなら、ツールが実際に呼ばれるまでコストはほぼゼロです。",
 "eff.s1": "ライト起動 · ツール28種",
 "eff.s2": "全表面 · 全パック",
 "eff.s3": "スキーマ遅延読み込み時の実質コスト (Claude Code)",
@@ -844,7 +844,7 @@ zh: {
 "new.t": "这一版改变的五件事",
 "new.sub": "不用翻发布说明,就这些。",
 "new1": "<b>覆盖更广,工具更少。</b> 操作从 v1.6 的 200 个增加到 219 个,而 v1.6 那 189 件工具在统一的动词语法下收拢为 108 件,你的智能体第一次就能挑对工具。",
-"new2": "<b>起步小,按需长大。</b> 会话以 28 件工具、约 7,600 tokens 的内核开启,只有任务真正需要时才打开能力包。",
+"new2": "<b>起步小,按需长大。</b> 会话以 28 件工具、约 7,700 tokens 的内核开启,只有任务真正需要时才打开能力包。",
 "new3": "<b>可以一直开着的实时编辑。</b> 现在多个智能体可以同时处理一份打开的文档而不相撞,等待人操作的 Word 对话框在操作系统层面被检测到,不会让会话悄悄卡死。",
 "new4": "<b>读一次,批量改。</b> 带锚点的文档视图返回的地址在你编辑之后依然有效,批量编辑器把几十处改动按全成或全不成的方式一次性应用上去。",
 "new5": "<b>用批注和你的 AI 一来一往。</b> 像给同事留言那样在 Word 里写下批注,智能体会读它、以修订方式完成工作,并在同一条线程里回复。(预览)",
@@ -924,7 +924,7 @@ zh: {
 "mv.s12": "✔ 12 种样式", "mv.s8": "✔ 8 种样式", "mv.both": "✔ 双向", "mv.sha": "✔ Word 兼容 SHA-512", "mv.file": "✔ 文件工具；COM 可选", "mv.undo": "✔ 每次调用一步 Ctrl+Z", "mv.evid": "✔ 1,324 / 0", "mv.inapp": "✔ 应用内",
 "mx.note": "能力调查，截至 2026-08-28，汇总自公开仓库、文档与 issue 跟踪器。n/d：在所查资料中未见记载(并非断言其没有)。* 官方加载项一栏合并了 Microsoft 的 Word AI 产品与 Claude for Word 加载项：皆为云端或 Team/Enterprise 专属，不是本地 MCP 服务器。欢迎指正，请开 issue。 &dagger; 星标数于 2026-09-04 通过 GitHub API 读取,仅供参考:星标反映一个项目被看见了多久,而不是它能做什么。",
 "h2.eff": "上下文效率",
-"eff.lead": "每个 MCP 服务器在干活之前就要占用智能体的一部分上下文窗口，却几乎没有服务器告诉你占多少。这是我们量出来的账单：新会话从精简内核(28 件工具，约 7,600 token)启动，能力包只在任务需要时才打开。载入全部能力包后，完整表面约为 26,700 token，低于 v1.6 的约 34,400 token，整体少约 23%，精简启动时少约 78%。像 Claude Code 这样延迟加载工具 schema 的客户端，在工具真正被调用之前成本几乎为零。",
+"eff.lead": "每个 MCP 服务器在干活之前就要占用智能体的一部分上下文窗口，却几乎没有服务器告诉你占多少。这是我们量出来的账单：新会话从精简内核(28 件工具，约 7,700 token)启动，能力包只在任务需要时才打开。载入全部能力包后，完整表面约为 26,700 token，低于 v1.6 的约 34,400 token，整体少约 23%，精简启动时少约 78%。像 Claude Code 这样延迟加载工具 schema 的客户端，在工具真正被调用之前成本几乎为零。",
 "eff.s1": "精简启动 · 28 件工具",
 "eff.s2": "完整表面 · 全部能力包",
 "eff.s3": "schema 延迟加载时的实际成本 (Claude Code)",
@@ -962,7 +962,7 @@ de: {
 "new.t": "Fünf Dinge, die dieses Release geändert hat",
 "new.sub": "Die ganze Liste, ganz ohne Release Notes.",
 "new1": "<b>Mehr Reichweite, weniger Werkzeuge.</b> 219 Operationen statt 200 in v1.6, und die 189 Werkzeuge der v1.6-Oberfläche wurden zu 108 unter einer einzigen Verbgrammatik zusammengeführt, sodass Ihr Agent gleich beim ersten Versuch das richtige Werkzeug greift.",
-"new2": "<b>Fängt klein an, wächst auf Zuruf.</b> Eine Sitzung startet mit einem Kern aus 28 Werkzeugen für rund 7.600 Tokens und schaltet Fähigkeitspakete erst dann zu, wenn eine Aufgabe sie wirklich braucht.",
+"new2": "<b>Fängt klein an, wächst auf Zuruf.</b> Eine Sitzung startet mit einem Kern aus 28 Werkzeugen für rund 7.700 Tokens und schaltet Fähigkeitspakete erst dann zu, wenn eine Aufgabe sie wirklich braucht.",
 "new3": "<b>Live-Bearbeitung, die laufen bleiben darf.</b> Mehrere Agenten können jetzt an einem offenen Dokument arbeiten, ohne sich in die Quere zu kommen, und ein Word-Dialog, der auf einen Menschen wartet, wird auf Betriebssystemebene erkannt, statt die Sitzung stillschweigend einzufrieren.",
 "new4": "<b>Einmal lesen, gesammelt bearbeiten.</b> Die verankerte Dokumentansicht liefert Adressen zurück, die Ihre Bearbeitungen überleben, und der Stapeleditor wendet Dutzende Änderungen in einem einzigen Alles-oder-nichts-Durchgang darauf an.",
 "new5": "<b>Mit Ihrer KI über Kommentare hin und her.</b> Hinterlassen Sie in Word einen Kommentar wie für eine Kollegin, und der Agent liest ihn, erledigt die Arbeit als nachverfolgte Änderung und antwortet im selben Thread. (Vorschau.)",
@@ -1042,7 +1042,7 @@ de: {
 "mv.s12": "✔ 12 Stile", "mv.s8": "✔ 8 Stile", "mv.both": "✔ beide Richtungen", "mv.sha": "✔ Word-kompatibles SHA-512", "mv.file": "✔ Dateiwerkzeuge; COM optional", "mv.undo": "✔ ein Strg+Z pro Aufruf", "mv.evid": "✔ 1.324 / 0", "mv.inapp": "✔ in der App",
 "mx.note": "Fähigkeitserhebung, Stand 2026-08-28, zusammengetragen aus öffentlichen Repositories, Dokumentation und Issue-Trackern. n/d: in den gesichteten Quellen nicht dokumentiert (keine behauptete Abwesenheit). * Offizielle Add-ins bündelt Microsofts Word-KI-Angebote und das Claude-for-Word-Add-in: cloudbasiert oder auf Team/Enterprise beschränkt, keine lokalen MCP-Server. Korrekturen willkommen: einfach ein Issue öffnen. &dagger; Sternzahlen am 2026-09-04 über die GitHub-API gelesen, zur Einordnung: Sterne zeigen, wie lange ein Projekt schon sichtbar ist, nicht was es kann.",
 "h2.eff": "Kontext-Effizienz",
-"eff.lead": "Jeder MCP-Server belegt einen Teil des Kontextfensters eines Agenten, bevor die Arbeit überhaupt beginnt, und kaum einer sagt, wie viel. Hier ist unsere gemessene Rechnung: Eine frische Sitzung startet mit dem Lite-Kern, 28 Werkzeuge für rund 7.600 Token, und schaltet Fähigkeitspakete erst zu, wenn eine Aufgabe sie braucht. Mit allen Paketen misst die volle Oberfläche etwa 26.700 Token, gegenüber rund 34.400 in v1.6, also etwa 23 Prozent weniger für die ganze Spüle und rund 78 Prozent weniger beim Lite-Start. Clients, die Werkzeugschemata aufschieben, wie Claude Code, zahlen nahezu nichts, bis ein Werkzeug tatsächlich aufgerufen wird.",
+"eff.lead": "Jeder MCP-Server belegt einen Teil des Kontextfensters eines Agenten, bevor die Arbeit überhaupt beginnt, und kaum einer sagt, wie viel. Hier ist unsere gemessene Rechnung: Eine frische Sitzung startet mit dem Lite-Kern, 28 Werkzeuge für rund 7.700 Token, und schaltet Fähigkeitspakete erst zu, wenn eine Aufgabe sie braucht. Mit allen Paketen misst die volle Oberfläche etwa 26.700 Token, gegenüber rund 34.400 in v1.6, also etwa 23 Prozent weniger für die ganze Spüle und rund 78 Prozent weniger beim Lite-Start. Clients, die Werkzeugschemata aufschieben, wie Claude Code, zahlen nahezu nichts, bis ein Werkzeug tatsächlich aufgerufen wird.",
 "eff.s1": "Lite-Start · 28 Werkzeuge",
 "eff.s2": "Volle Oberfläche · alle Pakete",
 "eff.s3": "Praktische Kosten bei aufgeschobenen Schemata (Claude Code)",
@@ -1080,7 +1080,7 @@ fr: {
 "new.t": "Cinq choses que cette version change",
 "new.sub": "La liste complète, sans passer par les notes de version.",
 "new1": "<b>Plus de portée, moins d'outils.</b> 219 opérations désormais, contre 200 en v1.6, et les 189 outils de la surface v1.6 sont devenus 108 sous une seule grammaire de verbes, si bien que votre agent choisit le bon outil du premier coup.",
-"new2": "<b>Démarre léger, grandit à la demande.</b> Une session s'ouvre sur un noyau de 28 outils coûtant environ 7 600 tokens et n'active un lot de capacités que lorsqu'une tâche en a réellement besoin.",
+"new2": "<b>Démarre léger, grandit à la demande.</b> Une session s'ouvre sur un noyau de 28 outils coûtant environ 7 700 tokens et n'active un lot de capacités que lorsqu'une tâche en a réellement besoin.",
 "new3": "<b>Une édition en direct qu'on peut laisser tourner.</b> Plusieurs agents peuvent maintenant travailler sur un document ouvert sans se gêner, et une boîte de dialogue Word qui attend un humain est détectée au niveau du système d'exploitation au lieu de geler la session en silence.",
 "new4": "<b>Lire une fois, corriger en masse.</b> La vue ancrée du document renvoie des adresses qui survivent à vos modifications, et l'éditeur par lots y applique des dizaines de changements en une seule passe, tout ou rien.",
 "new5": "<b>Échangez avec votre IA par commentaires.</b> Laissez un commentaire dans Word comme vous le feriez pour un collègue : l'agent le lit, fait le travail en suivi des modifications et répond dans le fil. (Aperçu.)",
@@ -1160,7 +1160,7 @@ fr: {
 "mv.s12": "✔ 12 styles", "mv.s8": "✔ 8 styles", "mv.both": "✔ dans les deux sens", "mv.sha": "✔ SHA-512 compatible Word", "mv.file": "✔ outils fichier ; COM en option", "mv.undo": "✔ un Ctrl+Z par appel", "mv.evid": "✔ 1 324 / 0", "mv.inapp": "✔ dans l'application",
 "mx.note": "Recensement des capacités au 2026-08-28, compilé à partir des dépôts publics, de la documentation et des traqueurs de tickets. n/d : non documenté dans les sources consultées (ce n'est pas une absence affirmée). * Compléments officiels regroupe les offres IA de Microsoft pour Word et le complément Claude for Word : en nuage ou réservés aux offres Team/Enterprise, pas des serveurs MCP locaux. Corrections bienvenues : ouvrez un ticket. &dagger; Nombres d'étoiles relevés via l'API GitHub le 2026-09-04, à titre de contexte : les étoiles disent depuis combien de temps un projet est visible, pas ce qu'il sait faire.",
 "h2.eff": "Efficacité de contexte",
-"eff.lead": "Chaque serveur MCP occupe une partie de la fenêtre de contexte d'un agent avant même que le travail commence, et presque aucun ne dit combien. Voici notre facture, mesurée : une session neuve démarre sur le noyau allégé, 28 outils pour environ 7 600 tokens, et n'active des packs de capacités que lorsqu'une tâche les demande. Tous les packs chargés, la surface complète mesure environ 26 700 tokens, contre près de 34 400 en v1.6, soit à peu près 23 pour cent de moins pour l'évier entier et environ 78 pour cent de moins au démarrage allégé. Les clients qui diffèrent les schémas d'outils, comme Claude Code, ne paient presque rien tant qu'un outil n'est pas réellement appelé.",
+"eff.lead": "Chaque serveur MCP occupe une partie de la fenêtre de contexte d'un agent avant même que le travail commence, et presque aucun ne dit combien. Voici notre facture, mesurée : une session neuve démarre sur le noyau allégé, 28 outils pour environ 7 700 tokens, et n'active des packs de capacités que lorsqu'une tâche les demande. Tous les packs chargés, la surface complète mesure environ 26 700 tokens, contre près de 34 400 en v1.6, soit à peu près 23 pour cent de moins pour l'évier entier et environ 78 pour cent de moins au démarrage allégé. Les clients qui diffèrent les schémas d'outils, comme Claude Code, ne paient presque rien tant qu'un outil n'est pas réellement appelé.",
 "eff.s1": "Démarrage allégé · 28 outils",
 "eff.s2": "Surface complète · tous les packs",
 "eff.s3": "Coût pratique avec schémas différés (Claude Code)",
@@ -1198,7 +1198,7 @@ es: {
 "new.t": "Cinco cosas que cambia esta versión",
 "new.sub": "La lista entera, sin tener que leer las notas de la versión.",
 "new1": "<b>Más alcance, menos herramientas.</b> Ahora 219 operaciones, frente a 200 en v1.6, y aquellas 189 herramientas de la superficie v1.6 pasaron a ser 108 bajo una sola gramática de verbos, así que su agente acierta con la herramienta a la primera.",
-"new2": "<b>Empieza pequeño y crece cuando hace falta.</b> Una sesión abre con un núcleo de 28 herramientas que cuesta unos 7.600 tokens y solo enciende paquetes de capacidades cuando una tarea los necesita de verdad.",
+"new2": "<b>Empieza pequeño y crece cuando hace falta.</b> Una sesión abre con un núcleo de 28 herramientas que cuesta unos 7.700 tokens y solo enciende paquetes de capacidades cuando una tarea los necesita de verdad.",
 "new3": "<b>Edición en vivo que puede dejar funcionando.</b> Ahora varios agentes pueden trabajar sobre un documento abierto sin chocar, y un cuadro de diálogo de Word que espera a una persona se detecta en el nivel del sistema operativo en lugar de congelar la sesión en silencio.",
 "new4": "<b>Lea una vez, edite en bloque.</b> La vista anclada del documento devuelve direcciones que sobreviven a sus ediciones, y el editor por lotes les aplica decenas de cambios en una sola pasada de todo o nada.",
 "new5": "<b>Converse con su IA a base de comentarios.</b> Deje un comentario en Word como se lo dejaría a un colega: el agente lo lee, hace el trabajo como cambios rastreados y responde en el mismo hilo. (Vista previa.)",
@@ -1278,7 +1278,7 @@ es: {
 "mv.s12": "✔ 12 estilos", "mv.s8": "✔ 8 estilos", "mv.both": "✔ en ambos sentidos", "mv.sha": "✔ SHA-512 compatible con Word", "mv.file": "✔ herramientas de archivo; COM opcional", "mv.undo": "✔ un Ctrl+Z por llamada", "mv.evid": "✔ 1.324 / 0", "mv.inapp": "✔ dentro de la aplicación",
 "mx.note": "Estudio de capacidades a 2026-08-28, compilado de repositorios públicos, documentación y gestores de incidencias. n/d: no documentado en las fuentes consultadas (no es una ausencia afirmada). * Complementos oficiales agrupa las ofertas de IA de Microsoft para Word y el complemento Claude for Word: en la nube o limitados a planes Team/Enterprise, no servidores MCP locales. Correcciones bienvenidas: abra un issue. &dagger; Recuento de estrellas leído de la API de GitHub el 2026-09-04, a modo de contexto: las estrellas dicen cuánto tiempo lleva un proyecto a la vista, no lo que sabe hacer.",
 "h2.eff": "Eficiencia de contexto",
-"eff.lead": "Todo servidor MCP ocupa parte de la ventana de contexto de un agente antes de empezar a trabajar, y casi ninguno dice cuánto. Esta es nuestra factura, medida: una sesión nueva arranca con el núcleo ligero, 28 herramientas por unos 7.600 tokens, y activa paquetes de capacidades solo cuando una tarea los necesita. Con todos los paquetes cargados, la superficie completa mide unos 26.700 tokens, frente a unos 34.400 en la v1.6, aproximadamente un 23 por ciento menos para todo el fregadero y alrededor de un 78 por ciento menos al arrancar ligero. Los clientes que aplazan los esquemas, como Claude Code, no pagan casi nada hasta que una herramienta se invoca de verdad.",
+"eff.lead": "Todo servidor MCP ocupa parte de la ventana de contexto de un agente antes de empezar a trabajar, y casi ninguno dice cuánto. Esta es nuestra factura, medida: una sesión nueva arranca con el núcleo ligero, 28 herramientas por unos 7.700 tokens, y activa paquetes de capacidades solo cuando una tarea los necesita. Con todos los paquetes cargados, la superficie completa mide unos 26.700 tokens, frente a unos 34.400 en la v1.6, aproximadamente un 23 por ciento menos para todo el fregadero y alrededor de un 78 por ciento menos al arrancar ligero. Los clientes que aplazan los esquemas, como Claude Code, no pagan casi nada hasta que una herramienta se invoca de verdad.",
 "eff.s1": "Arranque ligero · 28 herramientas",
 "eff.s2": "Superficie completa · todos los paquetes",
 "eff.s3": "Coste práctico con esquemas aplazados (Claude Code)",

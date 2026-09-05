@@ -59,7 +59,7 @@ def test_published_numbers_match_scripts():
                        ("index.html", index)):
         assert str(n_ops) in text, f"{name} is missing the operations count"
         assert str(docs) in text, f"{name} is missing the tool count"
-        assert ("7.6k" in text or "7,600" in text), (
+        assert ("7.7k" in text or "7,700" in text), (
             f"{name} is missing the lite token figure"
         )
 
@@ -87,6 +87,12 @@ _STALE = [
     (r"\b20 tools\b", "retired lite estimate 20 tools"),
     (r"\b4,000\b", "retired lite token estimate 4,000"),
     (r"\b4\.000\b", "retired lite token estimate 4.000"),
+    # Superseded by the 2026-09-05 concurrency-fix re-measure: delete_paragraphs
+    # gained expect_start/expect_end, which grew the published schema.
+    (r"\b7[,.   ]?600\b", "retired lite token bill 7,600"),
+    (r"~?7\.6k\b", "retired lite token bill 7.6k"),
+    (r"\b26[,.   ]?600\b", "retired full token bill 26,600"),
+    (r"~?26\.6k\b", "retired full token bill 26.6k"),
 ]
 
 
@@ -174,13 +180,13 @@ def test_i18n_dictionaries_carry_current_figures():
         return [base] + [base.replace(",", s)
                          for s in (".", " ", " ", " ")]
 
-    sep = forms_of("7,600")
+    sep = forms_of("7,700")
     full = forms_of("26,700")
     old = forms_of("34,400")
     for i, lang in enumerate(langs):
         block = text[spans[i]:spans[i + 1]]
         assert "219" in block, f"i18n {lang}: operations count 219 missing"
-        for name, forms in (("lite 7.6k", sep), ("full 26.7k", full),
+        for name, forms in (("lite 7.7k", sep), ("full 26.7k", full),
                             ("v1.6 34.4k", old)):
             assert any(f in block for f in forms), (
                 f"i18n {lang}: {name} figure missing in all accepted formats"

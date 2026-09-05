@@ -356,6 +356,47 @@ def _stale_guard(session, paras, index: int, expected: str | None,
         )
 
 
+# ------------------------------------------- validate-at-execution guard
+#
+# The stale guard above answers "did the SNAPSHOT this index came from
+# drift". This one answers a different question, from the 2026-09-05
+# concurrency matrix (H4): did SOMEONE ELSE move this index between the
+# call that resolved it and the call that uses it.
+#
+# The matrix ran the race for real. One process resolved a paragraph
+# index, paused the way an agent pauses to think, then deleted that index
+# while a second process inserted at the top of the same document and
+# shifted everything below. Six deletions: three destroyed innocent
+# paragraphs, three hit their target, and all six reported deleted: 1. The
+# resolve and the delete are separate tool calls, so no lock closes this —
+# only the caller knows what it meant to hit.
+#
+# set_paragraph_text's expect= already refused that race 6/6 in the same
+# run, with a message that named the drift precisely. This helper is that
+# guard, generalized, so the destructive and index-addressed mutators can
+# all carry it.
+
+
+def _expect_guard(paras, index: int, expect: str | None, what: str) -> None:
+    """Refuse when the paragraph at a caller-supplied index no longer holds
+    the text the caller expected there. expect=None disables the check
+    (unguarded index addressing stays available, and stays the caller's
+    risk when a document is shared)."""
+    if expect is None:
+        return
+    if not 0 <= index < len(paras):
+        return  # the op's own bounds check raises the precise error
+    current = _para_text(paras[index])
+    if expect not in current:
+        raise TargetNotFound(
+            f"{what}: paragraph {index} does not contain the expected text "
+            f"{expect[:80]!r}; its current text begins: {current[:120]!r}. "
+            "Paragraph indices shift after insert/delete operations, "
+            "including ones made by another agent or by the user in Word — "
+            "re-read with get_text and retry. Nothing was changed."
+        )
+
+
 def _hex_to_wdcolor(color: str) -> int:
     h = color.lstrip("#")
     if len(h) != 6:
@@ -1352,12 +1393,16 @@ def delete_paragraphs(
     author: str = "Claude",
     verify_start_text: str | None = None,
     verify_end_text: str | None = None,
+    expect_start: str | None = None,
+    expect_end: str | None = None,
 ) -> dict:
     return run_live(
         path, "delete paragraphs",
         delete_paragraphs_body(start, end, track=track, author=author,
                                verify_start_text=verify_start_text,
-                               verify_end_text=verify_end_text),
+                               verify_end_text=verify_end_text,
+                               expect_start=expect_start,
+                               expect_end=expect_end),
     )
 
 
@@ -1369,8 +1414,18 @@ def delete_paragraphs_body(
     author: str = "Claude",
     verify_start_text: str | None = None,
     verify_end_text: str | None = None,
+    expect_start: str | None = None,
+    expect_end: str | None = None,
 ):
-    """Session-level body factory; see replace_paragraph_text_body."""
+    """Session-level body factory; see replace_paragraph_text_body.
+
+    expect_start / expect_end are the validate-at-execution guard (H4): the
+    paragraphs actually sitting at those indices must still contain the
+    given text, or the deletion refuses with nothing removed. This is the
+    only defence against a second writer shifting indices between the call
+    that resolved them and this one, and deletion is where that race costs
+    the most — the matrix destroyed three innocent paragraphs while
+    reporting six confident successes."""
     def body(session):
         doc = session.doc
         last = start if end is None else end
@@ -1380,6 +1435,8 @@ def delete_paragraphs_body(
                 f"paragraph range [{start}..{last}] out of range "
                 f"({len(paras)} body paragraphs)"
             )
+        _expect_guard(paras, start, expect_start, "delete_paragraphs")
+        _expect_guard(paras, last, expect_end, "delete_paragraphs")
         _stale_guard(session, paras, start, verify_start_text, "delete")
         if last != start:
             _stale_guard(session, paras, last, verify_end_text, "delete")
