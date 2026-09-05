@@ -1,6 +1,6 @@
 [project]
 name = "kitchensink4word"
-version = "2.0.0"
+version = "2.0.1"
 description = "Everything plus the kitchen sink for Microsoft Word - the most complete .docx MCP server: live editing of open documents (one Ctrl+Z per call, cursor-safe), mail merge, batch operations, redaction, accessibility and template-compliance audits, cross-reference validation, native citations/bibliography, index, merge-aware tables, footnotes/endnotes, TOC, tracked-change writing, document compare/merge, protection, PDF import/export, engineered not to corrupt"
 readme = "README.md"
 license = "AGPL-3.0-only"
