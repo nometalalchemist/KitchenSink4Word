@@ -43,7 +43,7 @@ landing as a single Ctrl+Z step.
 - **Tiered loading: starts at about 7.6k tokens, scales to everything.** A
   fresh session loads the 28-tool lite core (about 7,600 tokens) and turns on
   capability packs only when a task needs them, with one `enable_tools` call.
-  Load every pack and the full surface measures about 26,600 tokens, down from
+  Load every pack and the full surface measures about 26,700 tokens, down from
   about 34,400 in v1.6: roughly 23% less for the whole sink, about 78% less at
   lite start. (All figures are script-measured; see
   [Context cost](#context-cost-measured) below.)
@@ -63,7 +63,7 @@ hand-counted. The lite core loads at startup; the seven packs load on demand.
 | media-forms | 16 | ~4.1k | Images, charts, equations, text boxes, hyperlinks, table structure and styling, form fields, content controls, field codes |
 | com-live | 13 | ~2.2k | Drives a local Microsoft Word: PDF import/export, compare and combine, proofing, readability, field refresh, live editing of open documents |
 | protection-io | 6 | ~1.2k | Document protection, watermarks, redaction with verification, table data import and export |
-| **Full surface** | **110** | **~26.6k** | Everything (108 document tools plus `enable_tools` / `disable_tools`) |
+| **Full surface** | **110** | **~26.7k** | Everything (108 document tools plus `enable_tools` / `disable_tools`) |
 
 ## Quickstart: start lite, enable what you need
 
@@ -208,7 +208,7 @@ Almost no MCP server tells you what it costs to load. Here is the bill, from
 
 - **Lite start:** 28 tools, about 7,600 tokens, loaded when the session opens.
 - **Full surface:** 110 tools (108 document tools plus the two pack toggles),
-  about 26,600 tokens with every pack enabled.
+  about 26,700 tokens with every pack enabled.
 - **Versus v1.6:** the old full surface was about 34,400 tokens. v2 is roughly
   23% smaller at full load and about 78% smaller at lite start.
 - Clients that defer tool schemas until first use (for example Claude Code)
